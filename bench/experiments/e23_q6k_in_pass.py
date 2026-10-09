@@ -5,6 +5,20 @@ Alone, against MLX's product over float16 (130 us for a 10,240 x 2,560 tensor wh
 alone do not add up to a pass (e04, e06), so here the model's Q6_K layers are swapped for them and whole passes
 are timed, in turns with the pass as it is.
 
+Result, milliseconds a pass less (-) or more (+) for 1 / 2 / 4 / 6 / 8 tokens, of 26.5 / 31 / 42 / 54 / 63:
+
+    the output layer alone, blocks      -1.3  -1.0  -0.3  +0.2  +4.5
+    the output layer alone, a byte      -1.1  -1.0  -0.9  -0.8   0.0
+    all 129 layers, a byte a weight     -4.0  -3.5  -3.2  -1.4  +1.7
+    all, blocks                         -4.5  -2.3  +0.6  +5.8  +21
+    all, blocks up to two, then bytes   -4.5  -1.9  -3.0  -1.0  +2.3
+    all, blocks up to four, then floats -4.4  -1.1  +2.4  +0.3  +0.4
+
+A byte a weight for every window is as good as any mixture and is one form in memory (2.45 GB for 4.58 of
+float16): that is what the loader now makes of Q6_K (strata_mlx/dense.py).
+
+Run at the commit before dense.py existed, when `load` still unpacked Q6_K to floats: "as it is" was that.
+
     uv run python bench/experiments/e23_q6k_in_pass.py --model <IQ3_S shard 1>
 """
 

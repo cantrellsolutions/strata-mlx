@@ -9,6 +9,12 @@ A thread takes 64, 128 or 256 weights of a row (one, two or four runs of sixteen
 four weights under four scales) and every token; the threads of a row are one threadgroup. Chains of the real
 model's Q6_K `attn_qkv` tensors, each product waiting for the one before, and the output layer by itself.
 
+Result: MLX's product over float16 takes 130 us for a 10,240 x 2,560 tensor whatever the tokens (it reads its
+52 MB at 400 GB/s) and 2.5 ms for the output layer. On the blocks, 64 weights to a thread: 88 / 85 / 109 / 134
+us for 1 / 2 / 3 / 4 tokens, then 335 and 433 for six and eight, where the sums no longer fit the registers;
+the output layer 1.2 / 1.4 / 2.2 / 2.8 ms. Faster for one and two tokens, not for a window. (MLX takes no scale
+to 16 weights: `quantize` refuses the group size and the product has no kernel for it.)
+
     uv run python bench/experiments/e20_q6k_dense.py --model <IQ3_S shard 1>
 """
 

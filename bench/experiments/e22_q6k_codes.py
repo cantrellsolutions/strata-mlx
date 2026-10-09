@@ -8,6 +8,11 @@ instead of 6.56 or 16, and a thread has nothing to undo. The kernel is laid out 
 32 threads share R rows, each takes V weights of each row at a time and goes along the rows, and the
 activations come with a position's tokens side by side, loaded once for the R rows.
 
+Result (the machine was not quiet, single numbers are off by a third here and there): four rows and eight
+weights, against MLX's 130 us on float16 and e21's blocks: about 80 for one to three tokens (blocks 72 / 83 /
+101), 106 for four (106), 93 for six (146), 124 for eight (357). For a 2,560 x 6,144 tensor 53-63 up to four
+tokens against MLX's 90 and the blocks' 56-94. What matters is the pass: e23.
+
     uv run python bench/experiments/e22_q6k_codes.py --model <IQ3_S shard 1>
 """
 

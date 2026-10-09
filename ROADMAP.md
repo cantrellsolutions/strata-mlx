@@ -55,9 +55,8 @@
 
 ## Now: what is left of Strata that is worth having on a Mac
 
-- **The larger model sizes.** IQ3_S runs: 58 GB of weights (60 with the draft head; 84 at the peak of loading,
-  72 while reading 8,192 tokens), 32 tok/s a token at a time, 51-64 with the draft head, 83 rewriting a file,
-  about 440 tok/s reading a 1,500-token prompt. On a chat prompt it picks llama.cpp's token at 63 of 64 steps
+- **The larger model sizes.** IQ3_S runs: 56 GB of weights (61 with the draft head), 38-45 tok/s a token at a
+  time, 52-81 with the draft head (see "The IQ3_S file" below), about 440 tok/s reading a 1,500-token prompt. On a chat prompt it picks llama.cpp's token at 63 of 64 steps
   and its log-probabilities are closer to either llama.cpp backend (median 0.05 and 0.09) than those are to each
   other (0.09); llama.cpp on Metal writes 33 tok/s from the same file. All six expert types of the file unpack
   to gguf-py's weights exactly. IQ3_XXS and IQ2_XS will not be run: there is no disk space for more model
@@ -153,6 +152,46 @@ Changes weights, so not done, only measured (e18): the hyper-connections' 1.27 G
 would spare a pass 0.6 GB, about 1.6 ms. Rounded to 8 bits and compared with llama.cpp's answers: its token at
 64 of 64 steps on the chat prompt as before, at 62 of 64 on the 7K-token one (64 before); at 6 bits 62 and 61,
 at 4 bits 60 and 54.
+
+### The IQ3_S file (e20 to e24)
+
+Of the changes above, all but the table lookup apply to any file and were already in what IQ3_S ran with. What
+that file has of its own is not in its experts but in its dense layers: 1.88 GB of them are Q6_K (the Q2_0
+file has 84 MB), which scales every 16 weights, and MLX takes no scale to fewer than 32 (`quantize` refuses, the
+product has no kernel). The loader unpacked Q6_K to floats: 4.58 GB of float16, so that a token read 7.16 GB of
+dense arrays where the Q2_0 file's token reads 4.87, and the output layer's 1.27 GB again for every guess of the
+draft head.
+
+    step                                         one token   four tokens   a token reads   prose / code / reasoning / edit
+    start (Q6_K as float16)                       26.6 ms      38.8 ms      7.16 GB         40 / 54 / 66 / 74 tok/s
+    Q6_K as a byte a weight (dense.py, e23)       22.2         35.2         5.03            52 / 67 / 81 / 81
+
+    a token a pass, no draft head: 28 / 33 / 36 / 37 tok/s before, 38 / 42 / 44 / 45 after.
+
+Tokens a second: before and after a prompt at a time, in turns, a process each (the machine sped up through
+that run, so a column compares, a row does not). llama.cpp's token on the chat prompt at 63 of 64 steps as
+before. With the Q2_0 file, whose six Q6_K layers go the same way now: 64 of 64 on the chat prompt as before,
+and on the 7K-token one 63 of 64 a token at a time (64 before), 64 of 64 four at a time.
+
+- **On the file's blocks** (e20, e21): 6.56 bits a weight, and faster than MLX over float16 for one and two
+  tokens (72 and 83 us against 130 for a 10,240 x 2,560 tensor), level at four, 1.7 to 3 times slower at six and
+  eight: MLX's product stays at 130 us whatever the window, the block kernel undoes the format's interleaving
+  for every weight and then multiplies for every token.
+- **A byte a weight** (e22, e23): the code as a signed byte, the scales and d as the file has them, the same
+  number at 8.56 bits; a kernel laid out as MLX's quantized product. In a pass, against float16: 4.0 ms less for
+  one token, 3.5 for two, 3.2 for four, 1.4 for six, 1.7 more for eight. One form in memory, 2.45 GB for 4.58.
+- **The draft head's guesses** (e24): three guesses cost a step 7.5 ms of 43, of which 4.1 are the output layer
+  (2.9 of 6.2 with the Q2_0 file): every guess is all 248,320 rows for one token. Not yet tried: scoring only
+  rows that can win (a guess that is wrong costs speed, never the answer).
+- **The experts** were left: a four-token window reads 3.9 GB of them, which is most of the 11 ms they take.
+
+Timings of answers on this machine move by up to a half for minutes at a time, and nothing but the GPU's own
+speed shows it (bench/quiet.py). At least part of it is the machine: a 14-inch MacBook Pro whose GPU does a
+4096-cube product at 14.5 T operations a second at rest does it at 12 after twenty seconds of full load, with
+the thermal state then "fair"; in the middle of long benchmarks it was at 9 and below. So a benchmark's later
+prompts run slower than its first, and before and after are compared a prompt at a time, in turns, a process
+each. The first IQ3_S numbers of this round (25-27 tok/s a token at a time, 36-49 with the head) came from the
+slow stretches and are void.
 
 ## What the Apple GPU can do, measured (M4 Max, macOS 27)
 

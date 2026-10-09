@@ -16,7 +16,10 @@ import sys
 import time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent))
 sys.path.insert(0, str(Path(__file__).parent.parent))
+from quiet import Quiet  # noqa: E402
+
 from strata_mlx.engine import Engine  # noqa: E402
 from strata_mlx.load import load  # noqa: E402
 from strata_mlx.mtp import load_mtp  # noqa: E402
@@ -110,6 +113,9 @@ def main():
     p.add_argument("--temperature", type=float, default=0.0, help="0: greedy; else top_p 0.95, top_k 20")
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--prompts", nargs="+", default=list(PROMPTS), choices=list(PROMPTS))
+    p.add_argument("--no-lookup", action="store_true", help="leave out the two engines with lookup guesses")
+    p.add_argument("--quiet", action="store_true", help="watch the GPU's speed and repeat what was measured while "
+                                                        "it was slowed (bench/quiet.py)")
     p.add_argument("--json")
     args = p.parse_args()
 
@@ -122,8 +128,13 @@ def main():
     engines = {"one token a pass": Engine(model), f"{args.drafts} guesses a pass": Engine(model, mtp, args.drafts, as_sure=False),
                f"{args.drafts} guesses + lookup": Engine(model, mtp, args.drafts, lookup=True, as_sure=False),
                "as sure as the head is": Engine(model, mtp), "as sure + lookup": Engine(model, mtp, lookup=True)}
+    if args.no_lookup:
+        engines = {k: e for k, e in engines.items() if "lookup" not in k}
     for engine in engines.values():
         engine.warm()
+    quiet = Quiet() if args.quiet else None
+    if quiet:
+        print(f"the GPU now: {quiet.best:.1f} T operations a second (an M4 Max at rest: 14.5)", flush=True)
     rows = []
     for name in args.prompts:
         text = f"<|im_start|>user\n{PROMPTS[name]}<|im_end|>\n<|im_start|>assistant\n"
@@ -132,7 +143,10 @@ def main():
         prompt = tokenize(args.model, text)
         ref = None
         for label, engine in engines.items():
-            out, _, tps = decode(engine, prompt, args.tokens, sampling)
+            if quiet:
+                (out, _, tps), share = quiet.measure(lambda: decode(engine, prompt, args.tokens, sampling))
+            else:
+                (out, _, tps), share = decode(engine, prompt, args.tokens, sampling), 1.0
             ref = ref or out
             s = engine.stats
             same = next((i for i, (a, b) in enumerate(zip(out, ref)) if a != b), min(len(out), len(ref)))
@@ -140,8 +154,12 @@ def main():
                    "tok_s": round(tps, 1), "tokens_per_pass": round(s.tokens / max(s.steps, 1), 2),
                    "guesses_kept": round(s.accepted / max(s.drafted, 1), 2), "lookup_passes": s.lookup_steps,
                    "passes": s.steps, "same_as_first_until": same}
+            if quiet:
+                row["gpu_share"] = round(share, 2)
             rows.append(row)
             parted = "" if same == len(ref) == len(out) else f" | parts from the first at token {same}"
+            if quiet and share < quiet.share:
+                parted += f" | the GPU was slowed ({share:.0%} of its speed)"
             print(f"{name:<10} {label:<23} {row['tok_s']:>6} tok/s  {row['tokens_per_pass']:>4} tokens/pass  "
                   f"{row['guesses_kept']:>4.0%} of guesses kept  {s.lookup_steps:>3}/{s.steps} lookup passes"
                   f"{parted}", flush=True)

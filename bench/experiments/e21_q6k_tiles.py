@@ -6,6 +6,10 @@ an activation of every token, and from six tokens on its 4 T sums no longer fit 
 activations come as float32 with a position's tokens side by side, so that one load brings all of them and
 the sums are vectors, and a thread takes R rows, so that it loads them once for R rows.
 
+Result: the best of these for each window, against MLX's 130 us: 72 (two rows) / 83 / 103 / 112 (four rows,
+weights scaled at once) for 1 / 2 / 3 / 4 tokens, 176 and 217 for six and eight. Better than e20 everywhere and
+still behind MLX from six tokens on: what a thread does to undo the interleaving does not shrink.
+
     uv run python bench/experiments/e21_q6k_tiles.py --model <IQ3_S shard 1>
 """
 
