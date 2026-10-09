@@ -1,0 +1,44 @@
+[
+ {
+  "tokens": 1,
+  "mlx_us": 84.6,
+  "blocks_32_us": 115.4,
+  "blocks_64_us": 85.0,
+  "blocks_128_us": 131.6
+ },
+ {
+  "tokens": 2,
+  "mlx_us": 87.0,
+  "blocks_32_us": 80.8,
+  "blocks_64_us": 107.2,
+  "blocks_128_us": 112.1
+ },
+ {
+  "tokens": 3,
+  "mlx_us": 103.4,
+  "blocks_32_us": 85.4,
+  "blocks_64_us": 110.7,
+  "blocks_128_us": 115.5
+ },
+ {
+  "tokens": 4,
+  "mlx_us": 132.8,
+  "blocks_32_us": 92.1,
+  "blocks_64_us": 126.9,
+  "blocks_128_us": 139.3
+ },
+ {
+  "tokens": 6,
+  "mlx_us": 180.9,
+  "blocks_32_us": 115.1,
+  "blocks_64_us": 140.3,
+  "blocks_128_us": 167.9
+ },
+ {
+  "tokens": 8,
+  "mlx_us": 245.8,
+  "blocks_32_us": 131.5,
+  "blocks_64_us": 163.1,
+  "blocks_128_us": 203.5
+ }
+]

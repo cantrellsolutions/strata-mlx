@@ -179,6 +179,76 @@ class FusedResidual:
         return mixed[None], residual[None], (inject[None] if n_inject else inject_in)
 
 
+# ---- a float16 matrix times a window, summed in float32
+#
+# A layer's router is such a product (512 by 2,560), wanted in float32 because the ten largest of its results
+# choose the experts. The port casts the input to float32 and lets MLX's matmul promote the weights: 2.6 MB
+# converted and written again for every pass. Read as they are, with the sums in float32, a chain of the 48
+# routers' products takes 16, 16, 18 and 25 us each for 1, 2, 4 and 8 tokens against 31 to 37. Each token's sum
+# is taken in the same order whatever the window.
+
+_MATVEC = """
+    uint lane = thread_position_in_threadgroup.x;
+    uint j = thread_position_in_grid.x / (32 * G);
+    threadgroup float shared[G * T];
+    auto row = w + j * COLS;
+    uint per = COLS / (32 * G);
+    for (uint t = 0; t < T; ++t) {
+        float acc = 0.0f;
+        for (uint i = lane * per; i < (lane + 1) * per; ++i) {
+            acc += float(row[i]) * float(x[t * COLS + i]);
+        }
+        acc = simd_sum(acc);
+        if (lane % 32 == 0) { shared[(lane / 32) * T + t] = acc; }
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (lane < T) {
+        float total = 0.0f;
+        for (uint g = 0; g < G; ++g) { total += shared[g * T + lane]; }
+        out[lane * ROWS + j] = total;
+    }
+"""
+
+
+class WindowLinear:
+    """A float16 `nn.Linear` without bias whose products come back in float32; called with a window of a few
+    tokens it reads its weights once, as they are. Longer inputs go through MLX's matmul as before."""
+
+    upto, groups = 8, 16
+
+    def __init__(self, linear):
+        self.linear = linear  # its weight is read at every call: the model's type is set after it is built
+        self.rows, self.cols = linear.weight.shape
+        self.g = _split(self.cols // 32, self.groups)
+
+    @property
+    def weight(self) -> mx.array:
+        return self.linear.weight
+
+    def __call__(self, x: mx.array) -> mx.array:
+        tokens = x.size // self.cols
+        if tokens > self.upto or self.weight.dtype != mx.float16:
+            return self.linear(x)
+        key = ("matvec", self.rows, self.cols, tokens, self.g)
+        if key not in _kernels:
+            header = (f"constant uint ROWS = {self.rows};\nconstant uint COLS = {self.cols};\n"
+                      f"constant uint T = {tokens};\nconstant uint G = {self.g};\n")
+            _kernels[key] = mx.fast.metal_kernel(name=f"window_matvec_{tokens}", input_names=["w", "x"],
+                                                 output_names=["out"], source=_MATVEC, header=header)
+        (out,) = _kernels[key](inputs=[self.weight, x.reshape(tokens, self.cols)], grid=(32 * self.g * self.rows, 1, 1),
+                               threadgroup=(32 * self.g, 1, 1), output_shapes=[(tokens, self.rows)],
+                               output_dtypes=[mx.float32])
+        return out.reshape(*x.shape[:-1], self.rows)
+
+
+def install_routers(layers) -> None:
+    """Make the routers of `layers` products of this kind."""
+    for layer in layers:
+        mlp = getattr(layer, "mlp", None)
+        if mlp is not None and not isinstance(mlp.gate, WindowLinear):
+            mlp.gate = WindowLinear(mlp.gate)
+
+
 class PlainResidual:
     """The same call in the model's own operations: what a prompt uses, and a window of more than six tokens."""
 

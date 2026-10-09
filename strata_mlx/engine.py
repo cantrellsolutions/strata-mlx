@@ -32,7 +32,7 @@ from mlx_lm.models.gated_delta import gated_delta_update
 
 from .attention import AttnCache, install
 from .drafting import MAX_WINDOW, Lookup, Policy
-from .fused import FusedResidual, PlainResidual
+from .fused import FusedResidual, PlainResidual, install_routers
 from .mtp import Mtp
 from .sampler import Sampling, history_counts, penalize, pick, uniform
 
@@ -98,6 +98,9 @@ class Engine:
         is sure enough of (drafting.py); without, always that many."""
         self.model, self.m, self.mtp = model, model.model, mtp
         install(self.m.layers)
+        install_routers(self.m.layers)
+        if mtp is not None:
+            install_routers(mtp.layers)
         self.drafts = min(drafts, MAX_WINDOW - 1) if mtp is not None else 0
         self.as_sure = as_sure
         self.chunk, self.max_checkpoints, self.turn_token = chunk, checkpoints, turn_token

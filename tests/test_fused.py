@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 from mlx_lm.models import qwen4_exp
 
-from strata_mlx.fused import FusedResidual
+from strata_mlx.fused import FusedResidual, WindowLinear
 
 ARGS = qwen4_exp.TextArgs(hidden_size=96, hc_count=4, hc_lowrank=24)
 
@@ -66,3 +66,23 @@ def test_a_token_gets_the_same_bits_alone_and_in_a_window(dtype):
             assert mx.array_equal(a, w[:, t : t + 1]).item()
     three = fused(before[:, 2:5], out[:, 2:5], inject_in[:, 2:5])
     assert all(mx.array_equal(a, w[:, 2:5]).item() for a, w in zip(three, window))
+
+
+
+@pytest.mark.parametrize("tokens", [1, 3, 8, 20])
+def test_a_router_product_in_float32_from_float16_weights(tokens):
+    import mlx.nn as nn
+
+    mx.random.seed(tokens)
+    linear = nn.Linear(256, 48, bias=False)
+    linear.set_dtype(mx.float16)
+    router = WindowLinear(linear)
+    x = mx.random.normal((1, tokens, 256)).astype(mx.float16).astype(mx.float32)
+    got, want = router(x), linear(x)
+    assert got.shape == want.shape == (1, tokens, 48) and got.dtype == mx.float32
+    assert mx.abs(got - want).max().item() <= 1e-5 * mx.abs(want).max().item()
+    if tokens <= 8:  # a token's sum does not depend on the window it is in
+        alone = mx.concatenate([router(x[:, t : t + 1]) for t in range(tokens)], axis=1)
+        assert mx.array_equal(alone, got).item()
+    linear.set_dtype(mx.float32)  # the exact way: MLX's own product
+    assert mx.array_equal(router(x), linear(x)).item()
