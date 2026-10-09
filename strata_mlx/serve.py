@@ -23,6 +23,8 @@ The server starts `<exe> --serve <args>` and talks over stdin and stdout. Prompt
 On a machine whose memory does not hold the model, only part of the experts stays in memory and the others are
 read from the SSD as tokens ask for them (paged.py). How much is worked out from the machine's memory;
 `--expert-memory <GB>` sets it by hand, and `--machine-memory <GiB>` runs as a machine of that size would.
+Such a machine counts which experts its answers use, in `~/.cache/strata-mlx/expert-use-<model>.npy`
+(`--expert-profile <path>` for another place, `off` for none), and starts with the most used ones in memory.
 """
 
 import errno
@@ -34,7 +36,7 @@ import threading
 import time
 
 from .engine import Engine, Stats
-from .paged import machine_memory
+from .paged import load_profile, machine_memory, save_profile
 from .sampler import Sampling
 
 VERSION = "0.0.1"
@@ -174,7 +176,8 @@ def model_identity(path: str, dtype: str) -> str:
 def _options(argv: list) -> dict:
     """The arguments this engine knows; the CUDA engine's others (expert cache, K/V placement, ...) are skipped."""
     known = {"--native": None, "--mtp": None, "--spec": "4", "--max-context": "131072", "--dtype": "float16",
-             "--prefill": "2048", "--suffix-draft": "3", "--expert-memory": "auto", "--machine-memory": None}
+             "--prefill": "2048", "--suffix-draft": "3", "--expert-memory": "auto", "--machine-memory": None,
+             "--expert-profile": "auto"}
     out, skipped, i = dict(known), [], 0
     while i < len(argv):
         a = argv[i]
@@ -233,9 +236,25 @@ def main():
     # and a prompt long enough to go the way long prompts go (other kernels for the experts): without it the first
     # real one took twice as long. Not with experts read from the SSD: there it would read every layer whole.
     engine.reset()
+    profile_path, before = None, None
     if not paged:
         engine.read(list(range(1000, 1600)))
         engine.reset()
+    elif opts["--expert-profile"] != "off":
+        # the experts this machine's answers used most, in memory before the first request: without them the
+        # first answer after a start is the slowest. The warm-up's own experts and counts are let go first.
+        profile_path = opts["--expert-profile"]
+        if profile_path == "auto":
+            name = hashlib.sha256(engine.identity.encode()).hexdigest()[:16]
+            profile_path = os.path.expanduser(f"~/.cache/strata-mlx/expert-use-{name}.npy")
+        before = load_profile(profile_path)
+        store.clear()
+        if before is not None:
+            t1 = time.perf_counter()
+            n = store.preload(before)
+            print(f"strata-mlx: {n} experts ({store.held / 1e9:.1f} GB) read ahead in {time.perf_counter() - t1:.1f} s",
+                  file=sys.stderr)
+        store.reset_stats()
     print(f"strata-mlx: session is up in {time.perf_counter() - t0:.0f} s, "
           f"{mx.get_active_memory() / 2**30:.1f} GiB of weights", file=sys.stderr)
 
@@ -263,6 +282,11 @@ def main():
         if line == "QUIT":
             return 0
         session.handle(line)
+        if profile_path and line.startswith("GEN") and store.use:
+            try:
+                save_profile(profile_path, store.profile(before))
+            except OSError as e:
+                print(f"strata-mlx: the expert profile was not saved: {e}", file=sys.stderr)
 
 
 if __name__ == "__main__":

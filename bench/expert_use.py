@@ -13,11 +13,11 @@ from pathlib import Path
 
 import mlx.core as mx
 import numpy as np
-from mlx_lm.models.switch_layers import SwitchGLU
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from spec_decode import PROMPTS, STOP, tokenize  # noqa: E402
 
+from strata_mlx.blocks import BlockSwitchGLU  # noqa: E402
 from strata_mlx.engine import Engine  # noqa: E402
 from strata_mlx.load import load  # noqa: E402
 
@@ -33,13 +33,13 @@ MORE = {
 def record(args) -> dict:
     model, _ = load(args.model)
     layers = len(model.model.layers)
-    seen, call = [], SwitchGLU.__call__
+    seen, call = [], BlockSwitchGLU.__call__
 
     def spy(self, x, indices):
         seen.append(indices)
         return call(self, x, indices)
 
-    SwitchGLU.__call__ = spy
+    BlockSwitchGLU.__call__ = spy
     engine = Engine(model, fused=False)  # the plain pass: nothing compiled, so the spy sees every call
     texts = dict(PROMPTS, **MORE)
     texts["summary"] = Path(args.document).read_text() + "\n\nSummarize the text above in five sentences."
@@ -84,14 +84,18 @@ def main():
     p.add_argument("--document", required=True)
     p.add_argument("--tokens", type=int, default=300)
     p.add_argument("--experts", type=int, default=512)
-    p.add_argument("--budgets", nargs="+", type=int, default=[1500, 3000, 6000, 12000])
+    p.add_argument("--budgets", nargs="*", type=int, default=[1500, 3000, 6000, 12000])
     p.add_argument("--json")
+    p.add_argument("--counts", help="write how often each expert was used, (layers, experts), to this .npy: the "
+                                    "profile a small machine loads its first experts by (strata_mlx/expert_use.npy)")
     args = p.parse_args()
     talks = record(args)
     layers = next(iter(talks.values()))["use"].shape[1]
     total = layers * args.experts
     counts = {name: np.bincount((t["use"] + np.arange(layers)[None, :, None] * args.experts).reshape(-1), minlength=total)
               for name, t in talks.items()}
+    if args.counts:
+        np.save(args.counts, sum(counts.values()).reshape(layers, args.experts).astype(np.uint16))
     rows = []
     print(f"\n{total} experts in all; a token uses {layers * next(iter(talks.values()))['use'].shape[2]}")
     for budget in args.budgets:

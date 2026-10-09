@@ -150,10 +150,18 @@ What it took, and what is still wrong:
 - Reading a prompt held every delta-net layer's q, k and v of every token through the pass, and afterwards
   the whole convolution input behind each few-row slice of it: 4.6 GB at the peak and 1.4 GB left for 1,500
   tokens, now 2.1 and 0.4.
-- Not done: nothing is loaded before the first request from a profile of what is used most (the first answer
-  after a start is the slowest); on 16 GB the dense weights' 5.6 GB as arrays are 2 GB more than in the file,
-  which kernels on the file's blocks, as the experts have, would give to the experts; and none of this has run
-  on a machine that small or on a 256-512 GB SSD.
+- The budget is filled at the start with the experts used most (`ExpertStore.preload`): by a profile of seven
+  conversations that comes with the engine (`strata_mlx/expert_use.npy`), then by the machine's own answers,
+  counted in `~/.cache/strata-mlx/expert-use-<model>.npy` (`--expert-profile off` for neither). It reads 1,080,
+  7,293 and 13,507 experts in 0.3, 1.8 and 3.3 s as a 16, 24 and 32 GB machine. It buys little: the first answer
+  after a start goes from 29.5 to 31.5 tok/s as a 32 GB machine (34.8 started again with the profile the same
+  three requests left; 45 for an answer that follows one like it), and stays at 22 and at 6-7 as a 24 and a
+  16 GB one. Which experts a conversation needs is not what was used most before: the profile's 13,500 hold 91%
+  of all uses, and one miss in a layer is a read that the whole pass waits for.
+- Not done: on 16 GB the dense weights' 5.6 GB as arrays are 2 GB more than in the file, which kernels on the
+  file's blocks, as the experts have, would give to the experts; a layer still waits for its router and for
+  its reads, where the experts the last token used could be asked for ahead; and none of this has run on a
+  machine that small or on a 256-512 GB SSD.
 
 What was measured before building it:
 

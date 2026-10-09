@@ -388,3 +388,35 @@ def test_a_window_spread_over_several_kernel_calls_gives_the_plain_answer(block_
         out += engine.step()
     assert out[:N] == answer
     assert engine.stats.by_position[4] > 0  # whole windows of five were kept
+
+
+def test_the_most_used_experts_are_in_memory_before_the_first_request(block_model, tmp_path):
+    model = _paged(tmp_path, 5 * ONE_EXPERT)
+    store = model.expert_store
+    counts = np.zeros((len(model.model.layers), 8), dtype=np.uint16)
+    used = {(0, 3): 9, (2, 7): 8, (1, 1): 7, (3, 0): 6, (0, 5): 5, (2, 2): 4, (1, 6): 1}
+    for (layer, e), n in used.items():
+        counts[layer, e] = n
+    assert store.preload(counts) == 5
+    assert list(store.lru) == [(0, 5), (3, 0), (1, 1), (2, 7), (0, 3)]  # the least used is the first to go
+    assert store.held == 5 * ONE_EXPERT
+    assert store.preload(counts) == 0  # no room left
+    assert store.preload(np.zeros((2, 8), dtype=np.uint16)) == 0  # counts of another model
+    assert Engine(model).generate(PROMPT, N) == Engine(block_model).generate(PROMPT, N)
+
+
+def test_a_machine_counts_what_its_answers_use(block_model, tmp_path):
+    model = _paged(tmp_path, 1 << 30)
+    store = model.expert_store
+    Engine(model).generate(PROMPT, 12)
+    layers = len(model.model.layers)
+    counts = store.profile()
+    assert counts.shape == (layers, 8) and counts.sum() == sum(store.use.values()) > 0
+    before = np.full((layers, 8), 7, dtype=np.uint32)
+    assert (store.profile(before) == counts + 3).all()  # what was counted before weighs half
+    path = str(tmp_path / "cache" / "use.npy")
+    paged.save_profile(path, counts)
+    assert (paged.load_profile(path) == counts).all()
+    assert paged.load_profile(str(tmp_path / "none.npy")).shape == (48, 512)  # the profile that comes with the engine
+    store.clear()
+    assert store.held == 0 and store.preload(counts) == int((counts > 0).sum())

@@ -8,7 +8,9 @@ so a small memory means reading from the disk all the time, and what matters is 
   * a layer waits for its router's choice to reach the CPU (0.2 ms), reads what is missing with a few parallel
     reads past the page cache, and hands each (token, expert) pair's arrays to the kernels as they are;
   * a prompt, whose tokens use nearly every expert of a layer, reads the layer's three tensors whole instead, in
-    file order, and keeps none of it.
+    file order, and keeps none of it;
+  * at the start the budget is filled with the experts used most: by this machine's own answers so far, and
+    before there are any, by a profile of seven conversations that comes with the engine (expert_use.npy).
 
 Measured on the way, a token at a time on an M4 Max with nothing to read: 23 ms a pass with every expert in one
 array; 34 with the wait at every layer; 42 if the ten experts are first joined into a stack, which is why the
@@ -61,6 +63,8 @@ class ExpertStore:
         # tokens. Enough of them to take the experts that come and go, no more.
         mx.set_cache_limit(512 << 20)
         self.lru = OrderedDict()  # (layer, expert) -> (arrays, bytes)
+        self.layers = {}  # layer -> its three tensors
+        self.use = {}  # (layer, expert) -> times an answer asked for it since the start
         self.fds = {}
         self.pool = ThreadPoolExecutor(threads)
         self.reset_stats()
@@ -109,8 +113,55 @@ class ExpertStore:
         self.read_s += time.perf_counter() - t0
         return out
 
+    def clear(self):
+        """Let go of every expert and of the counts of their use."""
+        self.lru.clear()
+        self.use.clear()
+        self.held = 0
+
+    def preload(self, counts: np.ndarray, group: int = 512) -> int:
+        """Fill what is free of the budget with the experts `counts` (layers, experts) says are used most.
+        Returns how many were read. The most used are the last the store will drop."""
+        if not self.layers or counts.ndim != 2 or counts.shape[0] <= max(self.layers) \
+                or any(t[0].shape[0] != counts.shape[1] for t in self.layers.values()):
+            return 0
+        size = {layer: sum(t.data.nbytes // t.shape[0] for t in tensors) for layer, tensors in self.layers.items()}
+        order = sorted(((int(counts[layer, e]), layer, e) for layer in self.layers for e in range(counts.shape[1])
+                        if counts[layer, e] > 0 and (layer, e) not in self.lru), reverse=True)
+        chosen, room = [], self.budget - self.held
+        for _, layer, e in order:
+            if size[layer] > room:
+                break
+            chosen.append((layer, e))
+            room -= size[layer]
+        chosen.reverse()  # the least used first: the first to go
+        for a in range(0, len(chosen), group):
+            part = chosen[a : a + group]
+            jobs = [(e, t) for layer, e in part for t in self.layers[layer]]
+            arrays = list(self.pool.map(lambda job: self._read(job[1], job[0], 1), jobs))
+            for i, (layer, e) in enumerate(part):
+                self.lru[(layer, e)] = (tuple(arrays[i * 3 : i * 3 + 3]), size[layer])
+                self.held += size[layer]
+        return len(chosen)
+
+    def profile(self, before: np.ndarray | None = None) -> np.ndarray | None:
+        """How often each expert was used, (layers, experts): this run's count, and half of what was counted
+        before it, so that what the machine is used for now weighs more than what it was used for once."""
+        if not self.layers:
+            return None
+        shape = (max(self.layers) + 1, next(iter(self.layers.values()))[0].shape[0])
+        out = np.zeros(shape, dtype=np.uint32)
+        if before is not None and before.shape == shape:
+            out += before.astype(np.uint32) // 2
+        for (layer, e), n in self.use.items():
+            out[layer, e] += n
+        return out
+
     def get(self, layer: int, tensors: tuple, experts: list, keep: bool = True) -> list:
         """The arrays of each of `experts`, read if they are not in memory."""
+        if keep:  # an answer's tokens, not a prompt's
+            for e in experts:
+                self.use[(layer, e)] = self.use.get((layer, e), 0) + 1
         missing = [e for e in experts if (layer, e) not in self.lru]
         self.hits += len(experts) - len(missing)
         self.misses += len(missing)
@@ -150,6 +201,7 @@ class PagedSwitchGLU:
             if t.type not in BLOCK:
                 raise ValueError(f"{t.name}: {t.type} experts are not supported")
         self.layer, self.store, self.tensors = layer, store, (up, gate, down)
+        store.layers[layer] = self.tensors
 
     def _linear(self, blocks: mx.array, t: Tensor, experts: int) -> BlockSwitchLinear:
         lin = BlockSwitchLinear(blocks, t.type, (experts, *t.shape[1:]))
@@ -188,3 +240,26 @@ class PagedSwitchGLU:
             out.append(matvec_separate(downs, kinds[2], wide, hidden, h, 1))
         out = mx.concatenate(out) if len(out) > 1 else out[0]
         return out.reshape(*idx.shape, wide)
+
+
+SEED = os.path.join(os.path.dirname(__file__), "expert_use.npy")  # bench/expert_use.py --counts, with Q2_0
+
+
+def load_profile(path: str | None) -> np.ndarray | None:
+    """The counts in `path`, or the ones that come with the engine if there is no such file or it cannot be read."""
+    for p in (path, SEED):
+        try:
+            if p and os.path.exists(p):
+                return np.load(p)
+        except (OSError, ValueError):
+            pass
+    return None
+
+
+def save_profile(path: str, counts: np.ndarray) -> None:
+    """Beside its place, then renamed: a start never finds half a file."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = f"{path}.{os.getpid()}.tmp"
+    with open(tmp, "wb") as f:
+        np.save(f, counts)
+    os.replace(tmp, path)
