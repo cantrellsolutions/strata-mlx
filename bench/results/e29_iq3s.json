@@ -1,0 +1,238 @@
+[
+ {
+  "prompt": "prose",
+  "way": "float16, a token a pass",
+  "tokens": 256,
+  "tok_s": 42.7,
+  "first_choice": 254,
+  "not_first": [
+   {
+    "at": 239,
+    "behind": 0.0373,
+    "p_first": 0.4955,
+    "p_written": 0.4773
+   },
+   {
+    "at": 244,
+    "behind": 0.0365,
+    "p_first": 0.3579,
+    "p_written": 0.3451
+   }
+  ],
+  "parts_from_float16_single_at": 256
+ },
+ {
+  "prompt": "prose",
+  "way": "float16, draft head",
+  "tokens": 256,
+  "tok_s": 57.2,
+  "first_choice": 252,
+  "not_first": [
+   {
+    "at": 41,
+    "behind": 0.0669,
+    "p_first": 0.4737,
+    "p_written": 0.4431
+   },
+   {
+    "at": 107,
+    "behind": 0.0277,
+    "p_first": 0.4798,
+    "p_written": 0.4667
+   },
+   {
+    "at": 133,
+    "behind": 0.0021,
+    "p_first": 0.2824,
+    "p_written": 0.2818
+   },
+   {
+    "at": 230,
+    "behind": 0.043,
+    "p_first": 0.4219,
+    "p_written": 0.4042
+   }
+  ],
+  "parts_from_float16_single_at": 41
+ },
+ {
+  "prompt": "prose",
+  "way": "float16, draft head, listed rows",
+  "tokens": 256,
+  "tok_s": 68.8,
+  "first_choice": 254,
+  "not_first": [
+   {
+    "at": 41,
+    "behind": 0.0669,
+    "p_first": 0.4737,
+    "p_written": 0.4431
+   },
+   {
+    "at": 108,
+    "behind": 0.0614,
+    "p_first": 0.4548,
+    "p_written": 0.4277
+   }
+  ],
+  "parts_from_float16_single_at": 41
+ },
+ {
+  "prompt": "prose",
+  "way": "float32, draft head, listed rows",
+  "tokens": 256,
+  "tok_s": 52.9,
+  "first_choice": 256,
+  "not_first": [],
+  "parts_from_float16_single_at": 239
+ },
+ {
+  "prompt": "code",
+  "way": "float16, a token a pass",
+  "tokens": 256,
+  "tok_s": 42.2,
+  "first_choice": 255,
+  "not_first": [
+   {
+    "at": 91,
+    "behind": 0.0112,
+    "p_first": 0.3392,
+    "p_written": 0.3354
+   }
+  ],
+  "parts_from_float16_single_at": 256
+ },
+ {
+  "prompt": "code",
+  "way": "float16, draft head",
+  "tokens": 256,
+  "tok_s": 58.1,
+  "first_choice": 256,
+  "not_first": [],
+  "parts_from_float16_single_at": 91
+ },
+ {
+  "prompt": "code",
+  "way": "float16, draft head, listed rows",
+  "tokens": 256,
+  "tok_s": 70.1,
+  "first_choice": 254,
+  "not_first": [
+   {
+    "at": 30,
+    "behind": 0.0615,
+    "p_first": 0.433,
+    "p_written": 0.4071
+   },
+   {
+    "at": 165,
+    "behind": 0.1596,
+    "p_first": 0.4455,
+    "p_written": 0.3798
+   }
+  ],
+  "parts_from_float16_single_at": 30
+ },
+ {
+  "prompt": "code",
+  "way": "float32, draft head, listed rows",
+  "tokens": 256,
+  "tok_s": 63.1,
+  "first_choice": 256,
+  "not_first": [],
+  "parts_from_float16_single_at": 91
+ },
+ {
+  "prompt": "reasoning",
+  "way": "float16, a token a pass",
+  "tokens": 218,
+  "tok_s": 41.6,
+  "first_choice": 218,
+  "not_first": [],
+  "parts_from_float16_single_at": 218
+ },
+ {
+  "prompt": "reasoning",
+  "way": "float16, draft head",
+  "tokens": 218,
+  "tok_s": 70.5,
+  "first_choice": 218,
+  "not_first": [],
+  "parts_from_float16_single_at": 218
+ },
+ {
+  "prompt": "reasoning",
+  "way": "float16, draft head, listed rows",
+  "tokens": 218,
+  "tok_s": 80.4,
+  "first_choice": 218,
+  "not_first": [],
+  "parts_from_float16_single_at": 218
+ },
+ {
+  "prompt": "reasoning",
+  "way": "float32, draft head, listed rows",
+  "tokens": 218,
+  "tok_s": 66.7,
+  "first_choice": 218,
+  "not_first": [],
+  "parts_from_float16_single_at": 218
+ },
+ {
+  "prompt": "edit",
+  "way": "float16, a token a pass",
+  "tokens": 256,
+  "tok_s": 40.7,
+  "first_choice": 255,
+  "not_first": [
+   {
+    "at": 60,
+    "behind": 0.0187,
+    "p_first": 0.3207,
+    "p_written": 0.3148
+   }
+  ],
+  "parts_from_float16_single_at": 256
+ },
+ {
+  "prompt": "edit",
+  "way": "float16, draft head",
+  "tokens": 256,
+  "tok_s": 70.4,
+  "first_choice": 255,
+  "not_first": [
+   {
+    "at": 60,
+    "behind": 0.0187,
+    "p_first": 0.3207,
+    "p_written": 0.3148
+   }
+  ],
+  "parts_from_float16_single_at": 256
+ },
+ {
+  "prompt": "edit",
+  "way": "float16, draft head, listed rows",
+  "tokens": 256,
+  "tok_s": 73.1,
+  "first_choice": 255,
+  "not_first": [
+   {
+    "at": 60,
+    "behind": 0.0187,
+    "p_first": 0.3207,
+    "p_written": 0.3148
+   }
+  ],
+  "parts_from_float16_single_at": 256
+ },
+ {
+  "prompt": "edit",
+  "way": "float32, draft head, listed rows",
+  "tokens": 256,
+  "tok_s": 72.5,
+  "first_choice": 256,
+  "not_first": [],
+  "parts_from_float16_single_at": 60
+ }
+]

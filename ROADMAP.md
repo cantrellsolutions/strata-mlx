@@ -61,8 +61,13 @@
   other (0.09); llama.cpp on Metal writes 33 tok/s from the same file. All six expert types of the file unpack
   to gguf-py's weights exactly. IQ3_XXS and IQ2_XS will not be run: there is no disk space for more model
   files. Their tensors all have a path through the loader and their block types pass the same tests.
-- **The same answer with and without drafts at full speed.** True in float32 (about 48 tok/s); in float16
-  (56-105 tok/s) a window and a single token round differently and the answers can part at a near-tie.
+- **The same answer with and without drafts at full speed.** True in float32; in float16 a window and a single
+  token round differently and the answers can part at a near-tie. What that costs, judged by the model itself
+  in float32 a token a pass (e29): float16 writes a token other than the model's first choice about once in
+  250, with drafts or without, with the listed rows or without, each time one the model found nearly as
+  probable (at the widest 44.6% against 38.0%); float32 with drafts and the list wrote the model's own answer
+  in all eight answers. `--dtype float32` costs half the speed with the Q2_0 file (44-49 tok/s for 80-103, its
+  table lookup being float16 only) and a tenth to a fifth with IQ3_S (53-73 for 69-80).
 - **Prompt reading speed.** About 440 tok/s for a 1,515-token prompt with the draft head (was 220; the first
   prompt after a start took four times as long until the loader's leftover buffers were released), 240-330 for
   8,192 random tokens. For the ceiling see the section on the GPU below.
