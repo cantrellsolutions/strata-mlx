@@ -82,12 +82,20 @@
 ## Faster answers: experiments (bench/experiments, results in bench/results/e*.json)
 
 The yardstick is `e05_pass_rate.py`: passes of one token and of four, alternated, lower quartile. On a quiet
-machine it repeats within 1%; changes are compared in one process, the two ways alternated.
+machine it repeats within 1%; other programs on the GPU move it by a half within minutes, so every change is
+compared in one process, the two ways alternated pass by pass. Tokens a second are from `spec_decode.py`
+(256 tokens, greedy, with thinking) on a quiet machine, with the draft head.
 
-    step                                           one token    four tokens    code / edit with the draft head
-    start                                           22.3 ms       35.8 ms         69-70 / 77 tok/s
-    hyper-connections read once for a window        22.1          34.0            72.8 / 81.9
-    Q2_0 experts by table lookup                    22.1          31.5            74.9 / 85.3
+    step                                             one token   four tokens   prose / code / reasoning / edit
+    start                                             22.3 ms      35.8 ms      61-63 / 69-70 / 77-82 / 77 tok/s
+    hyper-connections read once for a window (e07)    22.1         34.0         63 / 73 / 82 / 82
+    Q2_0 experts by table lookup (e12)                22.1         31.5         72 / 75 / 82 / 85
+    n-gram rows on the CPU (e14), routers' own
+      product, the experts' activation folded in      20.8         30.3
+    one wait for the GPU a step; three guesses,
+      then more while the head is sure (e13)                                    88 / 81 / 97 / 97
+
+    a token a pass, no draft head: 43 tok/s at the start, 48 now.
 
 What the measurements said, in the order they corrected each other:
 
@@ -98,25 +106,44 @@ What the measurements said, in the order they corrected each other:
 - **Parts timed alone do not add up to a pass** (e01, e04, e05). MLX commits its command buffer after every
   50 MB of inputs, 23 us each time, so a kernel with a 236 MB stack of experts as input costs 25 us alone; in a
   pass the GPU is what is waited for and the limits (20 to 500 operations, any size) change nothing. Parts are
-  measured by leaving them out of a real pass (e06): of 23.8 / 38.1 ms for one / four tokens, routed experts
-  4.1 / 12.6, delta-net projections 6.0 / 8.7, hyper-connections 5.1 / 8.1, attention projections 2.3 / 3.9,
-  output layer 2.3 / 3.1, routers 2.0 / 2.7, shared experts 1.8 / 2.5.
-- **One GPU thread is slow, about 13 ns an instruction; a kernel takes as long as its longest thread** (e08,
-  e09). A matrix of 324 by 10,240 times four tokens: 38 us with 32 threads to a row, 21 with 1,024. A norm
-  kernel of 128 threads looping 160 times: 21 us for nothing. An array local to a thread: six times slower.
-  From this the hyper-connections' three kernels (fused.py).
+  measured by leaving them out of a real pass (e06): of 23.8 / 38.1 ms for one / four tokens at the start,
+  routed experts 4.1 / 12.6, delta-net projections 6.0 / 8.7, hyper-connections 5.1 / 8.1, attention projections
+  2.3 / 3.9, output layer 2.3 / 3.1, routers 2.0 / 2.7, shared experts 1.8 / 2.5.
+- **One GPU thread is slow; a kernel takes as long as its longest thread** (e08, e09). A matrix of 324 by
+  10,240 times four tokens: 38 us with 32 threads to a row, 21 with 1,024. A norm kernel of 128 threads looping
+  160 times: 21 us for nothing. An array local to a thread: six times slower. From this the hyper-connections'
+  three kernels and the routers' product (fused.py).
 - **The expert kernel is bound by arithmetic, not by bytes or loads** (e02, e03, e10, e11): about eight
   operations a weight at all this GPU has, whatever the inner loop, the threads to a row, four values to a load
   or rows sharing their activations. A table of the 16 sums two weights make of two inputs is three operations
   a weight; a table of 256 sums for four weights does not stay in a cache and is four times slower (blocks.py,
   `lookup_matvec`; e12).
-- MLX's own switches (`MLX_MAX_OPS_PER_BUFFER`, `MLX_MAX_MB_PER_BUFFER`, `MLX_METAL_FAST_SYNCH`,
-  `MLX_BFS_MAX_WIDTH`) change nothing.
+- **Waits for the GPU that nobody needed** cost 3.6 ms of a 41 ms step: the context tokens were kept as a GPU
+  array (a slice and a concatenation waited for at every commit, and again by the n-gram lookup), and the states
+  a pass leaves behind were waited for although only the next pass needs them.
+- **How many guesses** (e13). The head's sureness of a run of guesses (the product of the probabilities it
+  gave them) predicts whether they are kept, well for answers that repeat or reason step by step, poorly for
+  prose. Three guesses in any case and more while it is sure: replayed, 6% over three every pass; measured, 2%
+  on prose, 5% on code, 6% on reasoning, 10% rewriting a file. Deciding every guess by sureness lost on prose.
 
-Not yet tried: the dense tensors as the file's blocks (Q3_K, IQ4_XS and Q6_K are held at 8 bits or as floats,
-1.5 GB a token more than the file has); the routers as one kernel; a smaller output layer for the draft head's
-guesses (it reads the 477 MB one three times a pass); how many guesses to make by how sure the head is.
-Changes weights, so not done: the hyper-connections' 1.27 GB of 16-bit floats at 8 bits.
+Tried, no gain:
+
+- MLX's own switches (`MLX_MAX_OPS_PER_BUFFER`, `MLX_MAX_MB_PER_BUFFER`, `MLX_METAL_FAST_SYNCH`,
+  `MLX_BFS_MAX_WIDTH`).
+- The expert kernel loading four values at once (e10), or several rows to a thread (e11).
+- A dense projection on the file's Q3_K blocks (e15): 74 / 80 / 91 us for 1 / 2 / 4 tokens against MLX's 77 /
+  78 / 81 on its 8-bit form, 2.6 times the bytes. MLX's quantized product is flat up to four tokens and reads
+  at 370-400 GB/s; the block kernel is held back by its million threads and by what each must do to undo the
+  format. (With the layer's scales left in float32, MLX's product takes 134 us for four tokens: the first run
+  of this experiment had it so, and the block kernel looked a third faster.)
+- A copy of the output layer at fewer bits for the head's guesses (e16): 0.2 to 0.4 ms less a guess, and 3%,
+  8%, 14% of the guesses change at 4, 3, 2 bits.
+- A kernel for picking the largest logit: in a chain MLX's argmax of 248,320 takes 30 us (e17); the 0.4 ms it
+  seemed to take alone was the wait for the GPU.
+
+Not yet tried: the ten largest of a router's logits and their softmax as one kernel (about 18 us a layer
+now); a block kernel for IQ4_XS, whose format is simpler than Q3_K's; the head's own layer, which is MLX
+operations throughout. Changes weights, so not done: the hyper-connections' 1.27 GB of 16-bit floats at 8 bits.
 
 ## What the Apple GPU can do, measured (M4 Max, macOS 27)
 

@@ -86,7 +86,7 @@ def test_however_many_guesses_the_head_makes_the_answer_is_the_plain_one(model, 
         assert engine.stats.drafted >= 6 * (engine.stats.steps - 3)  # the last passes are cut to what is left to write
         assert len(engine.guess_sure) == 7 and all(a >= b for a, b in zip(engine.guess_sure, engine.guess_sure[1:]))
     elif keep == "never":
-        assert engine.stats.drafted == 0
+        assert engine.stats.drafted <= 3 * engine.stats.steps  # the first three are made in any case
 
 
 # ---- sampling, lookup, and a conversation read only once

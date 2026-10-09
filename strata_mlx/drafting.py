@@ -9,12 +9,15 @@ Policy: a window of lookup guesses can be longer than the draft head's, but a lo
 guess wastes it. Both kinds are scored by the tokens a pass is expected to settle per millisecond, from what this
 run has measured; lookup is used only where it wins.
 
-How many guesses the head makes is decided the same way, one guess at a time. The head says how probable it
-finds each guess; how sure it is of a run of guesses is the product. The policy counts how often guesses of
-each degree of sureness were kept, and another guess is made, and then put into the window, only while what it
-is expected to add, for the time it adds, beats what the run averages (bench/experiments/e13: against three
-guesses every pass, 10% more tokens a second over four prompts, 20% where the answer repeats its prompt, the
-same on prose; knowing beforehand which guesses will be kept would give 32%).
+How many guesses the head makes is decided the same way. It always makes three, in one go. The head says how
+probable it finds each guess; how sure it is of a run of guesses is the product. The policy counts how often
+guesses of each degree of sureness were kept, and further guesses are made, two at a time, and put into the
+window, only while what they are expected to add, for the time they add, beats what the run averages
+(bench/experiments/e13). Recorded passes of four prompts, replayed: 6% more tokens a second than three guesses
+every pass, 15% where the answer repeats its prompt, 10% on reasoning, 2% less on prose, where the head's
+sureness says little; knowing beforehand which guesses will be kept would give 32%. Deciding every guess that
+way, the first three too, replayed as well and ran worse: more waits for the GPU, and on prose and code fewer
+tokens a second than three guesses every pass.
 """
 
 from collections import defaultdict
@@ -30,7 +33,8 @@ _MARGIN = 1.03
 # the share of the head's guesses kept, by how sure it was of the run up to them (tenths), before this run has
 # any counts; measured over four prompts (e13). It is too sure of itself in the middle.
 _SURE_KEPT = (0.05, 0.15, 0.28, 0.34, 0.40, 0.45, 0.52, 0.62, 0.80, 0.95)
-_SURE_MARGIN = 1.2  # a guess must promise this much more than the run's average
+_MAKE_MARGIN, _KEEP_MARGIN = 1.6, 1.0  # what a guess must promise, in the run's average, to be made; to be kept
+FIRST_GUESSES = 3  # made in any case
 _GUESS_MS, _RATE = 2.0, 0.075  # a guess of the head; tokens a millisecond: until measured
 
 
@@ -128,11 +132,11 @@ class Policy:
 
     def worth_guessing(self, sure: float, guesses: int) -> bool:
         """Whether to make another guess, the head being `sure` of the `guesses` it has made."""
-        return self._kept_rate(sure) / (self._longer_ms(guesses) + self.guess_ms) >= _SURE_MARGIN * self.rate
+        return self._kept_rate(sure) / (self._longer_ms(guesses) + self.guess_ms) >= _MAKE_MARGIN * self.rate
 
     def worth_keeping(self, sure: float, guesses: int) -> bool:
         """Whether a guess just made, the head `sure` of the run up to it, goes into the window."""
-        return self._kept_rate(sure) / self._longer_ms(guesses) >= _SURE_MARGIN * self.rate
+        return self._kept_rate(sure) / self._longer_ms(guesses) >= _KEEP_MARGIN * self.rate
 
     def observe_step(self, tokens: int, ms: float):
         """A whole step, drafting included, settled `tokens` in `ms`."""

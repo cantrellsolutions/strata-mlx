@@ -31,7 +31,7 @@ from mlx_lm.models.base import create_attention_mask
 from mlx_lm.models.gated_delta import gated_delta_update
 
 from .attention import AttnCache, install
-from .drafting import MAX_WINDOW, Lookup, Policy
+from .drafting import FIRST_GUESSES, MAX_WINDOW, Lookup, Policy
 from .fused import FusedResidual, PlainResidual, install_routers
 from .mtp import Mtp
 from .sampler import Sampling, history_counts, penalize, pick, uniform
@@ -488,13 +488,14 @@ class Engine:
             mx.eval(*_arrays([cache.keys, cache.values, cache.indexer.keys]))
             self.guess_sure = ()
             return out[0].tolist()
-        # A guess is made, and kept, only if it is worth a longer pass (drafting.py). Each wait for the GPU costs
-        # as much as a sixth of a guess, so two are made at once while the second is likely to be wanted too.
+        # The first few guesses in any case, in one wait for the GPU; then two more at a time while the head is
+        # sure enough of the run so far for them to be worth a longer pass, and of those the ones that are
+        # (drafting.py).
         guesses, sure, so_far, made, g, policy = [], [], 1.0, 0, None, self.policy
-        while made < self.drafts and (not made or policy.worth_guessing(so_far, len(guesses))):
-            two = made + 2 <= self.drafts and policy.worth_keeping(so_far * 0.64, len(guesses) + 1)
+        first = min(FIRST_GUESSES, self.drafts)
+        while made < self.drafts and (made < first or policy.worth_guessing(so_far, len(guesses))):
             batch = []
-            for _ in range(2 if two else 1):
+            for _ in range(first if not made else min(2, self.drafts - made)):
                 if made + len(batch):
                     x, r = self.mtp(r, m.embed_tokens(g), m.rope, cache)
                 g, p = guess(x, made + len(batch))
@@ -504,7 +505,7 @@ class Engine:
             for token, p in batch:
                 made += 1
                 so_far *= p.item()
-                refused = refused or not policy.worth_keeping(so_far, len(guesses))
+                refused = refused or (made > first and not policy.worth_keeping(so_far, len(guesses)))
                 if not refused:
                     guesses.append(token.item())
                     sure.append(so_far)
