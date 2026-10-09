@@ -91,6 +91,10 @@ class Stats:
 
 
 class Engine:
+    # What a pass leaves behind (caches, recurrent states) is computed without being waited for: the next thing
+    # that needs it waits, and until then the CPU goes on with building that next thing.
+    settle = staticmethod(mx.async_eval)
+
     def __init__(self, model: qwen4_exp.Model, mtp: Mtp | None = None, drafts: int = MAX_WINDOW - 1,
                  lookup: bool = False, chunk: int = 2048, checkpoints: int = 8, turn_token: int = TURN_TOKEN,
                  fused: bool = True, fuse_upto: int = 6, as_sure: bool = True):
@@ -300,11 +304,13 @@ class Engine:
                 self.ple_conv = mx.concatenate([before[:, n:], w.ple_conv[:, taps - T : taps - T + n]], axis=1)
             else:
                 raise ValueError(f"a window of {T} tokens can only be kept whole")
+        # the tokens are known here: worked out on the GPU, the next pass's n-gram rows would have to wait for them
+        ids = w.ids.tolist()[0]
         ctx = self.context.shape[1]
-        self.context = mx.concatenate([self.context, w.ids.astype(self.context.dtype)], axis=1)[:, n : n + ctx]
-        mx.eval(*_arrays([self.context, self.ple_conv, list(self.gdn.values()),
+        self.context = mx.array([(self.context.tolist()[0] + ids)[n : n + ctx]], dtype=self.context.dtype)
+        self.settle(*_arrays([self.ple_conv, list(self.gdn.values()),
                           [(c.keys, c.values, c.indexer.keys) for c in self.attn.values()]]))
-        kept = w.ids[0, :n].tolist()
+        kept = ids[:n]
         self.tokens += kept
         if self.lookup:
             self.lookup.extend(kept)
@@ -505,7 +511,7 @@ class Engine:
             if refused:
                 break
         cache.trim(made - 1)  # the cells of the guesses themselves
-        mx.eval(*_arrays([cache.keys, cache.values, cache.indexer.keys]))
+        self.settle(*_arrays([cache.keys, cache.values, cache.indexer.keys]))
         self.guess_sure = tuple(sure)
         self.policy.observe_guesses(made, (time.perf_counter() - t0) * 1e3)
         return guesses

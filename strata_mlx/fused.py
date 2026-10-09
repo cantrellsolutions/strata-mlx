@@ -245,7 +245,7 @@ def install_routers(layers) -> None:
     """Make the routers of `layers` products of this kind."""
     for layer in layers:
         mlp = getattr(layer, "mlp", None)
-        if mlp is not None and not isinstance(mlp.gate, WindowLinear):
+        if mlp is not None and isinstance(getattr(mlp.gate, "weight", None), mx.array) and not isinstance(mlp.gate, WindowLinear):
             mlp.gate = WindowLinear(mlp.gate)
 
 

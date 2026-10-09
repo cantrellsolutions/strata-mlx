@@ -2,7 +2,8 @@
 
 Timed alone, parts of a pass do not add up to the pass: alone a kernel pays for the CPU's work on it (a commit
 of the command buffer for every large input), in a pass the GPU is what is waited for. So here each part in turn
-is replaced by something that reads no weights, and the pass is timed without it, for one token and for four.
+is replaced by something that reads no weights, and the pass is timed without it, for one token and for four,
+in turns with the whole pass.
 
     uv run python bench/experiments/e06_ablation.py --model <shard 1>
 """
@@ -80,33 +81,50 @@ ABLATIONS = {
 }
 
 
-def measure(engine, T):
-    times = []
-    engine.reset()
-    engine.read(list(range(1000, 1200)))
-    for i in range(args.passes):
-        ids = mx.array([[1000 + (i * 7 + j) % 500 for j in range(T)]])
-        t0 = time.perf_counter()
-        logits, w = engine._forward(ids)
-        mx.eval(logits)
-        engine._commit(w, T)
-        times.append((time.perf_counter() - t0) * 1e3)
-    return sorted(times)[len(times) // 4]
+def a_pass(engine, T, i):
+    ids = mx.array([[1000 + (i * 7 + j) % 500 for j in range(T)]])
+    t0 = time.perf_counter()
+    logits, w = engine._forward(ids)
+    mx.eval(logits)
+    engine._commit(w, T)
+    return (time.perf_counter() - t0) * 1e3
 
 
-rows, base = [], None
+def quartile(xs):
+    return sorted(xs)[len(xs) // 4]
+
+
+# Each part is compared with the whole pass in turns, pass by pass: other programs move both alike. A part that
+# is not inside a compiled function (attention, the output layer) is called as the model has it at that moment,
+# so the stand-in is put in for the pass without it and taken out again for the whole one.
+whole = Engine(model)
+whole.warm()
+whole.read(list(range(1000, 1200)))
+rows = []
 for name, (patch, tweak) in ABLATIONS.items():
+    if patch is None and tweak is None:
+        continue
     undo = patch() if patch else None
     engine = Engine(model)
     if tweak:
         tweak(engine)
     engine.warm()
-    ms = {T: measure(engine, T) for T in args.windows}
+    engine.read(list(range(1000, 1200)))
     if undo:
         undo()
-    base = base or ms
-    rows.append({"left_out": name, "ms": ms})
-    print(f"{name:26}" + "".join(f"  {T} token{'s' if T > 1 else ' '} {ms[T]:6.2f} ms ({ms[T] - base[T]:+6.2f})" for T in args.windows),
+    ms = {}
+    for T in args.windows:
+        with_it, without = [], []
+        for i in range(args.passes):
+            with_it.append(a_pass(whole, T, i))
+            undo = patch() if patch else None
+            without.append(a_pass(engine, T, i))
+            if undo:
+                undo()
+        ms[T] = (quartile(with_it), quartile(without))
+    rows.append({"left_out": name, "ms": {T: {"whole": a, "without": b} for T, (a, b) in ms.items()}})
+    print(f"{name:26}" + "".join(f"  {T} token{'s' if T > 1 else ' '} {a:6.2f} -> {b:6.2f} ms ({b - a:+6.2f})" for T, (a, b) in ms.items()),
           flush=True)
+    del engine
 if args.json:
     Path(args.json).write_text(json.dumps(rows, indent=1) + "\n")
