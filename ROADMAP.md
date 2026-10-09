@@ -141,9 +141,18 @@ Tried, no gain:
 - A kernel for picking the largest logit: in a chain MLX's argmax of 248,320 takes 30 us (e17); the 0.4 ms it
   seemed to take alone was the wait for the GPU.
 
+- Guesses copied from earlier text on top of the head's own (400 tokens, quiet machine): with three guesses a
+  pass they add 7% rewriting a file (94 to 101 tok/s) and nothing on code; with the head guessing as many as it
+  is sure of, nothing (101 to 100, 74 to 71). The server now turns them on by itself only without a draft head.
+
 Not yet tried: the ten largest of a router's logits and their softmax as one kernel (about 18 us a layer
 now); a block kernel for IQ4_XS, whose format is simpler than Q3_K's; the head's own layer, which is MLX
-operations throughout. Changes weights, so not done: the hyper-connections' 1.27 GB of 16-bit floats at 8 bits.
+operations throughout. Each is under a millisecond a pass.
+
+Changes weights, so not done, only measured (e18): the hyper-connections' 1.27 GB of 16-bit floats at 8 bits
+would spare a pass 0.6 GB, about 1.6 ms. Rounded to 8 bits and compared with llama.cpp's answers: its token at
+64 of 64 steps on the chat prompt as before, at 62 of 64 on the 7K-token one (64 before); at 6 bits 62 and 61,
+at 4 bits 60 and 54.
 
 ## What the Apple GPU can do, measured (M4 Max, macOS 27)
 

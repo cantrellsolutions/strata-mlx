@@ -176,7 +176,7 @@ def model_identity(path: str, dtype: str) -> str:
 def _options(argv: list) -> dict:
     """The arguments this engine knows; the CUDA engine's others (expert cache, K/V placement, ...) are skipped."""
     known = {"--native": None, "--mtp": None, "--spec": "4", "--max-context": "131072", "--dtype": "float16",
-             "--prefill": "2048", "--suffix-draft": "3", "--expert-memory": "auto", "--machine-memory": None,
+             "--prefill": "2048", "--suffix-draft": "auto", "--expert-memory": "auto", "--machine-memory": None,
              "--expert-profile": "auto"}
     out, skipped, i = dict(known), [], 0
     while i < len(argv):
@@ -224,7 +224,12 @@ def main():
     chunk = int(opts["--prefill"]) if opts["--prefill"].isdigit() else 2048
     # --spec is the CUDA engine's window; here anything above 1 turns the draft head on, and how many guesses it
     # makes for a pass is its own business (drafting.py)
-    engine = Engine(model, mtp if int(opts["--spec"]) > 1 else None, lookup=int(opts["--suffix-draft"]) > 0,
+    # Guesses copied from earlier text: by themselves when there is no draft head. With the head guessing as
+    # many tokens as it is sure of they added nothing, measured (rewriting a file 100 against 101 tok/s, code 71
+    # against 74), so they are then only on if asked for.
+    head = mtp if int(opts["--spec"]) > 1 else None
+    copies = opts["--suffix-draft"]
+    engine = Engine(model, head, lookup=head is None if copies == "auto" else int(copies) > 0,
                     chunk=chunk)
     engine.identity = model_identity(opts["--native"], opts["--dtype"])
     if paged and wanted == "auto":

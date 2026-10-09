@@ -120,6 +120,7 @@ def main():
     mtp = load_mtp(args.mtp, model.args.text, dtype)
     sampling = dict(temperature=args.temperature, top_p=0.95, top_k=20, seed=args.seed) if args.temperature else {}
     engines = {"one token a pass": Engine(model), f"{args.drafts} guesses a pass": Engine(model, mtp, args.drafts, as_sure=False),
+               f"{args.drafts} guesses + lookup": Engine(model, mtp, args.drafts, lookup=True, as_sure=False),
                "as sure as the head is": Engine(model, mtp), "as sure + lookup": Engine(model, mtp, lookup=True)}
     for engine in engines.values():
         engine.warm()
