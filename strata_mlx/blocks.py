@@ -474,6 +474,19 @@ _TABLE = """
     }
 """
 
+# the same table for the experts' inner activations, silu(gate) * up, without those ever being an array
+_TABLE_GLU = """
+    uint g = thread_position_in_grid.x;
+    uint n = thread_position_in_grid.y;
+    float ga = float(gate[n * COLS + 2 * g]), gb = float(gate[n * COLS + 2 * g + 1]);
+    float a = ga / (1.0f + metal::exp(-ga)) * float(up[n * COLS + 2 * g]);
+    float b = gb / (1.0f + metal::exp(-gb)) * float(up[n * COLS + 2 * g + 1]);
+    auto t = table + (n * (COLS / 2) + g) * 16;
+    for (uint c = 0; c < 16; ++c) {
+        t[c] = static_cast<OutT>((float(c & 3) - 1.0f) * a + (float(c >> 2) - 1.0f) * b);
+    }
+"""
+
 _LOOKUP = """
     uint part = thread_position_in_grid.x % P;
     uint r = thread_position_in_grid.x / P;
@@ -518,6 +531,18 @@ def lookup_table(x: mx.array) -> mx.array:
     return table
 
 
+def lookup_table_glu(gate: mx.array, up: mx.array) -> mx.array:
+    """The table of silu(gate) * up, both (n, cols) float16."""
+    n, cols = gate.shape
+    key = ("table_glu", cols)
+    if key not in _kernels:
+        _kernels[key] = mx.fast.metal_kernel(name="q2_table_glu", input_names=["gate", "up"], output_names=["table"],
+                                             source=_TABLE_GLU, header=f"constant uint COLS = {cols};\n")
+    (table,) = _kernels[key](inputs=[gate, up], template=[("OutT", gate.dtype)], grid=(cols // 2, n, 1),
+                             threadgroup=(32, 1, 1), output_shapes=[(n, cols // 2, 16)], output_dtypes=[gate.dtype])
+    return table
+
+
 def lookup_matvec(lin, idx: mx.array, table: mx.array, share: int) -> mx.array:
     """out[pair] = W[idx[pair]] . x[pair / share], x given as its `lookup_table`. Returns (pairs, rows)."""
     pairs = idx.shape[0]
@@ -539,8 +564,8 @@ def _lookup_glu(x: mx.array, indices: mx.array, up, gate, down) -> mx.array:
     k = indices.shape[-1]
     idx = indices.reshape(-1).astype(mx.uint32)
     table = lookup_table(x.reshape(-1, x.shape[-1]))  # one for gate and up: they read the same input
-    h = swiglu(lookup_matvec(gate, idx, table, k), lookup_matvec(up, idx, table, k))
-    return lookup_matvec(down, idx, lookup_table(h), 1).reshape(*indices.shape, down.output_dims)
+    inner = lookup_table_glu(lookup_matvec(gate, idx, table, k), lookup_matvec(up, idx, table, k))
+    return lookup_matvec(down, idx, inner, 1).reshape(*indices.shape, down.output_dims)
 
 
 def switch_glu(x: mx.array, indices: mx.array, up, gate, down) -> mx.array:
