@@ -207,10 +207,14 @@ while the CPU makes the draft and are listed a step later.
 In turns with guesses over all rows, one process, two rounds a prompt (e28):
 
     three guesses a pass, Q2_0            +5.4 +4.8 | +2.0 +7.6 | +3.8 +6.7 | +9.7 +7.9 %     tokens a pass as before
-    three guesses a pass, IQ3_S           +12 (one round) | +6.7 +8.7 | +3.6 +8.3 | +6.4 +9.1 %   as before
+    three guesses a pass, IQ3_S           -0.6 +12.2 | +6.7 +8.7 | +3.6 +8.3 | +6.4 +9.1 %    as before but for the first
     as many as the head is sure of, Q2_0  -1.2 +7.4 | -3.6 +7.5 | +4.5 +13.0 | +14.0 -1.2 %   (5% on average)
+    as many as the head is sure of, IQ3_S +8.1 +6.9 | +6.4 +11.0 | +4.1 +5.7 | +7.4 +10.9 %    (8% on average)
 
-With as many guesses as the head is sure of, a run differs from the next by more than the list changes it:
+The first answer after a start has a short list and loses a few guesses to it (69% kept where 70% are, with
+the Q2_0 file). With IQ3_S that first answer also parted from the other engine's at token 107, a near-tie in
+float16 that the different windows tipped, and was no faster. With as many guesses as the head is sure of, a
+run differs from the next by more than the list changes it:
 the same engine settles 3.8 and then 4.4 tokens a pass on the same prompt, the policy having learned in
 between. The head's probability of a guess is now taken among the listed rows; that makes it too sure by under
 0.1% for nine guesses in ten.
