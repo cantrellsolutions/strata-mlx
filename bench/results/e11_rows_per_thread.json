@@ -1,0 +1,258 @@
+[
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "now",
+  "threads": 16,
+  "ms": 1.53,
+  "rel_err": 0.0
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "now",
+  "threads": 32,
+  "ms": 1.67,
+  "rel_err": 9.448223863728344e-05
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "2 rows a thread",
+  "threads": 16,
+  "ms": 1.73,
+  "rel_err": 9.448223863728344e-05
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "2 rows a thread",
+  "threads": 32,
+  "ms": 1.77,
+  "rel_err": 0.0001889644772745669
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "4 rows a thread",
+  "threads": 16,
+  "ms": 1.84,
+  "rel_err": 9.448223863728344e-05
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "4 rows a thread",
+  "threads": 32,
+  "ms": 1.73,
+  "rel_err": 0.0001889644772745669
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "8 rows a thread",
+  "threads": 16,
+  "ms": 1.95,
+  "rel_err": 9.448223863728344e-05
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "8 rows a thread",
+  "threads": 32,
+  "ms": 1.83,
+  "rel_err": 0.0001889644772745669
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "now",
+  "threads": 16,
+  "ms": 3.35,
+  "rel_err": 0.0
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "now",
+  "threads": 32,
+  "ms": 3.57,
+  "rel_err": 0.00028885036590509117
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "2 rows a thread",
+  "threads": 16,
+  "ms": 3.21,
+  "rel_err": 3.6106295738136396e-05
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "2 rows a thread",
+  "threads": 32,
+  "ms": 3.28,
+  "rel_err": 0.00014442518295254558
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "4 rows a thread",
+  "threads": 16,
+  "ms": 3.18,
+  "rel_err": 3.6106295738136396e-05
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "4 rows a thread",
+  "threads": 32,
+  "ms": 3.23,
+  "rel_err": 0.00014442518295254558
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "8 rows a thread",
+  "threads": 16,
+  "ms": 3.17,
+  "rel_err": 3.6106295738136396e-05
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "8 rows a thread",
+  "threads": 32,
+  "ms": 3.24,
+  "rel_err": 0.00014442518295254558
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "now",
+  "threads": 4,
+  "ms": 1.39,
+  "rel_err": 0.0
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "now",
+  "threads": 16,
+  "ms": 1.6,
+  "rel_err": 0.00010072522127302364
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "2 rows a thread",
+  "threads": 4,
+  "ms": 1.39,
+  "rel_err": 0.00010072522127302364
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "2 rows a thread",
+  "threads": 16,
+  "ms": 1.51,
+  "rel_err": 0.00010072522127302364
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "4 rows a thread",
+  "threads": 4,
+  "ms": 1.44,
+  "rel_err": 0.00010072522127302364
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "4 rows a thread",
+  "threads": 16,
+  "ms": 2.02,
+  "rel_err": 0.00010072522127302364
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "8 rows a thread",
+  "threads": 4,
+  "ms": 1.93,
+  "rel_err": 0.00010072522127302364
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "8 rows a thread",
+  "threads": 16,
+  "ms": 1.54,
+  "rel_err": 0.00010072522127302364
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "now",
+  "threads": 4,
+  "ms": 3.33,
+  "rel_err": 0.0
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "now",
+  "threads": 16,
+  "ms": 5.32,
+  "rel_err": 0.00021968365763314068
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "2 rows a thread",
+  "threads": 4,
+  "ms": 3.19,
+  "rel_err": 0.00021968365763314068
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "2 rows a thread",
+  "threads": 16,
+  "ms": 5.02,
+  "rel_err": 0.00021968365763314068
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "4 rows a thread",
+  "threads": 4,
+  "ms": 3.16,
+  "rel_err": 0.00021968365763314068
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "4 rows a thread",
+  "threads": 16,
+  "ms": 4.96,
+  "rel_err": 0.00021968365763314068
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "8 rows a thread",
+  "threads": 4,
+  "ms": 3.17,
+  "rel_err": 0.00021968365763314068
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "8 rows a thread",
+  "threads": 16,
+  "ms": 4.95,
+  "rel_err": 0.00021968365763314068
+ }
+]

@@ -12,9 +12,11 @@ type, `unpack32`, that turns a run of 32 weights into floats:
                (also with every pair's expert as an array of its own, for experts paged in from the SSD)
     dequant    every weight of the stack as float16 or float32    one thread per run of 32, for reading prompts
 
-Q2_0, whose weights are a 2-bit code times a scale per 64, has a third way for prompts: Apple's matrix product
-for shaders (Metal Performance Primitives) takes 2-bit packed weights as an operand, so the stack is only split
-into its codes and its scales and never unpacked (see `packed_matmul`).
+Q2_0, whose weights are a 2-bit code times a scale per 64, has two ways of its own. For answers, a table: two
+weights make one of 16 sums of two inputs, so those sums are worked out once for the input and a row is then a
+lookup for every two weights instead of a multiplication for every one (see `lookup_matvec`). For prompts,
+Apple's matrix product for shaders (Metal Performance Primitives) takes 2-bit packed weights as an operand, so
+the stack is only split into its codes and its scales and never unpacked (see `packed_matmul`).
 
 The tables are ggml's, taken from gguf-py. Sums are float32 whatever the type of the activations.
 """
@@ -446,11 +448,108 @@ def _packed_glu(x: mx.array, indices: mx.array, up, gate, down) -> mx.array:
     return out.reshape(*idx.shape, down.output_dims)
 
 
+# ---- Q2_0 for answers: a table of sums instead of a multiplication for every weight
+#
+# The matvec kernel above is bound by arithmetic: about eight operations a weight, at all the operations this
+# GPU has (bench/experiments/e02, e03, e10, e11: neither the inner loop's shape, nor the threads to a row, nor
+# loading four values at once, nor sharing the activations between rows changed its time; leaving the
+# arithmetic out did). Two Q2_0 weights are each -1, 0, 1 or 2 times their scale: of two inputs they make one
+# of 16 sums. With those sums in a table, a row costs about three operations a weight. A table of the 256 sums
+# of four weights would halve that again and was four times slower: 650 KB for a token do not stay in a cache,
+# 41 KB do, and only as float16. Hence float16 activations only; a sum then carries about one more rounding of
+# a float16 than before.
+#
+# In a pass, against the matvec kernel (e12): 0.4 ms less for one token, 1.2 for two, 3.4 for four, 9.4 for
+# eight. Few pairs want many threads to a row, many pairs few.
+
+LOOKUP_FROM = 1  # (token, expert) pairs from which Q2_0 experts over float16 go this way
+
+_TABLE = """
+    uint g = thread_position_in_grid.x;
+    uint n = thread_position_in_grid.y;
+    float a = float(x[n * COLS + 2 * g]), b = float(x[n * COLS + 2 * g + 1]);
+    auto t = table + (n * (COLS / 2) + g) * 16;
+    for (uint c = 0; c < 16; ++c) {
+        t[c] = static_cast<OutT>((float(c & 3) - 1.0f) * a + (float(c >> 2) - 1.0f) * b);
+    }
+"""
+
+_LOOKUP = """
+    uint part = thread_position_in_grid.x % P;
+    uint r = thread_position_in_grid.x / P;
+    uint pair = thread_position_in_grid.y;
+    const device uchar* row = blocks + (uint(idx[pair]) * ROWS + r) * ROW_BYTES;
+    auto t_ = table + (pair / SHARE) * (COLS / 2) * 16;
+    float sum = 0.0f;
+    for (uint n = part; n < RUNS; n += P) {
+        const device uchar* b = row + (n / 2) * 18;
+        const device uchar* q = b + 2 + 8 * (n % 2);
+        auto t = t_ + 256 * n;
+        float s = 0.0f;
+        for (uint i = 0; i < 8; ++i) {
+            uint c = q[i];
+            s += float(t[32 * i + (c & 15)]) + float(t[32 * i + 16 + (c >> 4)]);
+        }
+        sum += half_at(b) * s;
+    }
+    float total = sum;
+    for (ushort k = 1; k < P; ++k) {
+        total += simd_shuffle_xor(sum, k);  // the other threads of this row
+    }
+    if (part == 0) {
+        out[pair * ROWS + r] = static_cast<OutT>(total);
+    }
+"""
+
+
+def lookable(lin, dtype: mx.Dtype) -> bool:
+    return lin.kind == "Q2_0" and dtype == mx.float16
+
+
+def lookup_table(x: mx.array) -> mx.array:
+    """x (n, cols) float16 -> (n, cols / 2, 16): for every two inputs, the sums two weights can make of them."""
+    n, cols = x.shape
+    key = ("table", cols)
+    if key not in _kernels:
+        _kernels[key] = mx.fast.metal_kernel(name="q2_table", input_names=["x"], output_names=["table"],
+                                             source=_TABLE, header=f"constant uint COLS = {cols};\n")
+    (table,) = _kernels[key](inputs=[x], template=[("OutT", x.dtype)], grid=(cols // 2, n, 1), threadgroup=(32, 1, 1),
+                             output_shapes=[(n, cols // 2, 16)], output_dtypes=[x.dtype])
+    return table
+
+
+def lookup_matvec(lin, idx: mx.array, table: mx.array, share: int) -> mx.array:
+    """out[pair] = W[idx[pair]] . x[pair / share], x given as its `lookup_table`. Returns (pairs, rows)."""
+    pairs = idx.shape[0]
+    per_row = _threads_per_row(lin.input_dims // 32)
+    if pairs > 20:
+        per_row = min(per_row, 4)
+    key = ("lookup", lin.output_dims, lin.input_dims, share, per_row)
+    if key not in _kernels:
+        _kernels[key] = mx.fast.metal_kernel(
+            name="q2_lookup", input_names=["blocks", "idx", "table"], output_names=["out"], source=_LOOKUP,
+            header=_header("Q2_0", lin.output_dims, lin.input_dims, P=per_row, SHARE=share))
+    (out,) = _kernels[key](inputs=[lin.blocks, idx, table], template=[("OutT", table.dtype)],
+                           grid=(per_row * lin.output_dims, pairs, 1), threadgroup=(32, 1, 1),
+                           output_shapes=[(pairs, lin.output_dims)], output_dtypes=[table.dtype])
+    return out
+
+
+def _lookup_glu(x: mx.array, indices: mx.array, up, gate, down) -> mx.array:
+    k = indices.shape[-1]
+    idx = indices.reshape(-1).astype(mx.uint32)
+    table = lookup_table(x.reshape(-1, x.shape[-1]))  # one for gate and up: they read the same input
+    h = swiglu(lookup_matvec(gate, idx, table, k), lookup_matvec(up, idx, table, k))
+    return lookup_matvec(down, idx, lookup_table(h), 1).reshape(*indices.shape, down.output_dims)
+
+
 def switch_glu(x: mx.array, indices: mx.array, up, gate, down) -> mx.array:
     """down(silu(gate(x)) * up(x)) through each token's experts: x (..., in), indices (..., experts per token)."""
     if indices.size >= PACKED_FROM and all(
             packable(lin.kind, lin.output_dims, lin.input_dims, x.dtype) for lin in (up, gate, down)):
         return _packed_glu(x, indices, up, gate, down)
+    if indices.size >= LOOKUP_FROM and all(lookable(lin, x.dtype) for lin in (up, gate, down)):
+        return _lookup_glu(x, indices, up, gate, down)
     # as mlx-lm's SwitchGLU
     x = mx.expand_dims(x, (-2, -3))
     do_sort = indices.size >= 64

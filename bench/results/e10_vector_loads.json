@@ -1,0 +1,194 @@
+[
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "now",
+  "threads_per_row": 4,
+  "ms": 1.51,
+  "rel_err": 0.0
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "now",
+  "threads_per_row": 16,
+  "ms": 1.6,
+  "rel_err": 4.429482578416355e-05
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "vec",
+  "threads_per_row": 4,
+  "ms": 1.77,
+  "rel_err": 0.0003543586062733084
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "vec",
+  "threads_per_row": 16,
+  "ms": 2.16,
+  "rel_err": 0.0003543586062733084
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "vec, x in float32",
+  "threads_per_row": 4,
+  "ms": 2.08,
+  "rel_err": 0.0003543586062733084
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "vec, x in float32",
+  "threads_per_row": 16,
+  "ms": 1.94,
+  "rel_err": 0.0003543586062733084
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "now",
+  "threads_per_row": 4,
+  "ms": 3.32,
+  "rel_err": 0.0
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "now",
+  "threads_per_row": 16,
+  "ms": 3.35,
+  "rel_err": 0.00014334861771203578
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "vec",
+  "threads_per_row": 4,
+  "ms": 3.21,
+  "rel_err": 0.00014334861771203578
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "vec",
+  "threads_per_row": 16,
+  "ms": 3.24,
+  "rel_err": 0.00014334861771203578
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "vec, x in float32",
+  "threads_per_row": 4,
+  "ms": 3.39,
+  "rel_err": 0.00014334861771203578
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "vec, x in float32",
+  "threads_per_row": 16,
+  "ms": 3.36,
+  "rel_err": 0.00014334861771203578
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "now",
+  "threads_per_row": 1,
+  "ms": 1.44,
+  "rel_err": 0.0
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "now",
+  "threads_per_row": 4,
+  "ms": 1.41,
+  "rel_err": 9.944311750587076e-05
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "vec",
+  "threads_per_row": 1,
+  "ms": 1.39,
+  "rel_err": 9.944311750587076e-05
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "vec",
+  "threads_per_row": 4,
+  "ms": 1.37,
+  "rel_err": 0.00019888623501174152
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "vec, x in float32",
+  "threads_per_row": 1,
+  "ms": 1.44,
+  "rel_err": 9.944311750587076e-05
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "vec, x in float32",
+  "threads_per_row": 4,
+  "ms": 1.54,
+  "rel_err": 0.00019888623501174152
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "now",
+  "threads_per_row": 1,
+  "ms": 3.34,
+  "rel_err": 0.0
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "now",
+  "threads_per_row": 4,
+  "ms": 3.33,
+  "rel_err": 8.704735228093341e-05
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "vec",
+  "threads_per_row": 1,
+  "ms": 3.24,
+  "rel_err": 8.704735228093341e-05
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "vec",
+  "threads_per_row": 4,
+  "ms": 3.24,
+  "rel_err": 8.704735228093341e-05
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "vec, x in float32",
+  "threads_per_row": 1,
+  "ms": 3.45,
+  "rel_err": 8.704735228093341e-05
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "vec, x in float32",
+  "threads_per_row": 4,
+  "ms": 3.52,
+  "rel_err": 8.704735228093341e-05
+ }
+]

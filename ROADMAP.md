@@ -75,7 +75,48 @@
   up. No single large target is left: the expert gather already reads at 130-310 GB/s inside a pass. Getting
   near Strata's numbers would take a pass of a few hundred large kernels, each as good as MLX's own. The block
   kernels showed the same thing again: three times faster than MLX's gather alone, 6-10% faster in a pass.
+  (Superseded: see "Faster answers" below. The pass was near the floor of the bytes it reads, and "no single
+  large target" was wrong: the dense weights are seven times the experts' bytes.)
 - Pictures (`GENI`), several conversations decoded together (`BGEN`).
+
+## Faster answers: experiments (bench/experiments, results in bench/results/e*.json)
+
+The yardstick is `e05_pass_rate.py`: passes of one token and of four, alternated, lower quartile. On a quiet
+machine it repeats within 1%; changes are compared in one process, the two ways alternated.
+
+    step                                           one token    four tokens    code / edit with the draft head
+    start                                           22.3 ms       35.8 ms         69-70 / 77 tok/s
+    hyper-connections read once for a window        22.1          34.0            72.8 / 81.9
+    Q2_0 experts by table lookup                    22.1          31.5            74.9 / 85.3
+
+What the measurements said, in the order they corrected each other:
+
+- **A pass is not thousands of small kernels that cost by their number.** A token reads 5.5 GB of weights: 4.87
+  of dense tensors (hyper-connections 1.27, delta-net projections 2.1, attention 0.6, output layer 0.5) and 0.66
+  of experts. Summing those arrays once takes 13.9 ms; a one-token pass waits 20 ms for the GPU. An earlier note
+  here put the bytes at 2 GB and the floor at 5 ms, and three rounds of merging kernels bought 15%.
+- **Parts timed alone do not add up to a pass** (e01, e04, e05). MLX commits its command buffer after every
+  50 MB of inputs, 23 us each time, so a kernel with a 236 MB stack of experts as input costs 25 us alone; in a
+  pass the GPU is what is waited for and the limits (20 to 500 operations, any size) change nothing. Parts are
+  measured by leaving them out of a real pass (e06): of 23.8 / 38.1 ms for one / four tokens, routed experts
+  4.1 / 12.6, delta-net projections 6.0 / 8.7, hyper-connections 5.1 / 8.1, attention projections 2.3 / 3.9,
+  output layer 2.3 / 3.1, routers 2.0 / 2.7, shared experts 1.8 / 2.5.
+- **One GPU thread is slow, about 13 ns an instruction; a kernel takes as long as its longest thread** (e08,
+  e09). A matrix of 324 by 10,240 times four tokens: 38 us with 32 threads to a row, 21 with 1,024. A norm
+  kernel of 128 threads looping 160 times: 21 us for nothing. An array local to a thread: six times slower.
+  From this the hyper-connections' three kernels (fused.py).
+- **The expert kernel is bound by arithmetic, not by bytes or loads** (e02, e03, e10, e11): about eight
+  operations a weight at all this GPU has, whatever the inner loop, the threads to a row, four values to a load
+  or rows sharing their activations. A table of the 16 sums two weights make of two inputs is three operations
+  a weight; a table of 256 sums for four weights does not stay in a cache and is four times slower (blocks.py,
+  `lookup_matvec`; e12).
+- MLX's own switches (`MLX_MAX_OPS_PER_BUFFER`, `MLX_MAX_MB_PER_BUFFER`, `MLX_METAL_FAST_SYNCH`,
+  `MLX_BFS_MAX_WIDTH`) change nothing.
+
+Not yet tried: the dense tensors as the file's blocks (Q3_K, IQ4_XS and Q6_K are held at 8 bits or as floats,
+1.5 GB a token more than the file has); the routers as one kernel; a smaller output layer for the draft head's
+guesses (it reads the 477 MB one three times a pass); how many guesses to make by how sure the head is.
+Changes weights, so not done: the hyper-connections' 1.27 GB of 16-bit floats at 8 bits.
 
 ## What the Apple GPU can do, measured (M4 Max, macOS 27)
 

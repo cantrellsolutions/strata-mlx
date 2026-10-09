@@ -101,6 +101,7 @@ def test_a_prompt_through_packed_products_is_the_prompt_a_pair_at_a_time(monkeyp
     idx[0, :40] = 2  # and one expert far more than the others
     assert all(packable("Q2_0", *stacks[n][1].shape[1:], mx.float16) for n in stacks)
 
+    monkeypatch.setattr(blocks_module, "LOOKUP_FROM", 1 << 62)
     a_pair = np.array(glu(x, mx.array(idx))).astype(np.float64)
     monkeypatch.setattr(blocks_module, "PACKED_FROM", 100)
     packed = np.array(glu(x, mx.array(idx))).astype(np.float64)
@@ -119,3 +120,37 @@ def test_only_half_floats_over_q2_0_go_the_packed_way():
     assert not packable("Q2_0", 640, 2560, mx.float32)  # the primitive has no float32 by 2-bit product
     assert not packable("IQ4_NL", 640, 2560, mx.float16)
     assert not packable("Q2_0", 32, 64, mx.float16)  # fewer output rows than a tile
+
+
+
+@pytest.mark.parametrize("tokens", [1, 2, 5, 9, 70])
+def test_an_answer_through_lookups_is_the_answer_with_the_weights(tokens, monkeypatch):
+    """Windows of an answer and short chunks: few pairs with many threads to a row, many with few."""
+    rng = np.random.default_rng(tokens)
+    experts, hidden, inner, k = 9, 256, 128, 4
+    stacks = {name: q2_stack(rng, experts, rows, cols)
+              for name, (rows, cols) in (("gate", (inner, hidden)), ("up", (inner, hidden)), ("down", (hidden, inner)))}
+    glu = BlockSwitchGLU(*(BlockSwitchLinear(stacks[n][0], "Q2_0", stacks[n][1].shape) for n in ("gate", "up", "down")))
+    x = mx.array(rng.standard_normal((1, tokens, hidden)).astype(np.float16))
+    idx = np.stack([rng.choice(experts, k, replace=False) for _ in range(tokens)])[None]
+    got = glu(x, mx.array(idx))
+    assert got.shape == (1, tokens, k, hidden) and got.dtype == mx.float16
+    xs = np.array(x).astype(np.float64)[0]
+    gate, up = (np.einsum("tkoi,ti->tko", stacks[n][1][idx[0]], xs) for n in ("gate", "up"))
+    want = np.einsum("tkoi,tki->tko", stacks["down"][1][idx[0]], gate / (1 + np.exp(-gate)) * up)
+    assert np.abs(np.array(got).astype(np.float64)[0] - want).max() <= 5e-3 * np.abs(want).max()
+    monkeypatch.setattr(blocks_module, "LOOKUP_FROM", 1 << 62)
+    plain = np.array(glu(x, mx.array(idx))).astype(np.float64)[0]
+    assert np.abs(plain - want).max() <= 5e-3 * np.abs(want).max()
+
+
+def test_float32_activations_do_not_go_through_lookups(monkeypatch):
+    """The table holds float16: the exact way stays as it was."""
+    rng = np.random.default_rng(3)
+    stacks = {name: q2_stack(rng, 5, rows, cols) for name, (rows, cols) in (("gate", (64, 128)), ("up", (64, 128)), ("down", (128, 64)))}
+    glu = BlockSwitchGLU(*(BlockSwitchLinear(stacks[n][0], "Q2_0", stacks[n][1].shape) for n in ("gate", "up", "down")))
+    x = mx.array(rng.standard_normal((1, 3, 128)).astype(np.float32))
+    idx = mx.array(rng.integers(0, 5, (1, 3, 2)))
+    got = glu(x, idx)
+    monkeypatch.setattr(blocks_module, "LOOKUP_FROM", 1 << 62)
+    assert got.dtype == mx.float32 and mx.array_equal(got, glu(x, idx)).item()
