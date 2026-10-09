@@ -91,12 +91,15 @@ class Stats:
 
 
 class Engine:
-    def __init__(self, model: qwen4_exp.Model, mtp: Mtp | None = None, drafts: int = 3, lookup: bool = False,
-                 chunk: int = 2048, checkpoints: int = 8, turn_token: int = TURN_TOKEN, fused: bool = True,
-                 fuse_upto: int = 6):
+    def __init__(self, model: qwen4_exp.Model, mtp: Mtp | None = None, drafts: int = MAX_WINDOW - 1,
+                 lookup: bool = False, chunk: int = 2048, checkpoints: int = 8, turn_token: int = TURN_TOKEN,
+                 fused: bool = True, fuse_upto: int = 6, as_sure: bool = True):
+        """`drafts`: the most guesses the head makes for a pass. With `as_sure` it makes as many of them as it
+        is sure enough of (drafting.py); without, always that many."""
         self.model, self.m, self.mtp = model, model.model, mtp
         install(self.m.layers)
-        self.drafts = drafts if mtp is not None else 0
+        self.drafts = min(drafts, MAX_WINDOW - 1) if mtp is not None else 0
+        self.as_sure = as_sure
         self.chunk, self.max_checkpoints, self.turn_token = chunk, checkpoints, turn_token
         self.vocab = self.m.args.vocab_size
         self.eos = self.m.args.eos_token_id
@@ -120,6 +123,7 @@ class Engine:
         self.tokens = []  # decoded into the state
         self.next_token = None  # decided, not decoded yet
         self.guesses = []
+        self.guess_sure = ()  # how sure the head was of each run of them
         self.checkpoints = []
         self.stats = Stats()
         if self.lookup:
@@ -417,7 +421,7 @@ class Engine:
 
     def resume(self, prompt: list) -> int:
         """Bring the state to the longest prefix of `prompt` it can reach; returns how many tokens that is."""
-        self.next_token, self.guesses = None, []
+        self.next_token, self.guesses, self.guess_sure = None, [], ()
         same = 0
         while same < min(len(prompt) - 1, len(self.tokens)) and prompt[same] == self.tokens[same]:
             same += 1
@@ -451,22 +455,57 @@ class Engine:
         """
         m, cache, s = self.m, self.mtp_cache, self.sampling
         first = len(self.tokens) + 1  # the index of the token the first guess stands for
+        t0 = time.perf_counter()
 
         def guess(x, j):
-            return pick(self.model.lm_head(x)[0], mx.array([uniform(s.seed, first + j)]), s)[None]
+            logits = self.model.lm_head(x)[0]
+            g = pick(logits, mx.array([uniform(s.seed, first + j)]), s)[None]
+            if not self.as_sure:
+                return g, None
+            logits = logits.astype(mx.float32)
+            return g, mx.exp(mx.take_along_axis(logits, g.reshape(-1, 1), axis=-1) - mx.logsumexp(logits, axis=-1, keepdims=True))
 
         x, r = self._cells(residual, following)
-        g = guess(x[:, -1:], 0)
-        guesses, r = [g], r[:, -1:]
-        for j in range(1, self.drafts):
-            x, r = self.mtp(r, m.embed_tokens(g), m.rope, cache)
-            g = guess(x, j)
-            guesses.append(g)
-        out = mx.concatenate(guesses, axis=1)
-        mx.eval(out)
-        cache.trim(self.drafts - 1)
+        x, r = x[:, -1:], r[:, -1:]
+        if not self.as_sure:
+            guesses = []
+            for j in range(self.drafts):
+                if j:
+                    x, r = self.mtp(r, m.embed_tokens(guesses[-1]), m.rope, cache)
+                guesses.append(guess(x, j)[0])
+            out = mx.concatenate(guesses, axis=1)
+            mx.eval(out)
+            cache.trim(self.drafts - 1)
+            mx.eval(*_arrays([cache.keys, cache.values, cache.indexer.keys]))
+            self.guess_sure = ()
+            return out[0].tolist()
+        # A guess is made, and kept, only if it is worth a longer pass (drafting.py). Each wait for the GPU costs
+        # as much as a sixth of a guess, so two are made at once while the second is likely to be wanted too.
+        guesses, sure, so_far, made, g, policy = [], [], 1.0, 0, None, self.policy
+        while made < self.drafts and (not made or policy.worth_guessing(so_far, len(guesses))):
+            two = made + 2 <= self.drafts and policy.worth_keeping(so_far * 0.64, len(guesses) + 1)
+            batch = []
+            for _ in range(2 if two else 1):
+                if made + len(batch):
+                    x, r = self.mtp(r, m.embed_tokens(g), m.rope, cache)
+                g, p = guess(x, made + len(batch))
+                batch.append((g, p))
+            mx.eval(batch)
+            refused = False
+            for token, p in batch:
+                made += 1
+                so_far *= p.item()
+                refused = refused or not policy.worth_keeping(so_far, len(guesses))
+                if not refused:
+                    guesses.append(token.item())
+                    sure.append(so_far)
+            if refused:
+                break
+        cache.trim(made - 1)  # the cells of the guesses themselves
         mx.eval(*_arrays([cache.keys, cache.values, cache.indexer.keys]))
-        return out[0].tolist()
+        self.guess_sure = tuple(sure)
+        self.policy.observe_guesses(made, (time.perf_counter() - t0) * 1e3)
+        return guesses
 
     # ---- decoding
 
@@ -486,7 +525,7 @@ class Engine:
     def read(self, prompt: list, on_chunk=None) -> int:
         """Read prompt[len(self.tokens):] into the state; returns the first token of the answer."""
         start, n = len(self.tokens), len(prompt)
-        self.next_token, self.guesses = None, []
+        self.next_token, self.guesses, self.guess_sure = None, [], ()
         cuts = self._cuts(prompt, start)
         a = start
         for b in sorted({*cuts, *range(start + self.chunk, n, self.chunk), n}):
@@ -522,7 +561,7 @@ class Engine:
         so the next request, which continues from this answer, finds it as it left it.
         """
         t0 = time.perf_counter()
-        guesses, from_lookup, match = self.guesses, False, 0
+        guesses, from_lookup, match, sure = self.guesses, False, 0, self.guess_sure
         if self.lookup:
             found, match = self.lookup.propose([self.next_token], MAX_WINDOW - 1)
             if found and (not guesses or found[0] == guesses[0]):
@@ -544,10 +583,13 @@ class Engine:
         s.steps, s.tokens, s.drafted, s.accepted = s.steps + 1, s.tokens + n, s.drafted + T - 1, s.accepted + kept
         s.lookup_steps += from_lookup
         s.by_position[kept] += 1
+        pass_ms = (time.perf_counter() - t0) * 1e3
         if self.drafts:
             self.guesses = self._draft(w.residual[:, :n], mx.array([settled]))
+        ms = (time.perf_counter() - t0) * 1e3
         if T in self.timed_sizes:
-            self.policy.observe(T, (time.perf_counter() - t0) * 1e3, kept, from_lookup, match)
+            self.policy.observe(T, pass_ms, kept, from_lookup, match, () if from_lookup else sure[: T - 1])
+            self.policy.observe_step(n, ms)
         self.timed_sizes.add(T)  # a size's first pass includes compiling its kernels: not a time to learn from
         return settled
 

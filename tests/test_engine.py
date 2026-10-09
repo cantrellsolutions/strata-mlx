@@ -66,6 +66,29 @@ def test_the_draft_head_changes_speed_not_the_answer(model, answer):
     assert engine.mtp_cache.offset == len(PROMPT) + engine.stats.tokens  # one real cell per decoded position
 
 
+@pytest.mark.parametrize("keep", ["always", "never", "by turns", "as the policy says"])
+def test_however_many_guesses_the_head_makes_the_answer_is_the_plain_one(model, answer, keep):
+    mx.random.seed(4)
+    mtp = Mtp(model.args.text)
+    mx.eval(mtp.parameters())
+    engine = Engine(model, mtp)
+    calls = iter(range(10**6))
+    if keep == "always":
+        engine.policy.worth_guessing = engine.policy.worth_keeping = lambda sure, guesses: True
+    elif keep == "never":
+        engine.policy.worth_keeping = lambda sure, guesses: False
+    elif keep == "by turns":
+        engine.policy.worth_guessing = lambda sure, guesses: next(calls) % 3 != 0
+        engine.policy.worth_keeping = lambda sure, guesses: next(calls) % 4 != 0
+    assert engine.generate(PROMPT, N) == answer
+    assert engine.mtp_cache.offset == len(PROMPT) + engine.stats.tokens  # one real cell per decoded position
+    if keep == "always":
+        assert engine.stats.drafted >= 6 * (engine.stats.steps - 3)  # the last passes are cut to what is left to write
+        assert len(engine.guess_sure) == 7 and all(a >= b for a, b in zip(engine.guess_sure, engine.guess_sure[1:]))
+    elif keep == "never":
+        assert engine.stats.drafted == 0
+
+
 # ---- sampling, lookup, and a conversation read only once
 
 from strata_mlx.sampler import Sampling  # noqa: E402

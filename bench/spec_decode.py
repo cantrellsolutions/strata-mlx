@@ -1,8 +1,9 @@
 """Draft-and-verify against plain greedy decoding, on the real model.
 
-For each prompt: decode the answer one token per pass, then with the draft head guessing ahead, then with lookup
-guesses as well, and report the speed of each, how many tokens a pass settles, how many guesses are kept, and
-where (if anywhere) an answer parts from the first one.
+For each prompt: decode the answer one token per pass, then with the draft head guessing ahead (a fixed number
+of guesses a pass, then as many as it is sure of), then with lookup guesses as well, and report the speed of
+each, how many tokens a pass settles, how many guesses are kept, and where (if anywhere) an answer parts from
+the first one.
 
     uv run python bench/spec_decode.py --model <shard 1> --mtp ~/.cache/strata-mlx/mtp
 """
@@ -118,8 +119,8 @@ def main():
     model, _ = load(args.model, dtype)
     mtp = load_mtp(args.mtp, model.args.text, dtype)
     sampling = dict(temperature=args.temperature, top_p=0.95, top_k=20, seed=args.seed) if args.temperature else {}
-    engines = {"one token a pass": Engine(model), "draft head": Engine(model, mtp, args.drafts),
-               "draft head + lookup": Engine(model, mtp, args.drafts, lookup=True)}
+    engines = {"one token a pass": Engine(model), f"{args.drafts} guesses a pass": Engine(model, mtp, args.drafts, as_sure=False),
+               "as sure as the head is": Engine(model, mtp), "as sure + lookup": Engine(model, mtp, lookup=True)}
     for engine in engines.values():
         engine.warm()
     rows = []
@@ -140,7 +141,7 @@ def main():
                    "passes": s.steps, "same_as_first_until": same}
             rows.append(row)
             parted = "" if same == len(ref) == len(out) else f" | parts from the first at token {same}"
-            print(f"{name:<10} {label:<20} {row['tok_s']:>6} tok/s  {row['tokens_per_pass']:>4} tokens/pass  "
+            print(f"{name:<10} {label:<23} {row['tok_s']:>6} tok/s  {row['tokens_per_pass']:>4} tokens/pass  "
                   f"{row['guesses_kept']:>4.0%} of guesses kept  {s.lookup_steps:>3}/{s.steps} lookup passes"
                   f"{parted}", flush=True)
     if args.json:

@@ -222,7 +222,9 @@ def main():
     paged = store is not None
     mtp = load_mtp(opts["--mtp"], model.args.text, dtype) if opts["--mtp"] else None
     chunk = int(opts["--prefill"]) if opts["--prefill"].isdigit() else 2048
-    engine = Engine(model, mtp, drafts=max(0, int(opts["--spec"]) - 1), lookup=int(opts["--suffix-draft"]) > 0,
+    # --spec is the CUDA engine's window; here anything above 1 turns the draft head on, and how many guesses it
+    # makes for a pass is its own business (drafting.py)
+    engine = Engine(model, mtp if int(opts["--spec"]) > 1 else None, lookup=int(opts["--suffix-draft"]) > 0,
                     chunk=chunk)
     engine.identity = model_identity(opts["--native"], opts["--dtype"])
     if paged and wanted == "auto":

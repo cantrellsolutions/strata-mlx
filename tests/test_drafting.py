@@ -33,3 +33,29 @@ def test_policy_takes_lookup_only_when_it_settles_more_per_millisecond():
         p.observe(8, 75.0, 0, True, 30)  # ... until it keeps being wrong
     assert p.choose(4, 7, 30) == 0
     assert p.choose(4, 0, 0) == 0
+
+
+
+def test_the_head_guesses_on_while_guesses_that_sure_are_kept():
+    p = Policy()
+    assert p.worth_keeping(0.97, 0) and p.worth_guessing(0.97, 3)
+    assert not p.worth_keeping(0.03, 0)
+    # a run in which the head, very sure, is refused every time: it stops trusting that degree of sureness
+    for _ in range(200):
+        p.observe(4, 30.0, 0, False, 0, sure=(0.95, 0.93, 0.91))
+    assert not p.worth_keeping(0.95, 0)
+    assert p.sure[9][0] / p.sure[9][1] < 0.1 and p.sure[5][1] == 4.0  # only what was checked is counted
+    # and one in which unsure guesses are kept: it guesses on
+    q = Policy()
+    for _ in range(200):
+        q.observe(4, 30.0, 3, False, 0, sure=(0.35, 0.33, 0.31))
+    assert q.worth_keeping(0.33, 2)
+
+
+def test_a_slow_run_wants_fewer_guesses_than_a_fast_one():
+    slow, fast = Policy(), Policy()
+    for _ in range(100):
+        slow.observe_step(1, 40.0)  # a token a pass
+        fast.observe_step(6, 40.0)
+    sure = 0.55
+    assert slow.worth_keeping(sure, 2) and not fast.worth_keeping(sure, 2)

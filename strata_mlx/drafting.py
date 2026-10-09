@@ -8,6 +8,13 @@ followed it are the guesses.
 Policy: a window of lookup guesses can be longer than the draft head's, but a longer window costs more and a wrong
 guess wastes it. Both kinds are scored by the tokens a pass is expected to settle per millisecond, from what this
 run has measured; lookup is used only where it wins.
+
+How many guesses the head makes is decided the same way, one guess at a time. The head says how probable it
+finds each guess; how sure it is of a run of guesses is the product. The policy counts how often guesses of
+each degree of sureness were kept, and another guess is made, and then put into the window, only while what it
+is expected to add, for the time it adds, beats what the run averages (bench/experiments/e13: against three
+guesses every pass, 10% more tokens a second over four prompts, 20% where the answer repeats its prompt, the
+same on prose; knowing beforehand which guesses will be kept would give 32%).
 """
 
 from collections import defaultdict
@@ -15,11 +22,16 @@ from collections import defaultdict
 MAX_WINDOW = 8
 # time of a pass by window size, relative to one token, as measured on an M4 Max (bench/results/mlx_overhead.json);
 # used only until a size has been timed in this run
-_SHAPE = (0.0, 1.0, 1.0, 1.22, 1.41, 1.6, 1.79, 1.93, 2.08)
-_FIRST_GUESS_MS = 30.0
+_SHAPE = (0.0, 1.0, 1.13, 1.28, 1.43, 1.58, 1.8, 2.0, 2.06)
+_FIRST_GUESS_MS = 22.0
 # chance that a lookup guess is right, by how long the matched text was, before this run has any counts
 _MATCH_BUCKETS = ((6, 0.75), (12, 0.88), (24, 0.93), (1 << 30, 0.96))
 _MARGIN = 1.03
+# the share of the head's guesses kept, by how sure it was of the run up to them (tenths), before this run has
+# any counts; measured over four prompts (e13). It is too sure of itself in the middle.
+_SURE_KEPT = (0.05, 0.15, 0.28, 0.34, 0.40, 0.45, 0.52, 0.62, 0.80, 0.95)
+_SURE_MARGIN = 1.2  # a guess must promise this much more than the run's average
+_GUESS_MS, _RATE = 2.0, 0.075  # a guess of the head; tokens a millisecond: until measured
 
 
 class Lookup:
@@ -71,6 +83,8 @@ class Policy:
         self.cost = {}  # window size -> (milliseconds, smoothed; how many times measured)
         self.head_tokens = {}  # window size -> tokens a draft-head pass settles, smoothed
         self.lookup = [[0.0, 0.0] for _ in _MATCH_BUCKETS]  # per bucket: guesses right, guesses checked
+        self.sure = [[4 * p, 4.0] for p in _SURE_KEPT]  # per tenth of sureness: guesses kept, guesses checked
+        self.guess_ms, self.rate = _GUESS_MS, _RATE
 
     def _bucket(self, match: int) -> int:
         return next(i for i, (below, _) in enumerate(_MATCH_BUCKETS) if match < below)
@@ -102,10 +116,40 @@ class Policy:
                 best_k, best = k, rate
         return best_k
 
-    def observe(self, size: int, ms: float, kept: int, from_lookup: bool, match: int):
-        """A pass over `size` tokens took `ms` and kept `kept` of its size - 1 guesses."""
+    # ---- how many guesses the head makes
+
+    def _kept_rate(self, sure: float) -> float:
+        kept, checked = self.sure[min(int(sure * 10), 9)]
+        return kept / checked
+
+    def _longer_ms(self, guesses: int) -> float:
+        """What one more token in the window adds to a pass that has `guesses` guesses already."""
+        return max(0.5, self.cost_ms(min(guesses + 2, MAX_WINDOW)) - self.cost_ms(guesses + 1))
+
+    def worth_guessing(self, sure: float, guesses: int) -> bool:
+        """Whether to make another guess, the head being `sure` of the `guesses` it has made."""
+        return self._kept_rate(sure) / (self._longer_ms(guesses) + self.guess_ms) >= _SURE_MARGIN * self.rate
+
+    def worth_keeping(self, sure: float, guesses: int) -> bool:
+        """Whether a guess just made, the head `sure` of the run up to it, goes into the window."""
+        return self._kept_rate(sure) / self._longer_ms(guesses) >= _SURE_MARGIN * self.rate
+
+    def observe_step(self, tokens: int, ms: float):
+        """A whole step, drafting included, settled `tokens` in `ms`."""
+        self.rate += 0.05 * (tokens / ms - self.rate)
+
+    def observe_guesses(self, made: int, ms: float):
+        if made:
+            self.guess_ms += 0.1 * (ms / made - self.guess_ms)
+
+    def observe(self, size: int, ms: float, kept: int, from_lookup: bool, match: int, sure: tuple = ()):
+        """A pass over `size` tokens took `ms` and kept `kept` of its size - 1 guesses; `sure`: how sure the head
+        was of each run of its guesses, if they were its own."""
         old, n = self.cost.get(size, (ms, 0))
         self.cost[size] = (old + 0.1 * (ms - old), n + 1)
+        for j, c in enumerate(sure[: kept + 1]):  # up to and including the first one refused
+            b = self.sure[min(int(c * 10), 9)]
+            b[0], b[1] = 0.98 * b[0] + (j < kept), 0.98 * b[1] + 1
         if from_lookup:
             b = self.lookup[self._bucket(match)]
             checked = kept + (1 if kept < size - 1 else 0)  # the guesses up to and including the first wrong one
