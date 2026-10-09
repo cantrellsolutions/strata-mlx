@@ -171,7 +171,9 @@ draft head.
 Tokens a second: before and after a prompt at a time, in turns, a process each (the machine sped up through
 that run, so a column compares, a row does not). llama.cpp's token on the chat prompt at 63 of 64 steps as
 before. With the Q2_0 file, whose six Q6_K layers go the same way now: 64 of 64 on the chat prompt as before,
-and on the 7K-token one 63 of 64 a token at a time (64 before), 64 of 64 four at a time.
+and on the 7K-token one 63 of 64 a token at a time (64 before), 64 of 64 four at a time. Its answers are as
+fast as before or a little faster (in turns as above: 35-46 tok/s a token at a time against 35-45, 53-97 with
+the head against 54-95).
 
 - **On the file's blocks** (e20, e21): 6.56 bits a weight, and faster than MLX over float16 for one and two
   tokens (72 and 83 us against 130 for a 10,240 x 2,560 tensor), level at four, 1.7 to 3 times slower at six and
