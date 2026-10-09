@@ -1,0 +1,188 @@
+[
+ {
+  "layers": "output layer",
+  "policy": "blocks",
+  "ms": {
+   "1": {
+    "as it is": 26.52,
+    "swapped": 25.27,
+    "logits apart": 0.008
+   },
+   "2": {
+    "as it is": 30.16,
+    "swapped": 29.13,
+    "logits apart": 0.008
+   },
+   "4": {
+    "as it is": 40.11,
+    "swapped": 39.78,
+    "logits apart": 0.008
+   },
+   "6": {
+    "as it is": 52.04,
+    "swapped": 52.26,
+    "logits apart": 0.016
+   },
+   "8": {
+    "as it is": 61.44,
+    "swapped": 65.93,
+    "logits apart": 0.016
+   }
+  }
+ },
+ {
+  "layers": "output layer",
+  "policy": "codes",
+  "ms": {
+   "1": {
+    "as it is": 26.52,
+    "swapped": 25.42,
+    "logits apart": 0.008
+   },
+   "2": {
+    "as it is": 30.83,
+    "swapped": 29.86,
+    "logits apart": 0.008
+   },
+   "4": {
+    "as it is": 42.38,
+    "swapped": 41.51,
+    "logits apart": 0.008
+   },
+   "6": {
+    "as it is": 54.13,
+    "swapped": 53.37,
+    "logits apart": 0.016
+   },
+   "8": {
+    "as it is": 63.1,
+    "swapped": 63.11,
+    "logits apart": 0.016
+   }
+  }
+ },
+ {
+  "layers": "all",
+  "policy": "codes",
+  "ms": {
+   "1": {
+    "as it is": 26.68,
+    "swapped": 22.66,
+    "logits apart": 0.697
+   },
+   "2": {
+    "as it is": 31.31,
+    "swapped": 27.8,
+    "logits apart": 0.805
+   },
+   "4": {
+    "as it is": 42.87,
+    "swapped": 39.65,
+    "logits apart": 1.461
+   },
+   "6": {
+    "as it is": 54.48,
+    "swapped": 53.07,
+    "logits apart": 1.32
+   },
+   "8": {
+    "as it is": 63.65,
+    "swapped": 65.36,
+    "logits apart": 2.191
+   }
+  }
+ },
+ {
+  "layers": "all",
+  "policy": "blocks",
+  "ms": {
+   "1": {
+    "as it is": 27.02,
+    "swapped": 22.56,
+    "logits apart": 0.371
+   },
+   "2": {
+    "as it is": 32.6,
+    "swapped": 30.35,
+    "logits apart": 0.676
+   },
+   "4": {
+    "as it is": 42.83,
+    "swapped": 43.46,
+    "logits apart": 2.011
+   },
+   "6": {
+    "as it is": 55.52,
+    "swapped": 61.27,
+    "logits apart": 1.505
+   },
+   "8": {
+    "as it is": 64.17,
+    "swapped": 85.38,
+    "logits apart": 1.864
+   }
+  }
+ },
+ {
+  "layers": "all",
+  "policy": "blocks, codes from 3",
+  "ms": {
+   "1": {
+    "as it is": 27.27,
+    "swapped": 22.8,
+    "logits apart": 0.371
+   },
+   "2": {
+    "as it is": 33.26,
+    "swapped": 31.38,
+    "logits apart": 0.676
+   },
+   "4": {
+    "as it is": 46.74,
+    "swapped": 43.73,
+    "logits apart": 1.754
+   },
+   "6": {
+    "as it is": 59.18,
+    "swapped": 58.2,
+    "logits apart": 1.313
+   },
+   "8": {
+    "as it is": 67.17,
+    "swapped": 69.49,
+    "logits apart": 2.81
+   }
+  }
+ },
+ {
+  "layers": "all",
+  "policy": "blocks, float from 5",
+  "ms": {
+   "1": {
+    "as it is": 27.59,
+    "swapped": 23.17,
+    "logits apart": 0.371
+   },
+   "2": {
+    "as it is": 34.99,
+    "swapped": 33.93,
+    "logits apart": 0.676
+   },
+   "4": {
+    "as it is": 47.51,
+    "swapped": 49.9,
+    "logits apart": 2.011
+   },
+   "6": {
+    "as it is": 63.92,
+    "swapped": 64.18,
+    "logits apart": 1.543
+   },
+   "8": {
+    "as it is": 74.55,
+    "swapped": 74.9,
+    "logits apart": 2.173
+   }
+  }
+ }
+]

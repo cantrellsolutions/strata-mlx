@@ -33,7 +33,7 @@ layers = m.layers
 
 
 def zeros_like_output(mod):
-    n = mod.weight.shape[0]
+    n = getattr(mod, "output_dims", None) or mod.weight.shape[0]
     return lambda x, n=n: mx.zeros((*x.shape[:-1], n), dtype=x.dtype)
 
 

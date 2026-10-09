@@ -129,16 +129,28 @@ def to_float(t: Tensor) -> np.ndarray:
     if t.type == "BF16":
         return (t.data.view("<u2").astype(np.uint32) << 16).view(np.float32).reshape(t.shape)
     if t.type == "Q6_K":
-        b = t.data.reshape(-1, 210)
-        ql, qh = b[:, :128].reshape(-1, 2, 64), b[:, 128:192].reshape(-1, 2, 32)
-        scales = b[:, 192:208].view(np.int8).astype(np.float32)
-        d = b[:, 208:210].view("<f2").astype(np.float32)
-        # each half of the block: four runs of 32, their high two bits in the four bit pairs of qh
-        hi = np.stack([(qh >> s) & 3 for s in (0, 2, 4, 6)], axis=2)  # (n, 2, 4, 32)
-        lo = np.stack([ql[..., :32] & 15, ql[..., 32:] & 15, ql[..., :32] >> 4, ql[..., 32:] >> 4], axis=2)
-        q = (lo | (hi << 4)).astype(np.int8).astype(np.float32) - 32
-        return (q.reshape(-1, 16, 16) * (d * scales)[:, :, None]).reshape(t.shape)
+        codes, scales, d = q6k_parts(t)
+        scale = (d.astype(np.float32)[:, :, None] * scales.astype(np.float32).reshape(len(d), -1, 16)).reshape(scales.shape)
+        return (codes.astype(np.float32).reshape(*scales.shape, 16) * scale[:, :, None]).reshape(t.shape)
     raise ValueError(f"{t.name}: {t.type} has an exact quantized form, use to_affine")
+
+
+def q6k_parts(t: Tensor):
+    """A Q6_K tensor of rows as its three parts: a weight is code * scale * d.
+
+    codes   int8 (rows, cols)          the block's six bits a weight, less 32
+    scales  int8 (rows, cols / 16)
+    d       float16 (rows, cols / 256)
+    """
+    rows = t.shape[0]
+    b = t.data.reshape(-1, 210)
+    ql, qh = b[:, :128].reshape(-1, 2, 64), b[:, 128:192].reshape(-1, 2, 32)
+    # each half of the block: four runs of 32, their high two bits in the four bit pairs of qh
+    hi = np.stack([(qh >> s) & 3 for s in (0, 2, 4, 6)], axis=2)  # (n, 2, 4, 32)
+    lo = np.stack([ql[..., :32] & 15, ql[..., 32:] & 15, ql[..., :32] >> 4, ql[..., 32:] >> 4], axis=2)
+    codes = ((lo | (hi << 4)).astype(np.int16) - 32).astype(np.int8)
+    return (codes.reshape(rows, -1), np.ascontiguousarray(b[:, 192:208]).view(np.int8).reshape(rows, -1),
+            np.ascontiguousarray(b[:, 208:210]).view("<f2").reshape(rows, -1))
 
 
 def _nibbles(qs: np.ndarray, run: int = 16) -> np.ndarray:

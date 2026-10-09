@@ -24,9 +24,10 @@ from mlx.utils import tree_flatten
 from mlx_lm.models import qwen4_exp
 
 from .blocks import BLOCK, BlockSwitchGLU, BlockSwitchLinear
+from .dense import ScaledLinear, fits
 from .paged import ExpertStore, PagedSwitchGLU, all_fit
 from .paged import machine_memory as paged_machine_memory
-from .gguf import GGUF, KVALUES_IQ4NL, Tensor, pack, to_affine, to_float
+from .gguf import GGUF, KVALUES_IQ4NL, Tensor, pack, q6k_parts, to_affine, to_float
 
 _SPLIT = re.compile(r"-(\d{5})-of-(\d{5})\.gguf$")
 _EXACT_FLOAT = ("F32", "F16", "BF16", "Q6_K")
@@ -143,8 +144,31 @@ def _affine(t: Tensor, rows: np.ndarray | None = None, cols: np.ndarray | None =
     return _joined(parts), (a.bits, a.group)
 
 
-def linear(t: Tensor, rows: np.ndarray | None = None, cols: np.ndarray | None = None) -> nn.Module:
-    """A Linear holding the tensor's weights; `rows` and `cols` reorder its outputs and inputs."""
+def scaled(t: Tensor, rows: np.ndarray | None = None, cols: np.ndarray | None = None) -> ScaledLinear:
+    """A Q6_K layer as its codes, scales and d (dense.py); `rows` and `cols` reorder its outputs and inputs."""
+    step = 256  # weights to a d: fewer where the reorder moves less than a block at a time
+    if cols is not None:
+        if (cols.reshape(-1, 16) - cols[::16, None] != np.arange(16)).any():
+            raise ValueError(f"{t.name}: the input reorder splits a run of 16 weights")
+        while (cols.reshape(-1, step) - cols[::step, None] != np.arange(step)).any():
+            step //= 2
+    parts = []
+    for sub in _row_chunks(t, rows):
+        codes, scales, d = q6k_parts(sub)
+        if cols is not None:
+            codes, scales, d = codes[:, cols], scales[:, cols[::16] // 16], d[:, cols[::step] // 256]
+        parts.append(tuple(mx.array(np.ascontiguousarray(a)) for a in (codes, scales, d)))
+        mx.eval(parts[-1])
+    whole = _joined(parts)
+    mx.eval(whole)
+    return ScaledLinear(*whole)
+
+
+def linear(t: Tensor, rows: np.ndarray | None = None, cols: np.ndarray | None = None):
+    """A layer holding the tensor's weights, called like a Linear; `rows` and `cols` reorder its outputs and
+    inputs."""
+    if t.type == "Q6_K" and fits(*t.shape):
+        return scaled(t, rows, cols)
     if t.type in _EXACT_FLOAT:
         parts = []
         for sub in _row_chunks(t, rows):
