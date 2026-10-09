@@ -28,7 +28,8 @@ _PACKED = {1: "float", 2: "packed_float2", 3: "packed_float3", 4: "packed_float4
 
 
 def _source(tokens: int) -> str:
-    """x: (cols, tokens) float32, or for one token the activations as they are."""
+    """x: (cols, tokens) float32, or for one token the activations as they are. For one token the source does
+    not name the number of rows: a list of the output layer's rows (rows.py) changes it at every step."""
     chunks = [(o, min(4, tokens - o)) for o in range(0, tokens, 4)]  # (first token, how many) of each vector
     sums = "".join(f"{_VEC[n]} a{r}_{o} = 0.0f; " for r in range(_ROWS) for o, n in chunks)
     if tokens == 1:
@@ -46,7 +47,8 @@ def _source(tokens: int) -> str:
     outs = ""
     for r in range(_ROWS):
         for o, n in chunks:
-            writes = " ".join(f"out[{o + j} * ROWS + {_ROWS} * group + {r}] = static_cast<OutT>({'s' if n == 1 else f's[{j}]'});"
+            at = f"{_ROWS} * group + {r}"
+            writes = " ".join(f"out[{at if tokens == 1 else f'{o + j} * ROWS + {at}'}] = static_cast<OutT>({'s' if n == 1 else f's[{j}]'});"
                               for j in range(n))
             outs += f"    {{ {_VEC[n]} s = simd_sum(a{r}_{o}); if (lane == 0) {{ {writes} }} }}\n"
     return f"""
@@ -95,10 +97,10 @@ class ScaledLinear:
         x = x.reshape(tokens, cols)
         if tokens > 1:
             x = mx.contiguous(x.astype(mx.float32).T)
-        key = (rows, cols, tokens, self.d_step)
+        key = (rows if tokens > 1 else 0, cols, tokens, self.d_step)
         if key not in _kernels:
-            header = "".join(f"constant uint {k} = {v};\n" for k, v in
-                             {"ROWS": rows, "COLS": cols, "T": tokens, "D_STEP": self.d_step}.items())
+            constants = {"COLS": cols, "T": tokens, "D_STEP": self.d_step} | ({"ROWS": rows} if tokens > 1 else {})
+            header = "".join(f"constant uint {k} = {v};\n" for k, v in constants.items())
             _kernels[key] = mx.fast.metal_kernel(name=f"scaled_linear_{tokens}", input_names=["codes", "scales", "d", "x"],
                                                  output_names=["out"], source=_source(tokens), header=header)
         (out,) = _kernels[key](inputs=[self.codes, self.scales, self.d, x], template=[("OutT", dtype)],

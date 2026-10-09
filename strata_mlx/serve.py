@@ -25,6 +25,9 @@ read from the SSD as tokens ask for them (paged.py). How much is worked out from
 `--expert-memory <GB>` sets it by hand, and `--machine-memory <GiB>` runs as a machine of that size would.
 Such a machine counts which experts its answers use, in `~/.cache/strata-mlx/expert-use-<model>.npy`
 (`--expert-profile <path>` for another place, `off` for none), and starts with the most used ones in memory.
+
+The draft head's guesses are worked out over the rows of the output layer that have been in sight (rows.py);
+`--guess-rows off` has them go over all rows.
 """
 
 import errno
@@ -177,7 +180,7 @@ def _options(argv: list) -> dict:
     """The arguments this engine knows; the CUDA engine's others (expert cache, K/V placement, ...) are skipped."""
     known = {"--native": None, "--mtp": None, "--spec": "4", "--max-context": "131072", "--dtype": "float16",
              "--prefill": "2048", "--suffix-draft": "auto", "--expert-memory": "auto", "--machine-memory": None,
-             "--expert-profile": "auto"}
+             "--expert-profile": "auto", "--guess-rows": "on"}
     out, skipped, i = dict(known), [], 0
     while i < len(argv):
         a = argv[i]
@@ -230,7 +233,7 @@ def main():
     head = mtp if int(opts["--spec"]) > 1 else None
     copies = opts["--suffix-draft"]
     engine = Engine(model, head, lookup=head is None if copies == "auto" else int(copies) > 0,
-                    chunk=chunk)
+                    chunk=chunk, guess_rows=opts["--guess-rows"] != "off")
     engine.identity = model_identity(opts["--native"], opts["--dtype"])
     if paged and wanted == "auto":
         store.fit(machine)  # now that everything else is in memory: what is left is the experts'
@@ -281,7 +284,8 @@ def main():
     threading.Thread(target=reader, daemon=True).start()
     session = Session(engine, write, max_context, stop)
     write(f"INFO engine={VERSION}-mlx backend=mlx mlx={mx.__version__} context={max_context} "
-          f"floats={opts['--dtype']} drafts={engine.drafts} lookup={int(engine.lookup is not None)}"
+          f"floats={opts['--dtype']} drafts={engine.drafts} lookup={int(engine.lookup is not None)} "
+          f"guess_rows={int(engine.rows is not None)}"
           + (f" expert_memory_gb={store.budget / 1e9:.1f}" if paged else ""))
     write(f"READY {max_context} stop")
     while True:

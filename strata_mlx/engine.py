@@ -34,7 +34,8 @@ from .attention import AttnCache, install
 from .drafting import FIRST_GUESSES, MAX_WINDOW, Lookup, Policy
 from .fused import FusedResidual, PlainResidual, install_routers
 from .mtp import Mtp
-from .sampler import Sampling, history_counts, penalize, pick, uniform
+from .rows import GuessRows
+from .sampler import LIST, Sampling, history_counts, penalize, pick, uniform
 
 TURN_TOKEN = 248045  # <|im_start|>
 PERIODIC = 16384
@@ -97,9 +98,10 @@ class Engine:
 
     def __init__(self, model: qwen4_exp.Model, mtp: Mtp | None = None, drafts: int = MAX_WINDOW - 1,
                  lookup: bool = False, chunk: int = 2048, checkpoints: int = 8, turn_token: int = TURN_TOKEN,
-                 fused: bool = True, fuse_upto: int = 6, as_sure: bool = True):
+                 fused: bool = True, fuse_upto: int = 6, as_sure: bool = True, guess_rows: bool = True):
         """`drafts`: the most guesses the head makes for a pass. With `as_sure` it makes as many of them as it
-        is sure enough of (drafting.py); without, always that many."""
+        is sure enough of (drafting.py); without, always that many. With `guess_rows` a guess is worked out
+        over the rows of the output layer that have been in sight, not over all of them (rows.py)."""
         self.model, self.m, self.mtp = model, model.model, mtp
         install(self.m.layers)
         install_routers(self.m.layers)
@@ -107,6 +109,9 @@ class Engine:
             install_routers(mtp.layers)
         self.drafts = min(drafts, MAX_WINDOW - 1) if mtp is not None else 0
         self.as_sure = as_sure
+        vocab = self.m.args.vocab_size
+        # kept through `reset`: what one conversation listed serves the next
+        self.rows = GuessRows(model.lm_head, vocab) if self.drafts and guess_rows and vocab >= 100_000 else None
         self.chunk, self.max_checkpoints, self.turn_token = chunk, checkpoints, turn_token
         self.vocab = self.m.args.vocab_size
         self.eos = self.m.args.eos_token_id
@@ -466,13 +471,19 @@ class Engine:
         first = len(self.tokens) + 1  # the index of the token the first guess stands for
         t0 = time.perf_counter()
 
+        rows = self.rows if self.rows is not None and self.rows.ready and self.rows.count > LIST else None
+
         def guess(x, j):
-            logits = self.model.lm_head(x)[0]
-            g = pick(logits, mx.array([uniform(s.seed, first + j)]), s)[None]
+            if rows is None:
+                logits = self.model.lm_head(x)[0]
+            else:
+                logits, tokens = rows.logits(x[0])  # of the listed rows only
+            at = pick(logits, mx.array([uniform(s.seed, first + j)]), s)[None]  # (1, 1): which of the logits
+            g = at if rows is None else tokens[at]
             if not self.as_sure:
                 return g, None
             logits = logits.astype(mx.float32)
-            return g, mx.exp(mx.take_along_axis(logits, g.reshape(-1, 1), axis=-1) - mx.logsumexp(logits, axis=-1, keepdims=True))
+            return g, mx.exp(mx.take_along_axis(logits, at.reshape(-1, 1), axis=-1) - mx.logsumexp(logits, axis=-1, keepdims=True))
 
         x, r = self._cells(residual, following)
         x, r = x[:, -1:], r[:, -1:]
@@ -544,6 +555,9 @@ class Engine:
             logits, w = self._forward(mx.array([prompt[a:b]]), last_only=True)
             if b == n:
                 self.next_token = self._choose(logits[0], prompt[-1:], prompt[:-1])[0]
+                if self.rows is not None:
+                    self.rows.add(prompt)
+                    self.rows.note(logits[0])
             else:
                 mx.eval(logits)
             self._commit(w, b - a)
@@ -586,6 +600,8 @@ class Engine:
         while kept < T - 1 and window[kept + 1] == choice[kept] and choice[kept] not in stop:
             kept += 1
         n = kept + 1
+        if self.rows is not None:
+            self.rows.note(logits[0, :n])
         self._commit(w, n)
         settled = choice[:n]
         self.next_token = settled[-1]

@@ -183,8 +183,7 @@ the head against 54-95).
   number at 8.56 bits; a kernel laid out as MLX's quantized product. In a pass, against float16: 4.0 ms less for
   one token, 3.5 for two, 3.2 for four, 1.4 for six, 1.7 more for eight. One form in memory, 2.45 GB for 4.58.
 - **The draft head's guesses** (e24): three guesses cost a step 7.5 ms of 43, of which 4.1 are the output layer
-  (2.9 of 6.2 with the Q2_0 file): every guess is all 248,320 rows for one token. Not yet tried: scoring only
-  rows that can win (a guess that is wrong costs speed, never the answer).
+  (2.9 of 6.2 with the Q2_0 file): every guess is all 248,320 rows for one token. See the next section.
 - **The experts** were left: a four-token window reads 3.9 GB of them, which is most of the 11 ms they take.
 
 Timings of answers on this machine move by up to a half for minutes at a time, and nothing but the GPU's own
@@ -194,6 +193,33 @@ the thermal state then "fair"; in the middle of long benchmarks it was at 9 and 
 prompts run slower than its first, and before and after are compared a prompt at a time, in turns, a process
 each. The first IQ3_S numbers of this round (25-27 tok/s a token at a time, 36-49 with the head) came from the
 slow stretches and are void.
+
+### Guesses over the rows that have been in sight (e25 to e28, rows.py)
+
+A guess that comes out wrong costs speed, never the answer, so a guess need not look at every row of the output
+layer if the row that wins is seldom one it skips. Recorded in four answers (1,190 guesses): of the guesses the
+trunk kept, 72% were tokens of the conversation itself and 98% were that or among the 256 largest of some row
+of logits the trunk had worked out by then, which are there for nothing. So those rows are listed, about
+13,000 after an answer and 30,000 after four, a twentieth to an eighth of the layer, and a guess multiplies
+only them. The list is kept between conversations; the largest of a pass's rows are picked out by the GPU
+while the CPU makes the draft and are listed a step later.
+
+In turns with guesses over all rows, one process, two rounds a prompt (e28):
+
+    three guesses a pass, Q2_0            +5.4 +4.8 | +2.0 +7.6 | +3.8 +6.7 | +9.7 +7.9 %     tokens a pass as before
+    three guesses a pass, IQ3_S           +12 (one round) | +6.7 +8.7 | +3.6 +8.3 | +6.4 +9.1 %   as before
+    as many as the head is sure of, Q2_0  -1.2 +7.4 | -3.6 +7.5 | +4.5 +13.0 | +14.0 -1.2 %   (5% on average)
+
+With as many guesses as the head is sure of, a run differs from the next by more than the list changes it:
+the same engine settles 3.8 and then 4.4 tokens a pass on the same prompt, the policy having learned in
+between. The head's probability of a guess is now taken among the listed rows; that makes it too sure by under
+0.1% for nine guesses in ten.
+
+Tried on the way: a sketch of the layer (its rows squeezed to the directions they vary most in) to pick the
+rows instead of a list: the rows vary in all directions alike, and it takes a fifth of the layer to find 99% of
+the winners (e25). Listing the rows within some distance of the largest instead of a fixed number: a row with
+no clear winner lists tens of thousands (e27). Picking the largest out and waiting for them: 1.1 ms a step,
+a third of what the list spares (e27).
 
 ## What the Apple GPU can do, measured (M4 Max, macOS 27)
 

@@ -1,0 +1,130 @@
+[
+ {
+  "prompt": "prose",
+  "all_rows": 87.0,
+  "listed": 86.0,
+  "tokens_per_pass": [
+   3.64,
+   3.31
+  ],
+  "guesses_kept": [
+   0.69,
+   0.614
+  ],
+  "rows": 13501,
+  "same_until": 98,
+  "tokens": 256
+ },
+ {
+  "prompt": "prose",
+  "all_rows": 80.4,
+  "listed": 86.4,
+  "tokens_per_pass": [
+   3.7,
+   3.7
+  ],
+  "guesses_kept": [
+   0.648,
+   0.679
+  ],
+  "rows": 14294,
+  "same_until": 256,
+  "tokens": 256
+ },
+ {
+  "prompt": "code",
+  "all_rows": 82.7,
+  "listed": 79.7,
+  "tokens_per_pass": [
+   3.81,
+   3.59
+  ],
+  "guesses_kept": [
+   0.691,
+   0.639
+  ],
+  "rows": 20994,
+  "same_until": 53,
+  "tokens": 256
+ },
+ {
+  "prompt": "code",
+  "all_rows": 76.9,
+  "listed": 82.7,
+  "tokens_per_pass": [
+   4.4,
+   3.86
+  ],
+  "guesses_kept": [
+   0.675,
+   0.661
+  ],
+  "rows": 23279,
+  "same_until": 56,
+  "tokens": 256
+ },
+ {
+  "prompt": "reasoning",
+  "all_rows": 94.5,
+  "listed": 98.7,
+  "tokens_per_pass": [
+   5.54,
+   5.31
+  ],
+  "guesses_kept": [
+   0.783,
+   0.793
+  ],
+  "rows": 27346,
+  "same_until": 256,
+  "tokens": 256
+ },
+ {
+  "prompt": "reasoning",
+  "all_rows": 89.5,
+  "listed": 101.2,
+  "tokens_per_pass": [
+   4.25,
+   5.1
+  ],
+  "guesses_kept": [
+   0.841,
+   0.84
+  ],
+  "rows": 27449,
+  "same_until": 256,
+  "tokens": 256
+ },
+ {
+  "prompt": "edit",
+  "all_rows": 88.1,
+  "listed": 100.5,
+  "tokens_per_pass": [
+   4.32,
+   4.81
+  ],
+  "guesses_kept": [
+   0.813,
+   0.898
+  ],
+  "rows": 32462,
+  "same_until": 138,
+  "tokens": 256
+ },
+ {
+  "prompt": "edit",
+  "all_rows": 87.3,
+  "listed": 86.2,
+  "tokens_per_pass": [
+   5.31,
+   4.64
+  ],
+  "guesses_kept": [
+   0.873,
+   0.775
+  ],
+  "rows": 32879,
+  "same_until": 138,
+  "tokens": 256
+ }
+]
