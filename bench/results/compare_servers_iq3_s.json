@@ -1,0 +1,622 @@
+[
+ {
+  "engine": "llama.cpp (llama-server)",
+  "prompt": "prose",
+  "prompt_tokens": 27,
+  "prompt_tps": 94.44654325651682,
+  "tokens": 256,
+  "tps": 35.45071412335597,
+  "run": "the comparison, every engine in turn, twice"
+ },
+ {
+  "engine": "llama.cpp (llama-server)",
+  "prompt": "code",
+  "prompt_tokens": 31,
+  "prompt_tps": 102.98216415356966,
+  "tokens": 256,
+  "tps": 35.341492367277105,
+  "run": "the comparison, every engine in turn, twice"
+ },
+ {
+  "engine": "llama.cpp (llama-server)",
+  "prompt": "reasoning",
+  "prompt_tokens": 49,
+  "prompt_tps": 145.91019674054488,
+  "tokens": 218,
+  "tps": 35.606867366880365,
+  "run": "the comparison, every engine in turn, twice"
+ },
+ {
+  "engine": "llama.cpp (llama-server)",
+  "prompt": "edit",
+  "prompt_tokens": 340,
+  "prompt_tps": 427.1163615715872,
+  "tokens": 256,
+  "tps": 35.22362651684332,
+  "run": "the comparison, every engine in turn, twice"
+ },
+ {
+  "engine": "llama.cpp (llama-server)",
+  "prompt": "reading",
+  "prompt_tokens": 1180,
+  "prompt_tps": 489.0024184899274,
+  "tokens": 16,
+  "tps": 34.818052463841454,
+  "run": "the comparison, every engine in turn, twice"
+ },
+ {
+  "engine": "LM Studio (llama.cpp runtime)",
+  "prompt": "prose",
+  "prompt_tokens": 27,
+  "prompt_tps": 37.834838319124245,
+  "tokens": 256,
+  "tps": 39.603080840138205,
+  "run": "the comparison, every engine in turn, twice"
+ },
+ {
+  "engine": "LM Studio (llama.cpp runtime)",
+  "prompt": "code",
+  "prompt_tokens": 31,
+  "prompt_tps": 42.09823010892577,
+  "tokens": 256,
+  "tps": 39.678519963197004,
+  "run": "the comparison, every engine in turn, twice"
+ },
+ {
+  "engine": "LM Studio (llama.cpp runtime)",
+  "prompt": "reasoning",
+  "prompt_tokens": 49,
+  "prompt_tps": 57.39001905582878,
+  "tokens": 248,
+  "tps": 39.855198158593026,
+  "run": "the comparison, every engine in turn, twice"
+ },
+ {
+  "engine": "LM Studio (llama.cpp runtime)",
+  "prompt": "edit",
+  "prompt_tokens": 340,
+  "prompt_tps": 284.4907364795778,
+  "tokens": 256,
+  "tps": 39.78375113032658,
+  "run": "the comparison, every engine in turn, twice"
+ },
+ {
+  "engine": "LM Studio (llama.cpp runtime)",
+  "prompt": "reading",
+  "prompt_tokens": 1180,
+  "prompt_tps": 424.04660487804523,
+  "tokens": 16,
+  "tps": 38.77532028414554,
+  "run": "the comparison, every engine in turn, twice"
+ },
+ {
+  "engine": "LM Studio (llama.cpp runtime)",
+  "prompt": "prose",
+  "prompt_tokens": 27,
+  "prompt_tps": 36.466479201951365,
+  "tokens": 256,
+  "tps": 40.042039430573936,
+  "run": "the comparison, every engine in turn, twice"
+ },
+ {
+  "engine": "LM Studio (llama.cpp runtime)",
+  "prompt": "code",
+  "prompt_tokens": 31,
+  "prompt_tps": 40.76276334717514,
+  "tokens": 256,
+  "tps": 40.15012683503793,
+  "run": "the comparison, every engine in turn, twice"
+ },
+ {
+  "engine": "LM Studio (llama.cpp runtime)",
+  "prompt": "reasoning",
+  "prompt_tokens": 49,
+  "prompt_tps": 62.043065484556344,
+  "tokens": 248,
+  "tps": 40.233668022068905,
+  "run": "the comparison, every engine in turn, twice"
+ },
+ {
+  "engine": "LM Studio (llama.cpp runtime)",
+  "prompt": "edit",
+  "prompt_tokens": 340,
+  "prompt_tps": 279.7103845770985,
+  "tokens": 256,
+  "tps": 40.05373168837631,
+  "run": "the comparison, every engine in turn, twice"
+ },
+ {
+  "engine": "LM Studio (llama.cpp runtime)",
+  "prompt": "reading",
+  "prompt_tokens": 1180,
+  "prompt_tps": 420.6986592547644,
+  "tokens": 16,
+  "tps": 38.37926905402777,
+  "run": "the comparison, every engine in turn, twice"
+ },
+ {
+  "engine": "llama.cpp (llama-server)",
+  "prompt": "prose",
+  "prompt_tokens": 27,
+  "prompt_tps": 95.21223512485146,
+  "tokens": 256,
+  "tps": 35.38719699539106,
+  "run": "the comparison, every engine in turn, twice"
+ },
+ {
+  "engine": "llama.cpp (llama-server)",
+  "prompt": "code",
+  "prompt_tokens": 31,
+  "prompt_tps": 104.41226002020883,
+  "tokens": 256,
+  "tps": 35.66040055160347,
+  "run": "the comparison, every engine in turn, twice"
+ },
+ {
+  "engine": "llama.cpp (llama-server)",
+  "prompt": "reasoning",
+  "prompt_tokens": 49,
+  "prompt_tps": 142.39301634904305,
+  "tokens": 218,
+  "tps": 35.420752839536476,
+  "run": "the comparison, every engine in turn, twice"
+ },
+ {
+  "engine": "llama.cpp (llama-server)",
+  "prompt": "edit",
+  "prompt_tokens": 340,
+  "prompt_tps": 430.27952983102676,
+  "tokens": 256,
+  "tps": 35.45315879998148,
+  "run": "the comparison, every engine in turn, twice"
+ },
+ {
+  "engine": "llama.cpp (llama-server)",
+  "prompt": "reading",
+  "prompt_tokens": 1180,
+  "prompt_tps": 487.74902584532487,
+  "tokens": 16,
+  "tps": 34.461685498063254,
+  "run": "the comparison, every engine in turn, twice"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "prose",
+  "prompt_tokens": 27,
+  "prompt_tps": 46.59188955996549,
+  "tokens": 256,
+  "tps": 43.982475732325405,
+  "guesses_kept": 9,
+  "guesses_made": 21,
+  "run": "this engine alone, twice, on the code as committed"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "code",
+  "prompt_tokens": 31,
+  "prompt_tps": 35.3356890459364,
+  "tokens": 256,
+  "tps": 50.77753094255792,
+  "guesses_kept": 52,
+  "guesses_made": 86,
+  "run": "this engine alone, twice, on the code as committed"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "reasoning",
+  "prompt_tokens": 49,
+  "prompt_tps": 55.70080709332727,
+  "tokens": 215,
+  "tps": 44.511614425903694,
+  "guesses_kept": 15,
+  "guesses_made": 57,
+  "run": "this engine alone, twice, on the code as committed"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "edit",
+  "prompt_tokens": 340,
+  "prompt_tps": 243.29159212880145,
+  "tokens": 256,
+  "tps": 53.99363043890916,
+  "guesses_kept": 76,
+  "guesses_made": 119,
+  "run": "this engine alone, twice, on the code as committed"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "reading",
+  "prompt_tokens": 1180,
+  "prompt_tps": 376.85232498722536,
+  "tokens": 16,
+  "tps": 46.403712296983755,
+  "guesses_kept": 0,
+  "guesses_made": 0,
+  "run": "this engine alone, twice, on the code as committed"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "prose",
+  "prompt_tokens": 27,
+  "prompt_tps": 38.793103448275865,
+  "tokens": 256,
+  "tps": 68.3450356408682,
+  "guesses_kept": 171,
+  "guesses_made": 290,
+  "run": "this engine alone, twice, on the code as committed"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "code",
+  "prompt_tokens": 31,
+  "prompt_tps": 28.55300727641153,
+  "tokens": 256,
+  "tps": 77.19213605113978,
+  "guesses_kept": 193,
+  "guesses_made": 279,
+  "run": "this engine alone, twice, on the code as committed"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "reasoning",
+  "prompt_tokens": 49,
+  "prompt_tps": 48.6545526760004,
+  "tokens": 218,
+  "tps": 89.8783755926613,
+  "guesses_kept": 157,
+  "guesses_made": 180,
+  "run": "this engine alone, twice, on the code as committed"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "edit",
+  "prompt_tokens": 340,
+  "prompt_tps": 221.31094187333204,
+  "tokens": 256,
+  "tps": 88.3825306404281,
+  "guesses_kept": 185,
+  "guesses_made": 210,
+  "run": "this engine alone, twice, on the code as committed"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "reading",
+  "prompt_tokens": 1180,
+  "prompt_tps": 333.62549124939915,
+  "tokens": 16,
+  "tps": 94.45100354191263,
+  "guesses_kept": 11,
+  "guesses_made": 11,
+  "run": "this engine alone, twice, on the code as committed"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "prose",
+  "prompt_tokens": 27,
+  "prompt_tps": 41.945005437315515,
+  "tokens": 256,
+  "tps": 74.50090215936208,
+  "guesses_kept": 168,
+  "guesses_made": 260,
+  "run": "this engine alone, twice, on the code as committed"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "code",
+  "prompt_tokens": 31,
+  "prompt_tps": 31.736281736281736,
+  "tokens": 256,
+  "tps": 82.1513381682819,
+  "guesses_kept": 176,
+  "guesses_made": 231,
+  "run": "this engine alone, twice, on the code as committed"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "reasoning",
+  "prompt_tokens": 49,
+  "prompt_tps": 49.459977793479354,
+  "tokens": 218,
+  "tps": 91.60433649886545,
+  "guesses_kept": 157,
+  "guesses_made": 180,
+  "run": "this engine alone, twice, on the code as committed"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "edit",
+  "prompt_tokens": 340,
+  "prompt_tps": 211.60069703759024,
+  "tokens": 256,
+  "tps": 88.2849949994827,
+  "guesses_kept": 185,
+  "guesses_made": 210,
+  "run": "this engine alone, twice, on the code as committed"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "reading",
+  "prompt_tokens": 1180,
+  "prompt_tps": 349.1950757575758,
+  "tokens": 16,
+  "tps": 99.62640099626402,
+  "guesses_kept": 11,
+  "guesses_made": 11,
+  "run": "this engine alone, twice, on the code as committed"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "prose",
+  "prompt_tokens": 27,
+  "prompt_tps": 41.75688215279926,
+  "tokens": 256,
+  "tps": 44.872131952113016,
+  "guesses_kept": 9,
+  "guesses_made": 21,
+  "run": "this engine alone, twice, on the code as committed"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "code",
+  "prompt_tokens": 31,
+  "prompt_tps": 31.04656985478217,
+  "tokens": 256,
+  "tps": 49.891836058544946,
+  "guesses_kept": 51,
+  "guesses_made": 88,
+  "run": "this engine alone, twice, on the code as committed"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "reasoning",
+  "prompt_tokens": 49,
+  "prompt_tps": 47.758284600389864,
+  "tokens": 215,
+  "tps": 44.953687247788906,
+  "guesses_kept": 16,
+  "guesses_made": 62,
+  "run": "this engine alone, twice, on the code as committed"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "edit",
+  "prompt_tokens": 340,
+  "prompt_tps": 245.3102453102453,
+  "tokens": 256,
+  "tps": 55.22716486171636,
+  "guesses_kept": 75,
+  "guesses_made": 111,
+  "run": "this engine alone, twice, on the code as committed"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "reading",
+  "prompt_tokens": 1180,
+  "prompt_tps": 348.6173481446466,
+  "tokens": 16,
+  "tps": 46.43064422518862,
+  "guesses_kept": 0,
+  "guesses_made": 0,
+  "run": "this engine alone, twice, on the code as committed"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "prose",
+  "prompt_tokens": 27,
+  "prompt_tps": 41.65381055229867,
+  "tokens": 256,
+  "tps": 41.434005017399045,
+  "guesses_kept": 9,
+  "guesses_made": 22,
+  "run": "the comparison, every engine in turn, twice; before the Q6_K layers kept their floats for prompts"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "code",
+  "prompt_tokens": 31,
+  "prompt_tps": 31.22167388458052,
+  "tokens": 256,
+  "tps": 50.484134966179575,
+  "guesses_kept": 64,
+  "guesses_made": 104,
+  "run": "the comparison, every engine in turn, twice; before the Q6_K layers kept their floats for prompts"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "reasoning",
+  "prompt_tokens": 49,
+  "prompt_tps": 50.010206164523375,
+  "tokens": 215,
+  "tps": 43.79889178617992,
+  "guesses_kept": 15,
+  "guesses_made": 56,
+  "run": "the comparison, every engine in turn, twice; before the Q6_K layers kept their floats for prompts"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "edit",
+  "prompt_tokens": 340,
+  "prompt_tps": 223.7283674409423,
+  "tokens": 256,
+  "tps": 54.57723958555408,
+  "guesses_kept": 74,
+  "guesses_made": 108,
+  "run": "the comparison, every engine in turn, twice; before the Q6_K layers kept their floats for prompts"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "reading",
+  "prompt_tokens": 1180,
+  "prompt_tps": 240.07161458333334,
+  "tokens": 16,
+  "tps": 45.6490727532097,
+  "guesses_kept": 0,
+  "guesses_made": 0,
+  "run": "the comparison, every engine in turn, twice; before the Q6_K layers kept their floats for prompts"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "prose",
+  "prompt_tokens": 27,
+  "prompt_tps": 41.353959258691994,
+  "tokens": 256,
+  "tps": 64.1362896154328,
+  "guesses_kept": 166,
+  "guesses_made": 281,
+  "run": "the comparison, every engine in turn, twice; before the Q6_K layers kept their floats for prompts"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "code",
+  "prompt_tokens": 31,
+  "prompt_tps": 31.866776315789476,
+  "tokens": 256,
+  "tps": 75.19680413582422,
+  "guesses_kept": 178,
+  "guesses_made": 233,
+  "run": "the comparison, every engine in turn, twice; before the Q6_K layers kept their floats for prompts"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "reasoning",
+  "prompt_tokens": 49,
+  "prompt_tps": 50.53109209033722,
+  "tokens": 215,
+  "tps": 86.69354838709678,
+  "guesses_kept": 156,
+  "guesses_made": 178,
+  "run": "the comparison, every engine in turn, twice; before the Q6_K layers kept their floats for prompts"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "edit",
+  "prompt_tokens": 340,
+  "prompt_tps": 219.96506437212912,
+  "tokens": 256,
+  "tps": 86.291165267806,
+  "guesses_kept": 185,
+  "guesses_made": 210,
+  "run": "the comparison, every engine in turn, twice; before the Q6_K layers kept their floats for prompts"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "reading",
+  "prompt_tokens": 1180,
+  "prompt_tps": 248.71951605083996,
+  "tokens": 16,
+  "tps": 96.61835748792271,
+  "guesses_kept": 11,
+  "guesses_made": 11,
+  "run": "the comparison, every engine in turn, twice; before the Q6_K layers kept their floats for prompts"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "prose",
+  "prompt_tokens": 27,
+  "prompt_tps": 41.29071723505123,
+  "tokens": 256,
+  "tps": 69.91097274564422,
+  "guesses_kept": 181,
+  "guesses_made": 291,
+  "run": "the comparison, every engine in turn, twice; before the Q6_K layers kept their floats for prompts"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "code",
+  "prompt_tokens": 31,
+  "prompt_tps": 33.491789109766636,
+  "tokens": 256,
+  "tps": 80.80553012846816,
+  "guesses_kept": 178,
+  "guesses_made": 239,
+  "run": "the comparison, every engine in turn, twice; before the Q6_K layers kept their floats for prompts"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "reasoning",
+  "prompt_tokens": 49,
+  "prompt_tps": 50.99385992298887,
+  "tokens": 218,
+  "tps": 86.85951071798549,
+  "guesses_kept": 157,
+  "guesses_made": 180,
+  "run": "the comparison, every engine in turn, twice; before the Q6_K layers kept their floats for prompts"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "edit",
+  "prompt_tokens": 340,
+  "prompt_tps": 211.11456069543618,
+  "tokens": 256,
+  "tps": 87.3064593138258,
+  "guesses_kept": 185,
+  "guesses_made": 210,
+  "run": "the comparison, every engine in turn, twice; before the Q6_K layers kept their floats for prompts"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "reading",
+  "prompt_tokens": 1180,
+  "prompt_tps": 246.09480906796807,
+  "tokens": 16,
+  "tps": 95.7510472770796,
+  "guesses_kept": 11,
+  "guesses_made": 11,
+  "run": "the comparison, every engine in turn, twice; before the Q6_K layers kept their floats for prompts"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "prose",
+  "prompt_tokens": 27,
+  "prompt_tps": 42.65402843601896,
+  "tokens": 256,
+  "tps": 44.064995868906635,
+  "guesses_kept": 9,
+  "guesses_made": 21,
+  "run": "the comparison, every engine in turn, twice; before the Q6_K layers kept their floats for prompts"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "code",
+  "prompt_tokens": 31,
+  "prompt_tps": 33.9131386062794,
+  "tokens": 256,
+  "tps": 48.52068762911999,
+  "guesses_kept": 50,
+  "guesses_made": 91,
+  "run": "the comparison, every engine in turn, twice; before the Q6_K layers kept their floats for prompts"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "reasoning",
+  "prompt_tokens": 49,
+  "prompt_tps": 52.603327965646805,
+  "tokens": 215,
+  "tps": 44.41231150588721,
+  "guesses_kept": 15,
+  "guesses_made": 46,
+  "run": "the comparison, every engine in turn, twice; before the Q6_K layers kept their floats for prompts"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "edit",
+  "prompt_tokens": 340,
+  "prompt_tps": 222.06256939455295,
+  "tokens": 256,
+  "tps": 54.062044643422794,
+  "guesses_kept": 76,
+  "guesses_made": 115,
+  "run": "the comparison, every engine in turn, twice; before the Q6_K layers kept their floats for prompts"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "reading",
+  "prompt_tokens": 1180,
+  "prompt_tps": 247.96688171139178,
+  "tokens": 16,
+  "tps": 45.93741027849555,
+  "guesses_kept": 0,
+  "guesses_made": 0,
+  "run": "the comparison, every engine in turn, twice; before the Q6_K layers kept their floats for prompts"
+ }
+]

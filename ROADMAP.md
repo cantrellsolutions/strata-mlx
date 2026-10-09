@@ -230,6 +230,33 @@ the winners (e25). Listing the rows within some distance of the largest instead 
 no clear winner lists tens of thousands (e27). Picking the largest out and waiting for them: 1.1 ms a step,
 a third of what the list spares (e27).
 
+### Against llama.cpp's server and LM Studio (bench/compare_servers.py)
+
+One file, the same prompts as text with their chat markers, each engine loading the model alone and reporting
+its own timings; 256 tokens an answer, the most likely token every time; "reading" is a prompt of 1,180 tokens.
+Tokens a second, prose / code / reasoning / edit, then reading:
+
+    Q2_0    llama-server 0.4.1                38-39 / 38 / 38 / 38                494-495
+            LM Studio 0.4.25 (llama.cpp)      43 / 43 / 43 / 43                   426-446
+            this engine, --spec 1             49-50 / 51-54 / 51-53 / 59-60       320-385
+            this engine as it serves          89-93 / 78-90 / 104-116 / 101       370-386
+    IQ3_S   llama-server 0.4.1                35 / 35-36 / 35-36 / 35             488-489
+            LM Studio 0.4.25 (llama.cpp)      40 / 40 / 40 / 40                   421-424
+            this engine, --spec 1             44-45 / 50-51 / 45 / 54-55          349-377
+            this engine as it serves          68-75 / 77-82 / 90-92 / 88          334-349
+
+Answers come about twice as fast as from either (1.7 to 3.0 times); prompts are read slower than by both.
+Ollama 0.35.1 loads neither file: its GGUF reader does not know the Q2_0 tensors, which the IQ3_S file has too.
+`--spec 1` is not a token a pass: with no draft head the server copies guesses from the context. The other
+engines' rows are from one run of all engines in turn, twice in opposite orders; this engine's are from a run
+of its own afterwards, on the code as committed.
+
+That comparison found a fault: with Q6_K as a byte a weight, the IQ3_S file's prompts were read at 246 tok/s
+(the Q2_0 file's at 390-400). A chunk of a prompt multiplied those layers as floats worked out anew by MLX
+operations, half a second for every piece a prompt is read in. Now one kernel makes the floats (12 ms), at the
+first prompt, and they are kept: 3.3 GB more held with the IQ3_S file, 0.2 GB with Q2_0. Made anew for each
+prompt they cost a tenth of the reading speed (320 against 355-369 tok/s), the fresh memory and not the work.
+
 ## What the Apple GPU can do, measured (M4 Max, macOS 27)
 
 Looked into because prompts are read three to six times slower here than by Strata on an RTX 5070, and the

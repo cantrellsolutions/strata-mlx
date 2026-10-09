@@ -65,6 +65,34 @@ def test_reordered_outputs_and_inputs(tokens):
         linear(t, cols=rng.permutation(COLS))
 
 
+@pytest.mark.parametrize("dtype", [mx.float32, mx.float16])
+def test_the_weights_as_floats_are_the_weights(dtype):
+    t = q6k(3)
+    rng = np.random.default_rng(2)
+    cols = (rng.permutation(COLS // 128)[:, None] * 128 + np.arange(128)).reshape(-1)
+    for lin, want in ((linear(t), reference(t)), (linear(t, cols=cols), reference(t)[:, cols])):
+        got = np.array(lin.floats(dtype).astype(mx.float32))
+        if dtype == mx.float32:
+            assert np.abs(got - want).max() <= 1e-6 * np.abs(want).max()
+        else:
+            np.testing.assert_array_equal(got, want.astype(np.float16).astype(np.float32))  # rounded once
+
+
+def test_floats_made_for_a_prompt_are_kept():
+    from strata_mlx import dense
+
+    lin = linear(q6k(5))
+    x = mx.random.normal((MAX_TOKENS + 2, COLS))
+    first = lin(x)
+    held = lin._floats
+    assert held is not None and lin in dense._holding
+    assert lin(x) is not None and lin._floats is held  # the second piece of the prompt: not made again
+    lin(x[:2])  # a window: the kernel, which needs no floats
+    dense.release()
+    assert lin._floats is None and not dense._holding
+    np.testing.assert_array_equal(np.array(lin(x)), np.array(first))
+
+
 def test_a_shape_the_kernel_does_not_take_stays_floats():
     blocks = np.zeros((6 * 2, 210), dtype=np.uint8)
     lin = linear(Tensor("odd", (6, 512), "Q6_K", blocks.reshape(-1)))  # six rows: not groups of four

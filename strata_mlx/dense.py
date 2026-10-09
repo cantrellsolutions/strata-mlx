@@ -7,6 +7,10 @@ output layer again by every guess of the draft head. A weight is `code * scale *
 of eight for 16 weights, a float16 `d` for 256. Kept as those three, a signed byte to a code, it is the same
 number in 8.56 bits.
 
+A chunk of a prompt (more than a window's tokens) multiplies as floats; those are made from the three parts at
+the first prompt and kept beside them, so the file's Q6_K layers are then held twice, and answers read the
+small form.
+
 A kernel on the file's blocks themselves reads 6.56 bits and was tried first (bench/experiments/e20, e21): a
 block interleaves the codes' bits, and undoing that for every weight costs more than the bytes it spares once a
 window has three tokens or more. In a pass of the IQ3_S model (e23), against float16, a byte a weight: 4.0 ms
@@ -61,7 +65,28 @@ def _source(tokens: int) -> str:
 {outs}"""
 
 
+# every weight as a float, for a chunk of a prompt: a thread writes the 16 weights of one scale
+_FLOATS = """
+    uint group = thread_position_in_grid.x, row = thread_position_in_grid.y;
+    float s = float(d[row * (COLS / D_STEP) + 16 * group / D_STEP]) * float(scales[row * (COLS / 16) + group]);
+    const device int8_t* c = codes + row * COLS + 16 * group;
+    auto o = out + row * COLS + 16 * group;
+    for (uint i = 0; i < 16; ++i) {
+        o[i] = static_cast<OutT>(s * float(c[i]));
+    }
+"""
+
 _kernels = {}
+_holding = []  # layers that hold their weights as floats as well, since a prompt was read
+
+
+def release():
+    """Let go of the float weights made for chunks of prompts. Nothing calls this by itself: made anew for
+    every prompt they are 3.3 GB of fresh memory each time (the IQ3_S file), and that, not working them out
+    (12 ms), made its prompts read a tenth slower (320 tok/s against 355 for 1,180 tokens)."""
+    for layer in _holding:
+        layer._floats = None
+    _holding.clear()
 
 
 def fits(rows: int, cols: int) -> bool:
@@ -76,6 +101,7 @@ class ScaledLinear:
         self.codes, self.scales, self.d = codes, scales, d
         self.output_dims, self.input_dims = codes.shape
         self.d_step = self.input_dims // d.shape[1]  # weights to a d: 256, or fewer where the inputs were reordered
+        self._floats = None
         if not fits(*codes.shape):
             raise ValueError(f"a layer of {codes.shape} does not fit the kernel")
 
@@ -84,16 +110,33 @@ class ScaledLinear:
         return self.codes.nbytes + self.scales.nbytes + self.d.nbytes
 
     def floats(self, dtype: mx.Dtype) -> mx.array:
-        """The weights (out, in), each rounded once to `dtype`."""
-        scale = mx.repeat(self.d.astype(mx.float32), self.d_step // 16, axis=1) * self.scales.astype(mx.float32)
-        return (self.codes.astype(mx.float32) * mx.repeat(scale, 16, axis=1)).astype(dtype)
+        """The weights (out, in), each worked out in float32 and rounded once to `dtype`. One kernel: as MLX
+        operations (the codes as floats, the scales spread out, their product, the rounding) it took half a
+        second for the Q6_K layers of the IQ3_S file, for every piece a prompt is read in, and that file's
+        prompts were read at 246 tok/s where they had been at 440."""
+        rows, cols = self.output_dims, self.input_dims
+        key = ("floats", cols, self.d_step)
+        if key not in _kernels:
+            header = f"constant uint COLS = {cols};\nconstant uint D_STEP = {self.d_step};\n"
+            _kernels[key] = mx.fast.metal_kernel(name="scaled_linear_floats", input_names=["codes", "scales", "d"],
+                                                 output_names=["out"], source=_FLOATS, header=header)
+        (out,) = _kernels[key](inputs=[self.codes, self.scales, self.d], template=[("OutT", dtype)],
+                               grid=(cols // 16, rows, 1), threadgroup=(32, 1, 1),
+                               output_shapes=[(rows, cols)], output_dtypes=[dtype])
+        return out
 
     def __call__(self, x: mx.array) -> mx.array:
         rows, cols = self.output_dims, self.input_dims
         lead, dtype = x.shape[:-1], x.dtype
         tokens = int(np.prod(lead))
         if tokens > MAX_TOKENS:
-            return x @ self.floats(dtype).T
+            # Chunks of prompts multiply as floats, MLX's product being what it is at many tokens. The floats
+            # are made at the first chunk and kept: 3.3 GB for the IQ3_S file beside the 1.8 GB that answers
+            # read of the same layers (the output layer never sees a chunk), 0.2 GB for the Q2_0 file.
+            if self._floats is None or self._floats.dtype != dtype:
+                self._floats = self.floats(dtype)
+                _holding.append(self)
+            return x @ self._floats.T
         x = x.reshape(tokens, cols)
         if tokens > 1:
             x = mx.contiguous(x.astype(mx.float32).T)
