@@ -1,7 +1,7 @@
 """Tokens a second of this engine against llama.cpp's server and LM Studio: one file, the same prompts.
 
 Each engine in turn loads the model alone, answers the four prompts of `spec_decode.py` (256 tokens each, the
-most likely token every time) and reads a prompt of about 1,600 tokens, and is stopped again; then the engines
+most likely token every time) and reads a prompt of 1,180 tokens, and is stopped again; then the engines
 once more in the opposite order, since this machine slows down under load (see quiet.py) and whoever runs
 first has it coolest. Every prompt goes in as text with its chat markers, so no engine's template is in play,
 and every engine reports its own timings: prompt and answer apart, nothing of HTTP in them.
@@ -37,7 +37,7 @@ def chat(user: str) -> str:
 
 
 def long_prompt(n: int) -> str:
-    """About 1,600 tokens, and different from the first token on each time, so that nothing of it is reused."""
+    """1,180 tokens, and different from the first token on each time, so that nothing of it is reused."""
     return chat(f"Review number {n}. Say in two sentences what this module is for.\n\n```python\n" + EDIT_ME * 4 + "```")
 
 
