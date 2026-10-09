@@ -1,0 +1,70 @@
+{
+ "device": "Apple M4 Max",
+ "mlx": "0.32.3",
+ "expert_bits": 2,
+ "dense_bits": 4,
+ "weights_gb": 40.7,
+ "build_s": 4.7,
+ "context": 1024,
+ "decode": [
+  {
+   "T": 1,
+   "step_ms": 29.72,
+   "graph_ms": 3.25,
+   "ms_per_token": 29.72,
+   "vs_T1": 1.0
+  },
+  {
+   "T": 2,
+   "step_ms": 29.97,
+   "graph_ms": 3.3,
+   "ms_per_token": 14.98,
+   "vs_T1": 1.01
+  },
+  {
+   "T": 3,
+   "step_ms": 36.69,
+   "graph_ms": 3.28,
+   "ms_per_token": 12.23,
+   "vs_T1": 1.23
+  },
+  {
+   "T": 4,
+   "step_ms": 41.52,
+   "graph_ms": 3.27,
+   "ms_per_token": 10.38,
+   "vs_T1": 1.4
+  },
+  {
+   "T": 6,
+   "step_ms": 52.52,
+   "graph_ms": 3.26,
+   "ms_per_token": 8.75,
+   "vs_T1": 1.77
+  },
+  {
+   "T": 8,
+   "step_ms": 61.3,
+   "graph_ms": 3.58,
+   "ms_per_token": 7.66,
+   "vs_T1": 2.06
+  }
+ ],
+ "prefill": [
+  {
+   "S": 512,
+   "tok_s": 485,
+   "peak_gb": 42.0
+  },
+  {
+   "S": 2048,
+   "tok_s": 566,
+   "peak_gb": 43.6
+  },
+  {
+   "S": 8192,
+   "tok_s": 455,
+   "peak_gb": 51.3
+  }
+ ]
+}

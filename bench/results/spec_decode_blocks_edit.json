@@ -1,0 +1,38 @@
+[
+ {
+  "prompt": "edit",
+  "engine": "one token a pass",
+  "prompt_tokens": 344,
+  "tokens": 310,
+  "tok_s": 43.2,
+  "tokens_per_pass": 1.0,
+  "guesses_kept": 0.0,
+  "lookup_passes": 0,
+  "passes": 309,
+  "same_as_first_until": 310
+ },
+ {
+  "prompt": "edit",
+  "engine": "draft head",
+  "prompt_tokens": 344,
+  "tokens": 310,
+  "tok_s": 92.5,
+  "tokens_per_pass": 3.96,
+  "guesses_kept": 0.99,
+  "lookup_passes": 0,
+  "passes": 78,
+  "same_as_first_until": 310
+ },
+ {
+  "prompt": "edit",
+  "engine": "draft head + lookup",
+  "prompt_tokens": 344,
+  "tokens": 310,
+  "tok_s": 115.9,
+  "tokens_per_pass": 6.57,
+  "guesses_kept": 0.97,
+  "lookup_passes": 32,
+  "passes": 47,
+  "same_as_first_until": 310
+ }
+]

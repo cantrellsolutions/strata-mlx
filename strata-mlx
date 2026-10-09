@@ -1,0 +1,4 @@
+#!/bin/sh
+# The engine as Strata's server starts it: strata-mlx --serve --native <shard 1 of the GGUF> [--mtp <folder>]
+here=$(cd "$(dirname "$0")" && pwd)
+PYTHONPATH="$here${PYTHONPATH:+:$PYTHONPATH}" exec "$here/.venv/bin/python" -m strata_mlx.serve "$@"

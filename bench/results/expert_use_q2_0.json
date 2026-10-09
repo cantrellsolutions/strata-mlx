@@ -1,0 +1,258 @@
+[
+ {
+  "resident": 1500,
+  "share": 0.061,
+  "fixed": {
+   "prose": {
+    "prompt": 418.0,
+    "answer": 437.6
+   },
+   "code": {
+    "prompt": 366.9,
+    "answer": 396.8
+   },
+   "reasoning": {
+    "prompt": 383.9,
+    "answer": 405.6
+   },
+   "edit": {
+    "prompt": 415.3,
+    "answer": 405.8
+   },
+   "chinese": {
+    "prompt": 409.4,
+    "answer": 410.9
+   },
+   "summary": {
+    "prompt": 439.6,
+    "answer": 421.4
+   },
+   "sql": {
+    "prompt": 386.2,
+    "answer": 391.4
+   }
+  },
+  "lru": {
+   "prose": {
+    "prompt": 227.3,
+    "answer": 201.2
+   },
+   "code": {
+    "prompt": 203.1,
+    "answer": 214.8
+   },
+   "reasoning": {
+    "prompt": 213.6,
+    "answer": 249.8
+   },
+   "edit": {
+    "prompt": 230.6,
+    "answer": 260.2
+   },
+   "chinese": {
+    "prompt": 225.6,
+    "answer": 201.6
+   },
+   "summary": {
+    "prompt": 236.2,
+    "answer": 241.4
+   },
+   "sql": {
+    "prompt": 184.9,
+    "answer": 215.9
+   }
+  }
+ },
+ {
+  "resident": 3000,
+  "share": 0.122,
+  "fixed": {
+   "prose": {
+    "prompt": 360.8,
+    "answer": 385.8
+   },
+   "code": {
+    "prompt": 285.0,
+    "answer": 322.6
+   },
+   "reasoning": {
+    "prompt": 319.6,
+    "answer": 344.6
+   },
+   "edit": {
+    "prompt": 377.5,
+    "answer": 351.1
+   },
+   "chinese": {
+    "prompt": 352.7,
+    "answer": 356.5
+   },
+   "summary": {
+    "prompt": 394.3,
+    "answer": 359.0
+   },
+   "sql": {
+    "prompt": 322.1,
+    "answer": 329.2
+   }
+  },
+  "lru": {
+   "prose": {
+    "prompt": 182.9,
+    "answer": 125.2
+   },
+   "code": {
+    "prompt": 160.9,
+    "answer": 136.1
+   },
+   "reasoning": {
+    "prompt": 148.0,
+    "answer": 169.4
+   },
+   "edit": {
+    "prompt": 147.0,
+    "answer": 174.0
+   },
+   "chinese": {
+    "prompt": 178.9,
+    "answer": 119.8
+   },
+   "summary": {
+    "prompt": 162.1,
+    "answer": 166.2
+   },
+   "sql": {
+    "prompt": 134.8,
+    "answer": 136.9
+   }
+  }
+ },
+ {
+  "resident": 6000,
+  "share": 0.244,
+  "fixed": {
+   "prose": {
+    "prompt": 266.9,
+    "answer": 298.0
+   },
+   "code": {
+    "prompt": 189.0,
+    "answer": 210.4
+   },
+   "reasoning": {
+    "prompt": 232.9,
+    "answer": 257.2
+   },
+   "edit": {
+    "prompt": 315.6,
+    "answer": 269.3
+   },
+   "chinese": {
+    "prompt": 269.7,
+    "answer": 266.8
+   },
+   "summary": {
+    "prompt": 310.2,
+    "answer": 260.4
+   },
+   "sql": {
+    "prompt": 231.6,
+    "answer": 235.9
+   }
+  },
+  "lru": {
+   "prose": {
+    "prompt": 134.6,
+    "answer": 43.4
+   },
+   "code": {
+    "prompt": 109.6,
+    "answer": 57.5
+   },
+   "reasoning": {
+    "prompt": 107.3,
+    "answer": 72.5
+   },
+   "edit": {
+    "prompt": 74.3,
+    "answer": 95.0
+   },
+   "chinese": {
+    "prompt": 137.4,
+    "answer": 48.0
+   },
+   "summary": {
+    "prompt": 78.3,
+    "answer": 82.0
+   },
+   "sql": {
+    "prompt": 92.3,
+    "answer": 65.9
+   }
+  }
+ },
+ {
+  "resident": 12000,
+  "share": 0.488,
+  "fixed": {
+   "prose": {
+    "prompt": 147.2,
+    "answer": 190.6
+   },
+   "code": {
+    "prompt": 75.9,
+    "answer": 82.0
+   },
+   "reasoning": {
+    "prompt": 114.1,
+    "answer": 122.7
+   },
+   "edit": {
+    "prompt": 183.7,
+    "answer": 150.2
+   },
+   "chinese": {
+    "prompt": 165.2,
+    "answer": 156.3
+   },
+   "summary": {
+    "prompt": 176.8,
+    "answer": 131.3
+   },
+   "sql": {
+    "prompt": 100.5,
+    "answer": 99.2
+   }
+  },
+  "lru": {
+   "prose": {
+    "prompt": 71.9,
+    "answer": 15.1
+   },
+   "code": {
+    "prompt": 50.8,
+    "answer": 15.4
+   },
+   "reasoning": {
+    "prompt": 54.9,
+    "answer": 19.4
+   },
+   "edit": {
+    "prompt": 27.3,
+    "answer": 39.8
+   },
+   "chinese": {
+    "prompt": 83.2,
+    "answer": 19.1
+   },
+   "summary": {
+    "prompt": 18.0,
+    "answer": 18.7
+   },
+   "sql": {
+    "prompt": 39.1,
+    "answer": 19.3
+   }
+  }
+ }
+]

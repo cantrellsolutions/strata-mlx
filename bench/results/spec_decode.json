@@ -1,0 +1,50 @@
+[
+ {
+  "prompt": "prose",
+  "prompt_tokens": 27,
+  "tokens": 256,
+  "plain_tok_s": 32.2,
+  "spec_tok_s": 56.4,
+  "speedup": 1.75,
+  "tokens_per_pass": 2.87,
+  "guess_right": [
+   0.78,
+   0.61,
+   0.48
+  ],
+  "same_until": 178,
+  "spec_tokens": 256
+ },
+ {
+  "prompt": "code",
+  "prompt_tokens": 31,
+  "tokens": 256,
+  "plain_tok_s": 34.3,
+  "spec_tok_s": 59.0,
+  "speedup": 1.72,
+  "tokens_per_pass": 3.15,
+  "guess_right": [
+   0.87,
+   0.71,
+   0.57
+  ],
+  "same_until": 53,
+  "spec_tokens": 256
+ },
+ {
+  "prompt": "reasoning",
+  "prompt_tokens": 49,
+  "tokens": 256,
+  "plain_tok_s": 34.4,
+  "spec_tok_s": 76.5,
+  "speedup": 2.22,
+  "tokens_per_pass": 3.7,
+  "guess_right": [
+   0.96,
+   0.9,
+   0.84
+  ],
+  "same_until": 43,
+  "spec_tokens": 256
+ }
+]

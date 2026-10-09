@@ -1,0 +1,24 @@
+[project]
+name = "strata-mlx"
+version = "0.0.1"
+description = "Qwen3.8-Flash-Next on Apple Silicon: an MLX engine that speaks Strata's line protocol"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "mlx>=0.32.1",
+    # the qwen4_exp model port (ml-explore/mlx-lm#1788, not merged), pinned to its head
+    "mlx-lm @ git+https://github.com/eauchs/mlx-lm@2097324ed04ff76078366c77148b88b9db612ba2",
+    "numpy",
+    "gguf>=0.19.0",  # ggml's codebook tables
+]
+
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

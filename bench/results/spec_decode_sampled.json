@@ -1,0 +1,74 @@
+[
+ {
+  "prompt": "prose",
+  "engine": "one token a pass",
+  "prompt_tokens": 27,
+  "tokens": 256,
+  "tok_s": 33.1,
+  "tokens_per_pass": 1.0,
+  "guesses_kept": 0.0,
+  "lookup_passes": 0,
+  "passes": 255,
+  "same_as_first_until": 256
+ },
+ {
+  "prompt": "prose",
+  "engine": "draft head",
+  "prompt_tokens": 27,
+  "tokens": 256,
+  "tok_s": 52.2,
+  "tokens_per_pass": 2.83,
+  "guesses_kept": 0.62,
+  "lookup_passes": 0,
+  "passes": 90,
+  "same_as_first_until": 103
+ },
+ {
+  "prompt": "prose",
+  "engine": "draft head + lookup",
+  "prompt_tokens": 27,
+  "tokens": 256,
+  "tok_s": 58.2,
+  "tokens_per_pass": 2.83,
+  "guesses_kept": 0.62,
+  "lookup_passes": 0,
+  "passes": 90,
+  "same_as_first_until": 103
+ },
+ {
+  "prompt": "reasoning",
+  "engine": "one token a pass",
+  "prompt_tokens": 49,
+  "tokens": 256,
+  "tok_s": 33.3,
+  "tokens_per_pass": 1.0,
+  "guesses_kept": 0.0,
+  "lookup_passes": 0,
+  "passes": 255,
+  "same_as_first_until": 256
+ },
+ {
+  "prompt": "reasoning",
+  "engine": "draft head",
+  "prompt_tokens": 49,
+  "tokens": 256,
+  "tok_s": 70.7,
+  "tokens_per_pass": 3.49,
+  "guesses_kept": 0.83,
+  "lookup_passes": 0,
+  "passes": 73,
+  "same_as_first_until": 256
+ },
+ {
+  "prompt": "reasoning",
+  "engine": "draft head + lookup",
+  "prompt_tokens": 49,
+  "tokens": 256,
+  "tok_s": 70.6,
+  "tokens_per_pass": 3.49,
+  "guesses_kept": 0.82,
+  "lookup_passes": 1,
+  "passes": 73,
+  "same_as_first_until": 256
+ }
+]

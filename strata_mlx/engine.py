@@ -1,0 +1,560 @@
+"""Decoding with draft-and-verify, and a conversation that is read only once.
+
+A step pushes a window of tokens through the trunk at once: the last token that is certain, then a few guesses
+for the ones after it. The trunk's own choice after each row says whether the next guess was right; the run of
+right guesses is kept, and the state is set to exactly what decoding those tokens one by one would have left.
+
+What keeping a prefix of n of the window's T tokens takes, per kind of state:
+
+    attention K/V and indexer keys   appended by the pass; drop the last T - n
+    delta-net convolution history    a slice of the pass's convolution input
+    delta-net recurrent state        the recurrence run again over the first n tokens, from inputs the pass kept
+    n-gram convolution history       a slice, rebuilt from the state before and after the pass
+
+The recurrent state cannot be cut back, so going back in a conversation needs a checkpoint: a copy of the small
+states (113 MB) at a position. The attention caches are cut to that position, and reading resumes from there.
+Checkpoints are taken while a prompt is read: before its last message boundaries and before its last token, which
+is where a follow-up request usually parts from this one.
+"""
+
+import errno
+import json
+import os
+import shutil
+import time
+from dataclasses import dataclass, field
+
+import mlx.core as mx
+import mlx.nn as nn
+from mlx_lm.models import qwen4_exp
+from mlx_lm.models.base import create_attention_mask
+from mlx_lm.models.gated_delta import gated_delta_update
+
+from .drafting import MAX_WINDOW, Lookup, Policy
+from .fused import FusedResidual, PlainResidual
+from .mtp import Mtp
+from .sampler import Sampling, history_counts, penalize, pick, uniform
+
+TURN_TOKEN = 248045  # <|im_start|>
+PERIODIC = 16384
+SESSION_FORMAT = "strata-mlx session 1"
+
+
+def _arrays(tree):
+    if isinstance(tree, mx.array):
+        yield tree
+    elif isinstance(tree, (list, tuple)):
+        for t in tree:
+            yield from _arrays(t)
+
+
+class _Slot:
+    """The one slot of the port's layer cache that its n-gram layer reads and writes."""
+
+    lengths = None
+
+    def __init__(self, value):
+        self.value = value
+
+    def __getitem__(self, _):
+        return self.value
+
+    def __setitem__(self, _, value):
+        self.value = value
+
+
+@dataclass
+class _Window:
+    ids: mx.array
+    residual: mx.array  # (1, T, hc * d): what the draft head reads
+    gdn: list  # per delta-net layer: (convolution input, q, k, v, a, b, recurrent state after all T)
+    ple_conv: mx.array | None
+
+
+@dataclass
+class _Checkpoint:
+    at: int  # tokens decoded
+    gdn: dict
+    ple_conv: mx.array | None
+    context: mx.array
+
+
+@dataclass
+class Stats:
+    steps: int = 0
+    tokens: int = 0
+    drafted: int = 0
+    accepted: int = 0
+    lookup_steps: int = 0
+    by_position: list = field(default_factory=lambda: [0] * MAX_WINDOW)
+
+
+class Engine:
+    def __init__(self, model: qwen4_exp.Model, mtp: Mtp | None = None, drafts: int = 3, lookup: bool = False,
+                 chunk: int = 2048, checkpoints: int = 8, turn_token: int = TURN_TOKEN, fused: bool = True,
+                 fuse_upto: int = 2):
+        self.model, self.m, self.mtp = model, model.model, mtp
+        self.drafts = drafts if mtp is not None else 0
+        self.chunk, self.max_checkpoints, self.turn_token = chunk, checkpoints, turn_token
+        self.vocab = self.m.args.vocab_size
+        self.eos = self.m.args.eos_token_id
+        self.gdn_layers = [i for i, l in enumerate(self.m.layers) if l.layer_type == "linear_attention"]
+        self.lookup = Lookup() if lookup else None
+        self.paged = getattr(model, "expert_store", None) is not None
+        self.fuse_upto = fuse_upto  # windows up to this many tokens use the fused hyper-connection kernels
+        self.fused = self._fuse() if fused else None
+        self.policy = Policy()
+        self.timed_sizes = set()
+        self.sampling = Sampling()
+        self.identity = ""  # names the model files; a session saved under another name is not restored
+        self.reset()
+
+    def reset(self):
+        self.attn = {i: qwen4_exp._AttnCache() for i, l in enumerate(self.m.layers) if l.layer_type != "linear_attention"}
+        self.gdn = {i: self._gdn_start(self.m.layers[i].linear_attn) for i in self.gdn_layers}
+        self.ple_conv = None
+        self.context = mx.full((1, self.m.args.ngram_size - 1), self.eos, dtype=mx.int32)
+        self.mtp_cache = self.mtp.make_cache() if self.mtp is not None else None
+        self.tokens = []  # decoded into the state
+        self.next_token = None  # decided, not decoded yet
+        self.guesses = []
+        self.checkpoints = []
+        self.stats = Stats()
+        if self.lookup:
+            self.lookup.reset()
+
+    # ---- the trunk
+
+    def _gdn_start(self, la):
+        """(convolution history, recurrent state) of a delta-net layer that has read nothing."""
+        dtype = la.conv1d.weight.dtype
+        return (mx.zeros((1, la.conv_kernel_size - 1, la.conv_dim), dtype=dtype),
+                mx.zeros((1, la.n_v, la.dv, la.dk), dtype=mx.float32))
+
+    def _gdn(self, la, x, state):
+        conv_state, recurrent = state
+        B, S, _ = x.shape
+        mixed = la.in_proj_qkv(x)
+        z = la.in_proj_z(x).reshape(B, S, la.n_v, la.dv)
+        b, a = la.in_proj_b(x), la.in_proj_a(x)
+        conv_input = mx.concatenate([conv_state, mixed], axis=1)
+        q, k, v = mx.split(nn.silu(la.conv1d(conv_input)), [la.key_dim, 2 * la.key_dim], axis=-1)
+        q = q.reshape(B, S, la.n_k, la.dk)
+        k = k.reshape(B, S, la.n_k, la.dk)
+        v = v.reshape(B, S, la.n_v, la.dv)
+        inv_scale = la.dk**-0.5
+        q = (inv_scale**2) * mx.fast.rms_norm(q, None, 1e-6)
+        k = inv_scale * mx.fast.rms_norm(k, None, 1e-6)
+        out, after = gated_delta_update(q, k, v, a, b, la.A_log, la.dt_bias, recurrent, None)
+        y = la.out_proj(la.norm(out, z).reshape(B, S, -1))
+        return y, (conv_input, q, k, v, a, b, after)
+
+    # A pass is thousands of small kernels, and it is their number that it costs, not their work. Two things cut
+    # the number. The hyper-connections are two kernels each (fused.py), with the write of the block before
+    # folded in: the residual travels as (before, out, inject) and is only put together inside those kernels.
+    # And the parts of a layer that are plain functions of arrays are compiled, which merges runs of elementwise
+    # operations into one kernel each. Attention is not compiled: its caches grow with every token, and a
+    # compiled function is tied to the shapes it was traced with.
+
+    @staticmethod
+    def _write(before, out, inject):
+        return before + (out[..., None, :] * inject[..., None]).reshape(*out.shape[:-1], -1)
+
+    def _hc(self, key, tokens: int):
+        return self.hc[key][0 if tokens <= self.fuse_upto else 1]
+
+    def _mix_block(self, i, before, out, inject, conv_state, recurrent):
+        """A delta-net layer's first half -> (residual, the mixer's output, its inject, what _commit needs)."""
+        layer = self.m.layers[i]
+        x, residual, inject = self._hc((i, 0), before.shape[1])(before, out, inject)
+        x, record = self._gdn(layer.linear_attn, x, (conv_state, recurrent))
+        return (residual, x, inject, *record)
+
+    def _ffn_block(self, i, before, out, inject):
+        """Any layer's second half -> (residual, the experts' output, its inject)."""
+        x, residual, inject = self._hc((i, 1), before.shape[1])(before, out, inject)
+        return residual, self.m.layers[i].mlp(x), inject
+
+    def _fuse(self):
+        m = self.m
+        parts = {(i, 0): l.attn_hyper_connection for i, l in enumerate(m.layers)}
+        parts.update({(i, 1): l.mlp_hyper_connection for i, l in enumerate(m.layers)})
+        parts["out"] = m.hyper_connection_mixer
+        self.hc = {key: (FusedResidual(gr), PlainResidual(gr)) for key, gr in parts.items()}
+        # experts read from the SSD (paged.py) stop at every layer for the router's choice: not a function to compile
+        paged = self.paged
+        return {i: (mx.compile(lambda *a, i=i: self._mix_block(i, *a)) if i in self.gdn_layers else None,
+                    (lambda *a, i=i: self._ffn_block(i, *a)) if paged else mx.compile(lambda *a, i=i: self._ffn_block(i, *a)))
+                for i in range(len(m.layers))}
+
+    def _forward(self, ids: mx.array, last_only: bool = False):
+        """ids (1, T) -> (logits, the window). Attention caches grow by T; nothing else changes.
+
+        Logits are (1, T, vocab), or (1, 1, vocab) for the last token when the others are not needed: a chunk
+        of a prompt, which is always kept whole.
+        """
+        return self._forward_plain(ids, last_only) if self.fused is None else self._forward_fused(ids, last_only)
+
+    def _record(self, i: int, record: tuple, whole: bool) -> tuple:
+        """What a delta-net layer leaves for the commit. Kept whole, a window needs none of what cutting it back
+        takes: the q, k and v of every token, 36 layers of them, were 3 GB for 1,500 tokens of prompt, held
+        through the pass."""
+        if not whole:
+            return tuple(record)
+        taps = self.m.layers[i].linear_attn.conv_kernel_size - 1
+        tail = self._rows(record[0], record[0].shape[1] - taps, taps)
+        if self.paged:  # the pass stops at every layer anyway: let go of the rest now, not at the end
+            mx.eval(tail, record[6])
+        return (tail, None, None, None, None, None, record[6])
+
+    @staticmethod
+    def _rows(x: mx.array, start: int, count: int) -> mx.array:
+        """x[:, start : start + count] in memory of its own. A slice shares its source's memory and keeps all of
+        it: the few rows of convolution history kept from a 1,500-token chunk held 31 MB a layer, 1.1 GB in all,
+        for as long as the conversation stood there."""
+        return mx.take(x, mx.arange(start, start + count), axis=1)
+
+    def _forward_fused(self, ids: mx.array, last_only: bool = False):
+        m, T = self.m, ids.shape[1]
+        before = mx.tile(m.embed_tokens(ids), (1, 1, m.hc))
+        mask = create_attention_mask(before, next(iter(self.attn.values())))
+        nothing = (mx.zeros((1, T, m.args.hidden_size), dtype=before.dtype), mx.zeros((1, T, m.hc), dtype=before.dtype))
+        out, inject = nothing
+        records, ple_conv = [], None
+        # a compiled function is traced once for each shape it meets: for windows, not for a prompt's odd lengths
+        compiled = T <= MAX_WINDOW
+        for i, layer in enumerate(m.layers):
+            if layer.ple is not None:
+                slot = _Slot(self.ple_conv)
+                h = self._write(before, out, inject)
+                before, (out, inject) = h + layer.ple(h, ids, self.context, slot), nothing
+                ple_conv = slot.value
+            first, second = self.fused[i]
+            if i in self.gdn:
+                before, out, inject, *record = (first(before, out, inject, *self.gdn[i]) if compiled
+                                                else self._mix_block(i, before, out, inject, *self.gdn[i]))
+                records.append(self._record(i, record, last_only))
+            else:
+                x, before, inject = self._hc((i, 0), T)(before, out, inject)
+                out = layer.self_attn(x, m.rope, mask, self.attn[i], self.attn[i].indexer)
+            before, out, inject = (second(before, out, inject) if compiled
+                                   else self._ffn_block(i, before, out, inject))
+        x, residual, _ = self._hc("out", T)(before, out, inject)
+        logits = self.model.lm_head(x[:, -1:] if last_only else x)
+        return logits, _Window(ids, residual, records, ple_conv)
+
+    def _forward_plain(self, ids: mx.array, last_only: bool = False):
+        """The same pass in the model's own operations: the reference the fused one is tested against."""
+        m = self.m
+        h = mx.tile(m.embed_tokens(ids), (1, 1, m.hc))
+        mask = create_attention_mask(h, next(iter(self.attn.values())))
+        records, ple_conv = [], None
+        for i, layer in enumerate(m.layers):
+            if layer.ple is not None:
+                slot = _Slot(self.ple_conv)
+                h = h + layer.ple(h, ids, self.context, slot)
+                ple_conv = slot.value
+            x, hyper, inject = layer.attn_hyper_connection(h)
+            if i in self.gdn:
+                x, record = self._gdn(layer.linear_attn, x, self.gdn[i])
+                records.append(self._record(i, record, last_only))
+            else:
+                x = layer.self_attn(x, m.rope, mask, self.attn[i], self.attn[i].indexer)
+            h = self._write(hyper, x, inject)
+            x, hyper, inject = layer.mlp_hyper_connection(h)
+            h = self._write(hyper, layer.mlp(x), inject)
+        logits = self.model.lm_head(m.hyper_connection_mixer(h[:, -1:] if last_only else h))
+        return logits, _Window(ids, h, records, ple_conv)
+
+    def _commit(self, w: _Window, n: int):
+        """Keep the first n tokens of the window."""
+        T = w.ids.shape[1]
+        for cache in self.attn.values():
+            cache.trim(T - n)
+        for i, (conv_input, q, k, v, a, b, after) in zip(self.gdn_layers, w.gdn):
+            la = self.m.layers[i].linear_attn
+            taps = la.conv_kernel_size - 1
+            if n == T:
+                recurrent = after
+            elif q is None:
+                raise ValueError("a chunk of a prompt can only be kept whole")
+            else:
+                recurrent = gated_delta_update(q[:, :n], k[:, :n], v[:, :n], a[:, :n], b[:, :n],
+                                               la.A_log, la.dt_bias, self.gdn[i][1], None)[1]
+            self.gdn[i] = (conv_input if q is None else self._rows(conv_input, n, taps), recurrent)
+        if w.ple_conv is not None:
+            taps = w.ple_conv.shape[1]
+            if n == T:
+                self.ple_conv = w.ple_conv
+            elif T <= taps:
+                before = self.ple_conv if self.ple_conv is not None else mx.zeros_like(w.ple_conv)
+                self.ple_conv = mx.concatenate([before[:, n:], w.ple_conv[:, taps - T : taps - T + n]], axis=1)
+            else:
+                raise ValueError(f"a window of {T} tokens can only be kept whole")
+        ctx = self.context.shape[1]
+        self.context = mx.concatenate([self.context, w.ids.astype(self.context.dtype)], axis=1)[:, n : n + ctx]
+        mx.eval(*_arrays([self.context, self.ple_conv, list(self.gdn.values()),
+                          [(c.keys, c.values, c.indexer.keys) for c in self.attn.values()]]))
+        kept = w.ids[0, :n].tolist()
+        self.tokens += kept
+        if self.lookup:
+            self.lookup.extend(kept)
+
+    def warm(self):
+        """Run a pass of every window size once, so that no request waits for kernels to be compiled."""
+        for T in range(1, MAX_WINDOW + 1):
+            logits, w = self._forward(mx.zeros((1, T), dtype=mx.int32))
+            mx.eval(logits, *_arrays([list(w.gdn), w.ple_conv, w.residual]))
+            for cache in self.attn.values():
+                cache.trim(T)
+            self.timed_sizes.add(T)
+
+    # ---- going back
+
+    def _checkpoint(self):
+        if self.checkpoints and self.checkpoints[-1].at == len(self.tokens):
+            return
+        self.checkpoints.append(_Checkpoint(len(self.tokens), dict(self.gdn), self.ple_conv, self.context))
+        del self.checkpoints[: -self.max_checkpoints]
+
+    def _restore(self, cp: _Checkpoint):
+        back = len(self.tokens) - cp.at
+        for cache in self.attn.values():
+            cache.trim(back)
+        if self.mtp_cache is not None:
+            self.mtp_cache.trim(back)
+        self.gdn, self.ple_conv, self.context = dict(cp.gdn), cp.ple_conv, cp.context
+        del self.tokens[cp.at :]
+        self.checkpoints = [c for c in self.checkpoints if c.at <= cp.at]
+        if self.lookup:
+            self.lookup.truncate(cp.at)
+
+    # ---- a conversation on disk
+
+    def _small(self, prefix: str, gdn: dict, ple_conv, context) -> dict:
+        """The states that cannot be cut back, as named arrays: what a checkpoint holds."""
+        out = {f"{prefix}context": context}
+        if ple_conv is not None:
+            out[f"{prefix}ple_conv"] = ple_conv
+        for i, (conv, recurrent) in gdn.items():
+            out[f"{prefix}gdn.{i}.conv"], out[f"{prefix}gdn.{i}.state"] = conv, recurrent
+        return out
+
+    def save(self, path: str) -> int:
+        """Write the conversation the state holds to `path`, replacing it only once it is whole. Returns its size."""
+        arrays = {"tokens": mx.array(self.tokens, dtype=mx.int32), **self._small("", self.gdn, self.ple_conv, self.context)}
+        caches = {f"attn.{i}": c for i, c in self.attn.items()}
+        if self.mtp_cache is not None:
+            caches["mtp"] = self.mtp_cache
+        for name, cache in caches.items():
+            if cache.keys is not None:
+                arrays[f"{name}.keys"], arrays[f"{name}.values"], arrays[f"{name}.index"] = cache.state
+        for j, cp in enumerate(self.checkpoints):
+            arrays.update(self._small(f"cp.{j}.", cp.gdn, cp.ple_conv, cp.context))
+        meta = {"format": SESSION_FORMAT, "model": self.identity, "draft_head": str(int(self.mtp is not None)),
+                "checkpoints": json.dumps([cp.at for cp in self.checkpoints])}
+        tmp = path + ".tmp.safetensors"  # MLX adds the extension itself
+        size = sum(a.nbytes for a in arrays.values())
+        if shutil.disk_usage(os.path.dirname(os.path.abspath(path))).free < size + (64 << 20):
+            raise OSError(errno.ENOSPC, f"a session of {size >> 20} MiB does not fit on the disk")
+        try:
+            mx.save_safetensors(path + ".tmp", arrays, metadata=meta)
+        except RuntimeError as e:  # how MLX reports a file it could not write
+            if os.path.exists(tmp):
+                os.remove(tmp)
+            raise OSError(errno.EIO, str(e)) from None
+        os.replace(tmp, path)
+        return os.path.getsize(path)
+
+    def restore(self, path: str) -> int:
+        """Take the conversation in `path` as the state. Returns its size; raises ValueError for a file that is
+        not a session of this model, and leaves the state as it was."""
+        size = os.path.getsize(path)
+        try:
+            arrays, meta = mx.load(path, format="safetensors", return_metadata=True)
+        except (RuntimeError, ValueError) as e:
+            raise ValueError(f"not a session file: {e}") from None
+        if meta.get("format") != SESSION_FORMAT:
+            raise ValueError("not a session file of this engine")
+        if meta.get("model") != self.identity or meta.get("draft_head") != str(int(self.mtp is not None)):
+            raise ValueError("the session was saved with other model files")
+        try:
+            tokens = arrays["tokens"].tolist()
+            n = len(tokens)
+
+            def small(prefix):
+                gdn = {i: (arrays[f"{prefix}gdn.{i}.conv"], arrays[f"{prefix}gdn.{i}.state"]) for i in self.gdn_layers}
+                for i, pair in gdn.items():
+                    if [a.shape for a in pair] != [a.shape for a in self._gdn_start(self.m.layers[i].linear_attn)]:
+                        raise ValueError("a state of another model's shape")
+                return gdn, arrays.get(f"{prefix}ple_conv"), arrays[f"{prefix}context"]
+
+            def cache(name, new):
+                c = new()
+                if n:
+                    c.state = arrays[f"{name}.keys"], arrays[f"{name}.values"], arrays[f"{name}.index"]
+                    if c.offset != n:
+                        raise ValueError("a cache that does not match the tokens")
+                return c
+
+            gdn, ple_conv, context = small("")
+            attn = {i: cache(f"attn.{i}", qwen4_exp._AttnCache) for i in self.attn}
+            mtp_cache = cache("mtp", self.mtp.make_cache) if self.mtp is not None else None
+            checkpoints = [_Checkpoint(at, *small(f"cp.{j}.")) for j, at in enumerate(json.loads(meta["checkpoints"]))]
+            if any(not 0 <= cp.at <= n for cp in checkpoints):
+                raise ValueError("a checkpoint past the end")
+        except (KeyError, TypeError) as e:
+            raise ValueError(f"an incomplete session file ({e})") from None
+        mx.eval(*arrays.values())  # all of it now: the file may be written again before the state is used
+        self.reset()
+        self.tokens, self.gdn, self.ple_conv, self.context = tokens, gdn, ple_conv, context
+        self.attn, self.mtp_cache, self.checkpoints = attn, mtp_cache, checkpoints
+        if self.lookup:
+            self.lookup.extend(tokens)
+        return size
+
+    def resume(self, prompt: list) -> int:
+        """Bring the state to the longest prefix of `prompt` it can reach; returns how many tokens that is."""
+        self.next_token, self.guesses = None, []
+        same = 0
+        while same < min(len(prompt) - 1, len(self.tokens)) and prompt[same] == self.tokens[same]:
+            same += 1
+        if same == len(self.tokens):
+            return same
+        cp = max((c for c in self.checkpoints if c.at <= same), key=lambda c: c.at, default=None)
+        if cp is None:
+            self.reset()
+            return 0
+        self._restore(cp)
+        return cp.at
+
+    def _cuts(self, prompt: list, start: int) -> list:
+        """Where to checkpoint while reading prompt[start:]: token counts at which a follow-up may part from it."""
+        n = len(prompt)
+        turns = [i for i in range(start + 1, n) if prompt[i] == self.turn_token][-2:]
+        periodic = list(range((start // PERIODIC + 1) * PERIODIC, n, PERIODIC))
+        return sorted({*turns, *periodic, n - 1} - {start, 0})
+
+    # ---- the draft head
+
+    def _cells(self, residual: mx.array, following: mx.array):
+        """Add the cells of positions just decoded: their residuals, and the token after each."""
+        return self.mtp(residual, self.m.embed_tokens(following), self.m.rope, self.mtp_cache)
+
+    def _draft(self, residual: mx.array, following: mx.array) -> list:
+        """The real cells of the positions just decoded, then guesses for the tokens after the pending one.
+
+        The guesses' own cells are speculative and are dropped again; the real ones stay in the head's cache.
+        When the request samples, each guess is drawn with the number the trunk will use for that token.
+        """
+        m, cache, s = self.m, self.mtp_cache, self.sampling
+        first = len(self.tokens) + 1  # the index of the token the first guess stands for
+
+        def guess(x, j):
+            return pick(self.model.lm_head(x)[0], mx.array([uniform(s.seed, first + j)]), s)[None]
+
+        x, r = self._cells(residual, following)
+        g = guess(x[:, -1:], 0)
+        guesses, r = [g], r[:, -1:]
+        for j in range(1, self.drafts):
+            x, r = self.mtp(r, m.embed_tokens(g), m.rope, cache)
+            g = guess(x, j)
+            guesses.append(g)
+        out = mx.concatenate(guesses, axis=1)
+        mx.eval(out)
+        cache.trim(self.drafts - 1)
+        mx.eval(*_arrays([cache.keys, cache.values, cache.indexer.keys]))
+        return out[0].tolist()
+
+    # ---- decoding
+
+    def _choose(self, logits: mx.array, window: list, history: list | None = None) -> list:
+        """logits (T, vocab) -> the trunk's token after each row of the window, which follows `history`."""
+        s = self.sampling
+        history = self.tokens if history is None else history
+        if s.penalties:
+            logits = penalize(logits.astype(mx.float32),
+                              history_counts(history, window, self.vocab, s.penalty_last_n), s)
+        base = len(history) + 1  # row t decides the token at index base + t
+        u = mx.array([uniform(s.seed, base + t) for t in range(len(window))])
+        out = pick(logits, u, s)
+        mx.eval(out)
+        return out.tolist()
+
+    def read(self, prompt: list, on_chunk=None) -> int:
+        """Read prompt[len(self.tokens):] into the state; returns the first token of the answer."""
+        start, n = len(self.tokens), len(prompt)
+        self.next_token, self.guesses = None, []
+        cuts = self._cuts(prompt, start)
+        a = start
+        for b in sorted({*cuts, *range(start + self.chunk, n, self.chunk), n}):
+            if b <= a:
+                continue
+            logits, w = self._forward(mx.array([prompt[a:b]]), last_only=True)
+            if b == n:
+                self.next_token = self._choose(logits[0], prompt[-1:], prompt[:-1])[0]
+            else:
+                mx.eval(logits)
+            self._commit(w, b - a)
+            if b == n:
+                if self.drafts:
+                    self.guesses = self._draft(w.residual, mx.array([prompt[a + 1 :] + [self.next_token]]))
+            elif self.drafts:
+                self._cells(w.residual, mx.array([prompt[a + 1 : b + 1]]))
+                mx.eval(*_arrays([self.mtp_cache.keys, self.mtp_cache.values, self.mtp_cache.indexer.keys]))
+            if b in cuts:
+                self._checkpoint()
+            if on_chunk:
+                on_chunk(b, n)
+            a = b
+        return self.next_token
+
+    def prefill(self, prompt: list) -> int:
+        """Read a prompt into an empty conversation; returns the first token of the answer."""
+        return self.read(prompt)
+
+    def step(self, limit: int = MAX_WINDOW, stop: tuple = ()) -> list:
+        """One pass of the trunk. Returns the tokens it settled, the last of which is not decoded yet.
+
+        At most `limit` tokens, and nothing after a token in `stop`: the state never runs ahead of the answer,
+        so the next request, which continues from this answer, finds it as it left it.
+        """
+        t0 = time.perf_counter()
+        guesses, from_lookup, match = self.guesses, False, 0
+        if self.lookup:
+            found, match = self.lookup.propose([self.next_token], MAX_WINDOW - 1)
+            if found and (not guesses or found[0] == guesses[0]):
+                k = self.policy.choose(len(guesses) + 1, len(found), match)
+                if k:
+                    guesses, from_lookup = found[:k], True
+        window = [self.next_token, *guesses][: max(1, limit)]
+        T = len(window)
+        logits, w = self._forward(mx.array([window]))
+        choice = self._choose(logits[0], window)
+        kept = 0
+        while kept < T - 1 and window[kept + 1] == choice[kept] and choice[kept] not in stop:
+            kept += 1
+        n = kept + 1
+        self._commit(w, n)
+        settled = choice[:n]
+        self.next_token = settled[-1]
+        s = self.stats
+        s.steps, s.tokens, s.drafted, s.accepted = s.steps + 1, s.tokens + n, s.drafted + T - 1, s.accepted + kept
+        s.lookup_steps += from_lookup
+        s.by_position[kept] += 1
+        if self.drafts:
+            self.guesses = self._draft(w.residual[:, :n], mx.array([settled]))
+        if T in self.timed_sizes:
+            self.policy.observe(T, (time.perf_counter() - t0) * 1e3, kept, from_lookup, match)
+        self.timed_sizes.add(T)  # a size's first pass includes compiling its kernels: not a time to learn from
+        return settled
+
+    def generate(self, prompt: list, max_tokens: int, stop: tuple = (), sampling: Sampling | None = None) -> list:
+        """A whole request, reusing what the state already holds of `prompt`."""
+        self.sampling = sampling or Sampling()
+        self.resume(prompt)
+        self.stats = Stats()
+        out = [self.read(prompt)]
+        while len(out) < max_tokens and out[-1] not in stop:
+            out += self.step(max_tokens - len(out), stop)
+        return out
