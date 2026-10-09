@@ -43,10 +43,60 @@ class PleTable(nn.Module):
         self._rows = t.data.reshape(t.shape[0], -1)
 
     def __call__(self, gid: mx.array) -> mx.array:
-        b = self._rows[np.array(gid).reshape(-1)].reshape(-1, 18)
+        return self.read(np.array(gid))
+
+    def read(self, gid: np.ndarray) -> mx.array:
+        b = self._rows[gid.reshape(-1)].reshape(-1, 18)
         d = b[:, :2].copy().view("<f2").astype(np.float32)
         nib = np.concatenate([b[:, 2:] & 15, b[:, 2:] >> 4], axis=1)
         return mx.array((KVALUES_IQ4NL[nib] * d).reshape(*gid.shape, self.dim))
+
+
+class HostNgram:
+    """The n-gram layer's embedding, with the rows worked out on the CPU.
+
+    Which rows a token reads is a hash of the tokens before it. The port computes it as some thirty small GPU
+    operations whose result the table lookup then has to wait for, in the middle of building a pass; the tokens
+    are known here, and the same arithmetic in numpy needs no GPU at all.
+    """
+
+    def __init__(self, emb, table: PleTable):
+        self.table, self.port = table, emb  # the port's own embedding is kept to compare against
+        self.ngram_size, self.heads_per_ngram, self.eos = emb.ngram_size, emb.heads_per_ngram, emb.eos_token_id
+        self.mults, self.sizes, self.offsets = (np.array(a.tolist(), dtype=np.int64)
+                                                for a in (emb._mults, emb._sizes, emb._offsets))
+
+    def _shift_right(self, ids: np.ndarray, shift: int) -> np.ndarray:
+        """Shifted right by `shift`, without crossing an end-of-text token."""
+        if shift == 0:
+            return ids
+        B, T = ids.shape
+        pos = np.arange(T)
+        last_end = np.maximum.accumulate(np.where(ids == self.eos, pos, -1), axis=1)
+        before = np.concatenate([np.full((B, 1), -1), last_end[:, :-1]], axis=1)
+        src = pos - shift
+        gathered = np.take_along_axis(ids, np.broadcast_to(np.maximum(src, 0)[None], (B, T)), axis=1)
+        ok = (pos[None] - (before + 1) >= shift) & (src[None] >= 0)
+        return np.where(ok, gathered, self.eos)
+
+    def rows(self, ids: np.ndarray, context: np.ndarray) -> np.ndarray:
+        """(B, T) tokens after (B, n - 1) of context -> (B, T, heads) rows of the table."""
+        history = np.concatenate([context, ids], axis=1).astype(np.int64)
+        shifted = [self._shift_right(history, s) for s in range(self.ngram_size)]
+        parts = []
+        with np.errstate(over="ignore"):  # the hash multiplies modulo 2**64
+            for ngram in range(2, self.ngram_size + 1):
+                lo = (ngram - 2) * self.heads_per_ngram
+                hi = lo + self.heads_per_ngram
+                mixed = shifted[0] * self.mults[0]
+                for p in range(1, ngram):
+                    mixed = mixed ^ (shifted[p] * self.mults[p])
+                parts.append(mixed[..., None] % self.sizes[lo:hi] + self.offsets[lo:hi])
+        return np.concatenate(parts, axis=-1)[:, -ids.shape[1]:]
+
+    def __call__(self, ids: mx.array, prev_context: mx.array) -> mx.array:
+        gid = self.rows(np.array(ids), np.array(prev_context))
+        return self.table.read(gid).reshape(*gid.shape[:2], -1)
 
 
 POOL = 4 << 30  # of freed buffers MLX may keep; a pass frees less, a chunk of prompt reuses about this much
@@ -276,6 +326,7 @@ def load(path: str, dtype: mx.Dtype = mx.float16, expert_memory: float | str | N
                 if ours.tolist() != list(meta[k + key]):
                     raise ValueError(f"the n-gram hash constants do not match the file's {key}")
             emb.ngram_embedding = PleTable(take("per_layer_token_embd.weight"))
+            ple.ple_embedding = HostNgram(emb, emb.ngram_embedding)
         layer.set_dtype(dtype)
         mx.eval(layer.parameters())
 

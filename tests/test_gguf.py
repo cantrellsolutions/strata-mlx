@@ -69,3 +69,30 @@ def test_bf16_is_exact():
     want = (bits.astype(np.uint32) << 16).view(np.float32)
     assert want[0] == 1.0 and want[3] == 1024.0
     np.testing.assert_array_equal(to_float(Tensor("t", (4,), "BF16", bits.view(np.uint8))), want)
+
+
+
+def test_the_ngram_rows_worked_out_on_the_cpu_are_the_ports():
+    """Tokens of every kind: ends of text in the context and in the window, ids whose products overflow."""
+    from mlx_lm.models import qwen4_exp
+
+    from strata_mlx.load import HostNgram
+
+    args = qwen4_exp.TextArgs(vocab_size=250000, ngram_vocab_size_base=100003, split_ngram_parts=4, ple_embed_dim=64,
+                              eos_token_id=5)
+    emb = qwen4_exp.NGramEmbedding(args, args.ple_embed_dim, ple_layer_index=1)
+    seen = []
+    emb.ngram_embedding = lambda gid: (seen.append(gid), mx.zeros((*gid.shape, 4)))[1]
+    host = HostNgram(emb, None)
+    rng = np.random.default_rng(0)
+    for T in (1, 2, 8, 40):
+        ids = rng.integers(0, 250000, (1, T))
+        context = rng.integers(0, 250000, (1, emb.ngram_size - 1))
+        ids[0, rng.integers(0, T)] = 5
+        if T > 2:
+            context[0, -1] = 5
+        emb(mx.array(ids), mx.array(context))
+        want = np.array(seen[-1])
+        got = host.rows(ids, context)
+        assert got.shape == want.shape and (got == want).all()
+        assert (got >= 0).all()
