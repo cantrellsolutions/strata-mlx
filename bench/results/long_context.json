@@ -1,0 +1,87 @@
+[
+ {
+  "tokens": 2048,
+  "one token": {
+   "ms": 29.7,
+   "window": 1.0,
+   "peak_gb": 0.25
+  },
+  "draft head": {
+   "ms": 66.8,
+   "window": 4.0,
+   "peak_gb": 0.33
+  },
+  "chunk": {
+   "tok_s": 205,
+   "peak_gb": 3.8
+  }
+ },
+ {
+  "tokens": 8192,
+  "one token": {
+   "ms": 32.0,
+   "window": 1.0,
+   "peak_gb": 0.24
+  },
+  "draft head": {
+   "ms": 67.3,
+   "window": 4.0,
+   "peak_gb": 0.31
+  },
+  "chunk": {
+   "tok_s": 233,
+   "peak_gb": 3.78
+  }
+ },
+ {
+  "tokens": 32768,
+  "one token": {
+   "ms": 30.2,
+   "window": 1.0,
+   "peak_gb": 0.38
+  },
+  "draft head": {
+   "ms": 70.0,
+   "window": 4.0,
+   "peak_gb": 0.42
+  },
+  "chunk": {
+   "tok_s": 189,
+   "peak_gb": 3.83
+  }
+ },
+ {
+  "tokens": 65536,
+  "one token": {
+   "ms": 30.8,
+   "window": 1.0,
+   "peak_gb": 0.5
+  },
+  "draft head": {
+   "ms": 63.4,
+   "window": 4.0,
+   "peak_gb": 0.5
+  },
+  "chunk": {
+   "tok_s": 183,
+   "peak_gb": 4.12
+  }
+ },
+ {
+  "tokens": 131072,
+  "one token": {
+   "ms": 31.5,
+   "window": 1.0,
+   "peak_gb": 0.76
+  },
+  "draft head": {
+   "ms": 83.1,
+   "window": 4.0,
+   "peak_gb": 0.76
+  },
+  "chunk": {
+   "tok_s": 172,
+   "peak_gb": 4.96
+  }
+ }
+]

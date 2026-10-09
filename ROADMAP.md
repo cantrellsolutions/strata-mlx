@@ -18,6 +18,34 @@
 - Strata's line protocol (`serve.py`, `./strata-mlx`): its server, web app and OpenAI / Anthropic APIs run on this
   engine unchanged.
 - The sparse-attention path past 2,048 tokens, checked against llama.cpp at 2,100 and 6,000 tokens.
+- Long conversations (`attention.py`, `bench/long_context.py`). The port attended to every cached cell under a
+  mask and pooled the indexer's keys of the whole conversation again each pass; with several queries MLX's
+  attention kernel then spreads the two key heads over the 24 query heads, 1.6 GB a layer at 128K cells. Now a
+  pass gathers the 2,052 cells each query chose, and a block's pooled key is computed once. With the caches
+  filled to a length (Q2_0, M4 Max; before -> now):
+
+      cells cached    one token a pass    draft head, 4 a pass    a 2,048-token chunk     its peak above rest
+          8K           26-31 -> 29 ms        69-71 -> 59 ms        260-409 -> 405 tok/s      3.8 -> 3.8 GB
+         32K              32 -> 27             105 -> 56               288 -> 321            5.7 -> 3.8
+         64K              36 -> 28             166 -> 59               219 -> 306            8.9 -> 4.1
+        128K              45 -> 29             285 -> 60               115 -> 280           15.7 -> 5.0
+
+  With the draft head a pass of four tokens at 128K was slower than four passes of one; now the head pays at
+  every length. (A later run of the same, a browser busy on the GPU: 30-32 ms, 63-83 ms and 172-233 tok/s, at
+  every length alike.) A chunk gathers from 12K cells on (8.6 GB of keys and values copied for 2,048 queries, a
+  layer; under the mask the cost grows with the length, and inside a real read faster than measured alone). The
+  queries of a chunk do not choose the same blocks, so there is no smaller set to gather once.
+  Against llama.cpp on chat prompts of 3,161, 6,945 and 32,299 tokens: its token at 64 of 64 steps, a token or
+  4 or 8 a pass. The 32,299-token prompt is read at 205-246 tok/s (llama.cpp on Metal: 267) and a pass after it
+  takes 31 ms, as with caches filled; llama.cpp writes 11.5 tok/s there, 33-35 after 3K and 7K tokens.
+- MLX's pool of freed buffers has a limit of 4 GiB (`load.POOL`). It had none: a chunk of prompt frees buffers
+  of sizes the next layer does not ask for again, 37 GB after 2,048 tokens and 65 GB after 7,000, beside 41 GB
+  of weights. With other programs' memory that left the machine swapping: a 7K-token prompt read at 60-100
+  tok/s and a six-token chunk took six seconds. With the limit it reads at 320-415 tok/s, and the first long
+  prompt after a start as fast as the next (it took twice as long: the pool being filled). Passes are the same
+  at 1, 4 and 16 GiB and with no limit.
+  Not done: the caches are 30 KB a token (3.9 GB at 128K) in 16-bit floats; at 8 bits they would be about half,
+  which matters to the machines that page experts, whose budget does not count the conversation at all.
 - A conversation on disk (`SAVE` / `RESTORE`, the server's `/slots/0?action=save|restore`): one file, written
   beside its place and renamed when whole, refused if it was saved with other model files. 1,515 tokens are
   264 MiB, saved in 0.6 s.
@@ -31,8 +59,6 @@
   other (0.09); llama.cpp on Metal writes 33 tok/s from the same file. All six expert types of the file unpack
   to gguf-py's weights exactly. IQ3_XXS and IQ2_XS will not be run: there is no disk space for more model
   files. Their tensors all have a path through the loader and their block types pass the same tests.
-- The first prompt past 2,048 tokens after a start takes twice as long as the next (34 s against 17 for 8,192
-  tokens); not looked into.
 - **The same answer with and without drafts at full speed.** True in float32 (about 48 tok/s); in float16
   (56-105 tok/s) a window and a single token round differently and the answers can part at a near-tie.
 - **Prompt reading speed.** About 440 tok/s for a 1,515-token prompt with the draft head (was 220; the first
@@ -47,8 +73,6 @@
   near Strata's numbers would take a pass of a few hundred large kernels, each as good as MLX's own. The block
   kernels showed the same thing again: three times faster than MLX's gather alone, 6-10% faster in a pass.
 - Pictures (`GENI`), several conversations decoded together (`BGEN`).
-- Contexts past 32K are untested for speed; attention reads every cached cell through a mask instead of
-  gathering the 2,048 it selected.
 
 ## What the Apple GPU can do, measured (M4 Max, macOS 27)
 

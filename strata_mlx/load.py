@@ -49,6 +49,9 @@ class PleTable(nn.Module):
         return mx.array((KVALUES_IQ4NL[nib] * d).reshape(*gid.shape, self.dim))
 
 
+POOL = 4 << 30  # of freed buffers MLX may keep; a pass frees less, a chunk of prompt reuses about this much
+
+
 def v_heads_grouped(n_k: int, per_k: int, head_dim: int) -> np.ndarray:
     """Index that takes value heads from GGUF's tiled order back to the checkpoint's grouped order."""
     return np.arange(n_k * per_k * head_dim).reshape(per_k, n_k, head_dim).transpose(1, 0, 2).reshape(-1)
@@ -291,6 +294,12 @@ def load(path: str, dtype: mx.Dtype = mx.float16, expert_memory: float | str | N
     if left:
         raise ValueError(f"{len(left)} parameters of the model were left at their random start, e.g. {left[:5]}")
     mx.clear_cache()
+    if store is None:
+        # MLX keeps the buffers of freed arrays for the next ones, without limit unless told. A chunk of prompt
+        # frees buffers of sizes the next layer does not ask for again: 37 GB after 2,048 tokens, 65 GB after
+        # 7,000, beside 41 GB of weights. Reading then went at 60-100 tok/s, not 400, once the machine had no
+        # memory to spare; and with a limit the first long prompt after a start is as fast as the next.
+        mx.set_cache_limit(POOL)
     model.eval()
     model.expert_store = store
     return model, meta

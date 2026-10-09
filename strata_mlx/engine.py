@@ -30,6 +30,7 @@ from mlx_lm.models import qwen4_exp
 from mlx_lm.models.base import create_attention_mask
 from mlx_lm.models.gated_delta import gated_delta_update
 
+from .attention import AttnCache, install
 from .drafting import MAX_WINDOW, Lookup, Policy
 from .fused import FusedResidual, PlainResidual
 from .mtp import Mtp
@@ -94,6 +95,7 @@ class Engine:
                  chunk: int = 2048, checkpoints: int = 8, turn_token: int = TURN_TOKEN, fused: bool = True,
                  fuse_upto: int = 2):
         self.model, self.m, self.mtp = model, model.model, mtp
+        install(self.m.layers)
         self.drafts = drafts if mtp is not None else 0
         self.chunk, self.max_checkpoints, self.turn_token = chunk, checkpoints, turn_token
         self.vocab = self.m.args.vocab_size
@@ -110,7 +112,7 @@ class Engine:
         self.reset()
 
     def reset(self):
-        self.attn = {i: qwen4_exp._AttnCache() for i, l in enumerate(self.m.layers) if l.layer_type != "linear_attention"}
+        self.attn = {i: AttnCache() for i, l in enumerate(self.m.layers) if l.layer_type != "linear_attention"}
         self.gdn = {i: self._gdn_start(self.m.layers[i].linear_attn) for i in self.gdn_layers}
         self.ple_conv = None
         self.context = mx.full((1, self.m.args.ngram_size - 1), self.eos, dtype=mx.int32)
@@ -398,7 +400,7 @@ class Engine:
                 return c
 
             gdn, ple_conv, context = small("")
-            attn = {i: cache(f"attn.{i}", qwen4_exp._AttnCache) for i in self.attn}
+            attn = {i: cache(f"attn.{i}", AttnCache) for i in self.attn}
             mtp_cache = cache("mtp", self.mtp.make_cache) if self.mtp is not None else None
             checkpoints = [_Checkpoint(at, *small(f"cp.{j}.")) for j, at in enumerate(json.loads(meta["checkpoints"]))]
             if any(not 0 <= cp.at <= n for cp in checkpoints):

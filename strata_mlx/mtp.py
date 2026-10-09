@@ -20,6 +20,8 @@ from mlx_lm.models import qwen4_exp
 from mlx_lm.models.base import create_attention_mask
 from mlx_lm.models.switch_layers import QuantizedSwitchLinear
 
+from .attention import AttnCache, install
+
 # norms the checkpoint stores zero-centred: the reference scales by 1 + weight
 _ADD_ONE = ("q_layernorm.weight", "k_layernorm.weight", "q_norm.weight", "k_norm.weight", "hc_norm.weight",
             "pre_fc_norm_embedding.weight", "pre_fc_norm_hidden.weight")
@@ -36,10 +38,11 @@ class Mtp(nn.Module):
         self.fc_embedding = nn.Linear(d, d, bias=False)
         self.fc_hidden = nn.Linear(d, d, bias=False)
         self.layers = [qwen4_exp.DecoderLayer(args, _FULL_ATTENTION_LAYER)]
+        install(self.layers)
         self.hyper_connection_mixer = qwen4_exp.GatedResidual(args, use_combine=False)
 
     def make_cache(self):
-        return qwen4_exp._AttnCache()
+        return AttnCache()
 
     def __call__(self, h: mx.array, emb: mx.array, rope, cache):
         """h (1, S, hc * d): the residual at each cell's position; emb (1, S, d): the embedding of the token

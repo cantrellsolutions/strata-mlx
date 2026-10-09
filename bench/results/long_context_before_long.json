@@ -1,0 +1,53 @@
+[
+ {
+  "tokens": 8192,
+  "one token": {
+   "ms": 26.3,
+   "window": 1.0,
+   "peak_gb": 0.23
+  },
+  "draft head": {
+   "ms": 69.1,
+   "window": 4.0,
+   "peak_gb": 0.3
+  },
+  "chunk": {
+   "tok_s": 259,
+   "peak_gb": 3.77
+  }
+ },
+ {
+  "tokens": 65536,
+  "one token": {
+   "ms": 36.2,
+   "window": 1.0,
+   "peak_gb": 0.46
+  },
+  "draft head": {
+   "ms": 166.3,
+   "window": 4.0,
+   "peak_gb": 0.54
+  },
+  "chunk": {
+   "tok_s": 219,
+   "peak_gb": 8.94
+  }
+ },
+ {
+  "tokens": 131072,
+  "one token": {
+   "ms": 45.2,
+   "window": 1.0,
+   "peak_gb": 0.68
+  },
+  "draft head": {
+   "ms": 284.8,
+   "window": 4.0,
+   "peak_gb": 0.7
+  },
+  "chunk": {
+   "tok_s": 115,
+   "peak_gb": 15.66
+  }
+ }
+]
