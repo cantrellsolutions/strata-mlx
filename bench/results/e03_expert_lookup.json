@@ -1,0 +1,386 @@
+[
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "now",
+  "threads_per_row": 4,
+  "ms": 1.5,
+  "rel_err": 0.0
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "now",
+  "threads_per_row": 16,
+  "ms": 1.6,
+  "rel_err": 0.00030902348225936294
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "bytes",
+  "threads_per_row": 4,
+  "ms": 1.42,
+  "rel_err": NaN
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "bytes",
+  "threads_per_row": 16,
+  "ms": 1.5,
+  "rel_err": NaN
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "lut8 float32",
+  "threads_per_row": 4,
+  "ms": 2.45,
+  "rel_err": 0.00030902348225936294
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "lut8 float32",
+  "threads_per_row": 16,
+  "ms": 3.47,
+  "rel_err": 0.00030902348225936294
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "lut8 float16",
+  "threads_per_row": 4,
+  "ms": 1.68,
+  "rel_err": 0.0006180469645187259
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "lut8 float16",
+  "threads_per_row": 16,
+  "ms": 2.42,
+  "rel_err": 0.0006180469645187259
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "lut4 float32",
+  "threads_per_row": 4,
+  "ms": 1.53,
+  "rel_err": 0.00030902348225936294
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "lut4 float32",
+  "threads_per_row": 16,
+  "ms": 1.59,
+  "rel_err": 0.00030902348225936294
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "lut4 float16",
+  "threads_per_row": 4,
+  "ms": 1.71,
+  "rel_err": 0.00030902348225936294
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 1,
+  "kernel": "lut4 float16",
+  "threads_per_row": 16,
+  "ms": 1.96,
+  "rel_err": 0.00030902348225936294
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "now",
+  "threads_per_row": 4,
+  "ms": 3.32,
+  "rel_err": 0.0
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "now",
+  "threads_per_row": 16,
+  "ms": 3.34,
+  "rel_err": 7.725587056484073e-05
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "bytes",
+  "threads_per_row": 4,
+  "ms": 2.11,
+  "rel_err": NaN
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "bytes",
+  "threads_per_row": 16,
+  "ms": 1.86,
+  "rel_err": NaN
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "lut8 float32",
+  "threads_per_row": 4,
+  "ms": 14.03,
+  "rel_err": 3.862793528242037e-05
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "lut8 float32",
+  "threads_per_row": 16,
+  "ms": 17.27,
+  "rel_err": 0.00015451174112968147
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "lut8 float16",
+  "threads_per_row": 4,
+  "ms": 11.03,
+  "rel_err": 0.0006180469645187259
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "lut8 float16",
+  "threads_per_row": 16,
+  "ms": 15.77,
+  "rel_err": 0.0006180469645187259
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "lut4 float32",
+  "threads_per_row": 4,
+  "ms": 3.45,
+  "rel_err": 3.862793528242037e-05
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "lut4 float32",
+  "threads_per_row": 16,
+  "ms": 10.27,
+  "rel_err": 0.00015451174112968147
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "lut4 float16",
+  "threads_per_row": 4,
+  "ms": 2.61,
+  "rel_err": 0.0006180469645187259
+ },
+ {
+  "tensor": "gate_proj",
+  "tokens": 4,
+  "kernel": "lut4 float16",
+  "threads_per_row": 16,
+  "ms": 3.19,
+  "rel_err": 0.0006180469645187259
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "now",
+  "threads_per_row": 1,
+  "ms": 1.41,
+  "rel_err": 0.0
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "now",
+  "threads_per_row": 4,
+  "ms": 1.37,
+  "rel_err": 0.00013068478438071907
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "bytes",
+  "threads_per_row": 1,
+  "ms": 1.34,
+  "rel_err": NaN
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "bytes",
+  "threads_per_row": 4,
+  "ms": 1.35,
+  "rel_err": NaN
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "lut8 float32",
+  "threads_per_row": 1,
+  "ms": 2.39,
+  "rel_err": 6.534239219035953e-05
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "lut8 float32",
+  "threads_per_row": 4,
+  "ms": 3.49,
+  "rel_err": 0.00013068478438071907
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "lut8 float16",
+  "threads_per_row": 1,
+  "ms": 1.89,
+  "rel_err": 0.0005227391375228763
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "lut8 float16",
+  "threads_per_row": 4,
+  "ms": 2.59,
+  "rel_err": 0.0005227391375228763
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "lut4 float32",
+  "threads_per_row": 1,
+  "ms": 1.51,
+  "rel_err": 6.534239219035953e-05
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "lut4 float32",
+  "threads_per_row": 4,
+  "ms": 1.5,
+  "rel_err": 0.00013068478438071907
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "lut4 float16",
+  "threads_per_row": 1,
+  "ms": 1.57,
+  "rel_err": 0.0005227391375228763
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 1,
+  "kernel": "lut4 float16",
+  "threads_per_row": 4,
+  "ms": 1.61,
+  "rel_err": 0.0005227391375228763
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "now",
+  "threads_per_row": 1,
+  "ms": 3.36,
+  "rel_err": 0.0
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "now",
+  "threads_per_row": 4,
+  "ms": 3.33,
+  "rel_err": 8.591065125074238e-05
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "bytes",
+  "threads_per_row": 1,
+  "ms": 2.04,
+  "rel_err": NaN
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "bytes",
+  "threads_per_row": 4,
+  "ms": 1.93,
+  "rel_err": NaN
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "lut8 float32",
+  "threads_per_row": 1,
+  "ms": 10.12,
+  "rel_err": 8.591065125074238e-05
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "lut8 float32",
+  "threads_per_row": 4,
+  "ms": 14.56,
+  "rel_err": 8.591065125074238e-05
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "lut8 float16",
+  "threads_per_row": 1,
+  "ms": 7.14,
+  "rel_err": 0.0003436426050029695
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "lut8 float16",
+  "threads_per_row": 4,
+  "ms": 12.16,
+  "rel_err": 0.0003436426050029695
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "lut4 float32",
+  "threads_per_row": 1,
+  "ms": 2.98,
+  "rel_err": 8.591065125074238e-05
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "lut4 float32",
+  "threads_per_row": 4,
+  "ms": 4.12,
+  "rel_err": 8.591065125074238e-05
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "lut4 float16",
+  "threads_per_row": 1,
+  "ms": 2.76,
+  "rel_err": 0.0003436426050029695
+ },
+ {
+  "tensor": "down_proj",
+  "tokens": 4,
+  "kernel": "lut4 float16",
+  "threads_per_row": 4,
+  "ms": 2.77,
+  "rel_err": 0.0003436426050029695
+ }
+]

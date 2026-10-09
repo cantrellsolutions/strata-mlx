@@ -17,9 +17,9 @@ def reference(gr, before, out, inject_in):
 
 
 @pytest.mark.parametrize("dtype, tol", [(mx.float32, 2e-5), (mx.float16, 4e-3)])
-@pytest.mark.parametrize("tokens", [1, 5])
+@pytest.mark.parametrize("tokens", [1, 2, 5, 8])
 @pytest.mark.parametrize("combine", [True, False])
-def test_two_kernels_compute_the_read_and_the_write_before_it(dtype, tol, tokens, combine):
+def test_the_kernels_compute_the_read_and_the_write_before_it(dtype, tol, tokens, combine):
     mx.random.seed(5)
     gr = qwen4_exp.GatedResidual(ARGS, use_combine=combine)
     gr.hc_norm.weight = 1 + 0.2 * mx.random.normal(gr.hc_norm.weight.shape)
@@ -45,3 +45,24 @@ def test_nothing_before_is_a_plain_read():
     want_mixed, _, want_inject = gr(h)
     assert mx.array_equal(residual, h)
     assert mx.allclose(mixed, want_mixed, rtol=1e-4, atol=1e-5) and mx.allclose(inject, want_inject, rtol=1e-4, atol=1e-5)
+
+
+@pytest.mark.parametrize("dtype", [mx.float32, mx.float16])
+def test_a_token_gets_the_same_bits_alone_and_in_a_window(dtype):
+    """Each token's sums are taken in the same order whatever the window: nothing here can make an answer
+    written with drafts part from one written without."""
+    mx.random.seed(7)
+    gr = qwen4_exp.GatedResidual(ARGS)
+    gr.hc_norm.weight = 1 + 0.2 * mx.random.normal(gr.hc_norm.weight.shape)
+    gr.set_dtype(dtype)
+    fused = FusedResidual(gr)
+    before = mx.random.normal((1, 6, 4 * 96)).astype(dtype)
+    out = mx.random.normal((1, 6, 96)).astype(dtype)
+    inject_in = (2 * mx.random.uniform(shape=(1, 6, 4))).astype(dtype)
+    window = fused(before, out, inject_in)
+    for t in range(6):
+        alone = fused(before[:, t : t + 1], out[:, t : t + 1], inject_in[:, t : t + 1])
+        for a, w in zip(alone, window):
+            assert mx.array_equal(a, w[:, t : t + 1]).item()
+    three = fused(before[:, 2:5], out[:, 2:5], inject_in[:, 2:5])
+    assert all(mx.array_equal(a, w[:, 2:5]).item() for a, w in zip(three, window))

@@ -93,7 +93,7 @@ class Stats:
 class Engine:
     def __init__(self, model: qwen4_exp.Model, mtp: Mtp | None = None, drafts: int = 3, lookup: bool = False,
                  chunk: int = 2048, checkpoints: int = 8, turn_token: int = TURN_TOKEN, fused: bool = True,
-                 fuse_upto: int = 2):
+                 fuse_upto: int = 6):
         self.model, self.m, self.mtp = model, model.model, mtp
         install(self.m.layers)
         self.drafts = drafts if mtp is not None else 0
@@ -151,12 +151,12 @@ class Engine:
         y = la.out_proj(la.norm(out, z).reshape(B, S, -1))
         return y, (conv_input, q, k, v, a, b, after)
 
-    # A pass is thousands of small kernels, and it is their number that it costs, not their work. Two things cut
-    # the number. The hyper-connections are two kernels each (fused.py), with the write of the block before
-    # folded in: the residual travels as (before, out, inject) and is only put together inside those kernels.
-    # And the parts of a layer that are plain functions of arrays are compiled, which merges runs of elementwise
-    # operations into one kernel each. Attention is not compiled: its caches grow with every token, and a
-    # compiled function is tied to the shapes it was traced with.
+    # A pass is thousands of small kernels. Two things make them fewer. The hyper-connections are three kernels
+    # each (fused.py), with the write of the block before folded in: the residual travels as (before, out,
+    # inject) and is only put together inside those kernels. And the parts of a layer that are plain functions
+    # of arrays are compiled, which merges runs of elementwise operations into one kernel each. Attention is not
+    # compiled: its caches grow with every token, and a compiled function is tied to the shapes it was traced
+    # with.
 
     @staticmethod
     def _write(before, out, inject):
