@@ -84,10 +84,6 @@ class AttnCache(qwen4_exp._AttnCache):
         super().__init__()
         self.indexer = IndexerCache()
 
-    def arrays(self) -> list:
-        """What a pass leaves to be computed."""
-        return [a for a in (self.keys, self.values, self.indexer.keys, self.indexer.pooled) if a is not None]
-
 
 def choose(indexer, x: mx.array, rope, cache: IndexerCache, offset: int):
     """Add the queries' own keys to the cache and choose each query's blocks.

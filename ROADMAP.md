@@ -36,8 +36,11 @@
   layer; under the mask the cost grows with the length, and inside a real read faster than measured alone). The
   queries of a chunk do not choose the same blocks, so there is no smaller set to gather once.
   Against llama.cpp on chat prompts of 3,161, 6,945 and 32,299 tokens: its token at 64 of 64 steps, a token or
-  4 or 8 a pass. The 32,299-token prompt is read at 205-246 tok/s (llama.cpp on Metal: 267) and a pass after it
-  takes 31 ms, as with caches filled; llama.cpp writes 11.5 tok/s there, 33-35 after 3K and 7K tokens.
+  4 or 8 a pass. The 32,299-token prompt is read at 154-246 tok/s over five runs (llama.cpp on Metal: 267; the
+  6,945-token one at 320-436) and the passes after it start at 31 ms, as with caches filled; llama.cpp writes
+  11.5 tok/s there, 33-35 after 3K and 7K tokens. That evening other programs kept the GPU busy: 400 passes in
+  a row took 29-65 ms by twenties at 2K cells and 37-51 at 32K, so the slower 32K answers measured (22-34 tok/s
+  a token at a time) say nothing about the length.
 - MLX's pool of freed buffers has a limit of 4 GiB (`load.POOL`). It had none: a chunk of prompt frees buffers
   of sizes the next layer does not ask for again, 37 GB after 2,048 tokens and 65 GB after 7,000, beside 41 GB
   of weights. With other programs' memory that left the machine swapping: a 7K-token prompt read at 60-100
@@ -160,8 +163,10 @@ What it took, and what is still wrong:
   of all uses, and one miss in a layer is a read that the whole pass waits for.
 - Not done: on 16 GB the dense weights' 5.6 GB as arrays are 2 GB more than in the file, which kernels on the
   file's blocks, as the experts have, would give to the experts; a layer still waits for its router and for
-  its reads, where the experts the last token used could be asked for ahead; and none of this has run on a
-  machine that small or on a 256-512 GB SSD.
+  its reads, where the experts the last token used could be asked for ahead; no prompt past 12K tokens has
+  been read this way, where attention gathers 0.5 GB at a time and the conversation's caches (30 KB a token)
+  come out of memory the budget does not count; and none of this has run on a machine that small or on a
+  256-512 GB SSD.
 
 What was measured before building it:
 

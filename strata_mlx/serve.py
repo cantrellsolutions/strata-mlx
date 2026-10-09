@@ -233,8 +233,8 @@ def main():
     engine.warm()
     for sampling in (Sampling(), Sampling(temperature=1.0, seed=1)):
         engine.generate(list(range(1000, 1024)), 12, sampling=sampling)
-    # and a prompt long enough to go the way long prompts go (other kernels for the experts): without it the first
-    # real one took twice as long. Not with experts read from the SSD: there it would read every layer whole.
+    # and a prompt long enough to go the way long prompts go, so that the kernels of that way are compiled too.
+    # Not with experts read from the SSD: there it would read every layer whole.
     engine.reset()
     profile_path, before = None, None
     if not paged:
