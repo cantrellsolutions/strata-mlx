@@ -25,27 +25,36 @@ host memory. A Mac with unified memory does not need that half of it. This engin
 
 ## Measured
 
-M4 Max, 128 GB, macOS 27, MLX 0.32.3. Tokens a second, greedy decoding, 256 tokens an answer; "reading" is a
-prompt of 1,180 tokens. Every number is from this one machine, which slows down under sustained load, so read
-them as ranges.
+M4 Max, 128 GB, macOS 27, MLX 0.32.3. Greedy decoding. Every number is from this one machine, which slows
+down under sustained load, so read them as ranges. The two model files are Q2_0 (66.4 GB) and IQ3_S (83.6 GB).
 
-| | answers (four prompts) | reading |
-| --- | ---: | ---: |
-| **Q2_0** (66.4 GB) llama.cpp `llama-server` 0.4.1 | 38-39 | 494-495 |
-| LM Studio 0.4.25 (llama.cpp runtime) | 43 | 426-446 |
-| strata-mlx, no draft head | 44-67 | 595-612 |
-| strata-mlx | 68-111 | 570-578 |
-| **IQ3_S** (83.6 GB) llama.cpp `llama-server` 0.4.1 | 35-36 | 488-489 |
-| LM Studio 0.4.25 (llama.cpp runtime) | 40 | 421-424 |
-| strata-mlx, no draft head | 43-56 | 504-515 |
-| strata-mlx | 65-95 | 510-517 |
+Answers are written 1.6 to 2.9 times as fast as by llama.cpp or LM Studio, and a long prompt is read 4 to 36%
+faster.
 
-"No draft head" still copies guesses from earlier in the conversation where the answer repeats it; one
-token a pass with no guesses at all is 46-48 tok/s (Q2_0) and 41-43 (IQ3_S).
+**Writing an answer**, tokens a second over four prompts of 256 tokens each (more is better):
 
-Two things this table does not show, both in [ISSUES.md](ISSUES.md): prompts of a few dozen tokens are read
-slower than by llama.cpp (about 0.6 s to the first token against 0.3 s), and the reading column for this
-engine is from a later session than the other engines'. Ollama 0.35.1 loads neither file.
+| Engine | Q2_0 | IQ3_S |
+| :--- | ---: | ---: |
+| **strata-mlx (this project)** | **68-111** | **65-95** |
+| strata-mlx, draft head off | 44-67 | 43-56 |
+| llama.cpp `llama-server` 0.4.1 | 38-39 | 35-36 |
+| LM Studio 0.4.25 (llama.cpp runtime) | 43 | 40 |
+
+**Reading a prompt** of 1,180 tokens, tokens a second (more is better):
+
+| Engine | Q2_0 | IQ3_S |
+| :--- | ---: | ---: |
+| **strata-mlx (this project)** | **570-578** | **510-517** |
+| strata-mlx, draft head off | 595-612 | 504-515 |
+| llama.cpp `llama-server` 0.4.1 | 494-495 | 488-489 |
+| LM Studio 0.4.25 (llama.cpp runtime) | 426-446 | 421-424 |
+
+With the draft head off the engine still copies guesses from earlier in the conversation where the answer
+repeats it; one token a pass with no guesses at all is 46-48 tok/s (Q2_0) and 41-43 (IQ3_S).
+
+Two things these tables do not show, both in [ISSUES.md](ISSUES.md): prompts of a few dozen tokens are read
+slower than by llama.cpp (about 0.6 s to the first token against 0.3 s), and this engine's reading speeds
+are from a later session than the other engines'. Ollama 0.35.1 loads neither file.
 
 In 16-bit floats, the default, about one token in 250 is not the one the exact model would pick, at places
 where two candidates are nearly tied; that is so with and without the draft head. `--dtype float32` writes
@@ -81,7 +90,7 @@ own, here unchanged and where Strata has it, in [tools](tools):
 python tools/mtp_fetch.py fetch --out ~/.cache/strata-mlx/mtp     # resumable
 ```
 
-Without the head the engine still runs, at the "no draft head" speeds above.
+Without the head the engine still runs, at the "draft head off" speeds above.
 
 ```sh
 ./strata-mlx --serve --native <shard 1 of the GGUF> --mtp ~/.cache/strata-mlx/mtp
@@ -93,7 +102,7 @@ ids; tokenizing, chat templates and the HTTP APIs are the server's part. Strata'
 (0.1.40) has driven it unchanged, with its config's `exe` set to the `strata-mlx` script and the options above
 in `args`; Strata's `setup.py` does not run on macOS, so that config is written by hand.
 
-Options: `--spec 1` (no draft head), `--dtype float32`, `--max-context N`, `--expert-memory GB` (how much of
+Options: `--spec 1` (draft head off), `--dtype float32`, `--max-context N`, `--expert-memory GB` (how much of
 the experts to keep in memory; by default all of them if the machine holds the model), `--machine-memory GiB`
 (run as a machine of that size would), `--guess-rows off`, `--expert-profile off`.
 
