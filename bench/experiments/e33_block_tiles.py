@@ -9,7 +9,7 @@ follow into the same memory. Whatever the type: `unpack32` of blocks.py does the
 On the inputs of some layers' experts taken from a real pass (as e31), one product at a time and all three:
 against the way prompts go now, and checked against the kernel that multiplies a pair at a time.
 
-(Run on the code of commit 4d72e24, when "the way prompts go now" was the 2-bit product for Q2_0 and unpacking
+(Run on the code of commit 26e78a8, when "the way prompts go now" was the 2-bit product for Q2_0 and unpacking
 to floats for the rest. The kernel here is blocks.tile_matmul since, so run again it compares it with itself.)
 
     uv run python bench/experiments/e33_block_tiles.py --model <shard 1> [--json out.json]

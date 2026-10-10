@@ -13,7 +13,7 @@ are taken from a real pass over a prompt (their activations, and what the router
     this GPU when an expert has thirty tokens
 
     uv run python bench/experiments/e31_expert_parts.py --model <shard 1> [--json out.json]
-(Run on the code of commit 4d72e24. Since then the 2-bit product this takes apart, blocks.packed_matmul, has been
+(Run on the code of commit 26e78a8. Since then the 2-bit product this takes apart, blocks.packed_matmul, has been
 replaced by blocks.tile_matmul, and these names are gone from blocks.py.)
 """
 

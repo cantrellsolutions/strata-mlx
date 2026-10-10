@@ -188,7 +188,7 @@
   "tps": 43.78987701202511,
   "guesses_kept": 10,
   "guesses_made": 36,
-  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (25cf76e)"
  },
  {
   "engine": "strata-mlx, a token a pass (--spec 1)",
@@ -199,7 +199,7 @@
   "tps": 49.67305042978831,
   "guesses_kept": 42,
   "guesses_made": 90,
-  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (25cf76e)"
  },
  {
   "engine": "strata-mlx, a token a pass (--spec 1)",
@@ -210,7 +210,7 @@
   "tps": 48.45364727258963,
   "guesses_kept": 31,
   "guesses_made": 79,
-  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (25cf76e)"
  },
  {
   "engine": "strata-mlx, a token a pass (--spec 1)",
@@ -221,7 +221,7 @@
   "tps": 61.48377644883157,
   "guesses_kept": 89,
   "guesses_made": 125,
-  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (25cf76e)"
  },
  {
   "engine": "strata-mlx, a token a pass (--spec 1)",
@@ -232,7 +232,7 @@
   "tps": 46.62004662004662,
   "guesses_kept": 0,
   "guesses_made": 0,
-  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (25cf76e)"
  },
  {
   "engine": "strata-mlx",
@@ -243,7 +243,7 @@
   "tps": 68.0959727616109,
   "guesses_kept": 177,
   "guesses_made": 352,
-  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (25cf76e)"
  },
  {
   "engine": "strata-mlx",
@@ -254,7 +254,7 @@
   "tps": 69.91288199470192,
   "guesses_kept": 187,
   "guesses_made": 334,
-  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (25cf76e)"
  },
  {
   "engine": "strata-mlx",
@@ -265,7 +265,7 @@
   "tps": 105.2674863275628,
   "guesses_kept": 204,
   "guesses_made": 267,
-  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (25cf76e)"
  },
  {
   "engine": "strata-mlx",
@@ -276,7 +276,7 @@
   "tps": 95.1531370799881,
   "guesses_kept": 195,
   "guesses_made": 238,
-  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (25cf76e)"
  },
  {
   "engine": "strata-mlx",
@@ -287,7 +287,7 @@
   "tps": 78.97334649555775,
   "guesses_kept": 11,
   "guesses_made": 15,
-  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (25cf76e)"
  },
  {
   "engine": "strata-mlx",
@@ -298,7 +298,7 @@
   "tps": 91.18107992591537,
   "guesses_kept": 186,
   "guesses_made": 280,
-  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (25cf76e)"
  },
  {
   "engine": "strata-mlx",
@@ -309,7 +309,7 @@
   "tps": 86.33481721300419,
   "guesses_kept": 181,
   "guesses_made": 285,
-  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (25cf76e)"
  },
  {
   "engine": "strata-mlx",
@@ -320,7 +320,7 @@
   "tps": 107.32402632792521,
   "guesses_kept": 207,
   "guesses_made": 260,
-  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (25cf76e)"
  },
  {
   "engine": "strata-mlx",
@@ -331,7 +331,7 @@
   "tps": 111.25597566275533,
   "guesses_kept": 202,
   "guesses_made": 235,
-  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (25cf76e)"
  },
  {
   "engine": "strata-mlx",
@@ -342,7 +342,7 @@
   "tps": 92.2722029988466,
   "guesses_kept": 11,
   "guesses_made": 14,
-  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (25cf76e)"
  },
  {
   "engine": "strata-mlx, a token a pass (--spec 1)",
@@ -353,7 +353,7 @@
   "tps": 47.69890068939817,
   "guesses_kept": 10,
   "guesses_made": 33,
-  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (25cf76e)"
  },
  {
   "engine": "strata-mlx, a token a pass (--spec 1)",
@@ -364,7 +364,7 @@
   "tps": 52.79112449219475,
   "guesses_kept": 43,
   "guesses_made": 103,
-  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (25cf76e)"
  },
  {
   "engine": "strata-mlx, a token a pass (--spec 1)",
@@ -375,7 +375,7 @@
   "tps": 50.8562120068338,
   "guesses_kept": 32,
   "guesses_made": 103,
-  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (25cf76e)"
  },
  {
   "engine": "strata-mlx, a token a pass (--spec 1)",
@@ -386,7 +386,7 @@
   "tps": 66.85469549775411,
   "guesses_kept": 88,
   "guesses_made": 123,
-  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (25cf76e)"
  },
  {
   "engine": "strata-mlx, a token a pass (--spec 1)",
@@ -397,7 +397,7 @@
   "tps": 50.48911328494793,
   "guesses_kept": 0,
   "guesses_made": 0,
-  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (25cf76e)"
  },
  {
   "engine": "strata-mlx, a token a pass (--spec 1)",

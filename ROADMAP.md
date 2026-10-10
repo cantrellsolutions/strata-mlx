@@ -253,7 +253,7 @@ against 427-433) and slower with IQ3_S (319-367), and prompts of 27 to 49 tokens
 Ollama 0.35.1 loads neither file: its GGUF reader does not know the Q2_0 tensors, which the IQ3_S file has too.
 `--spec 1` is not a token a pass: with no draft head the server copies guesses from the context. The other
 engines' rows are from one run of all engines in turn, twice in opposite orders; this engine's are from a run
-of its own afterwards, on the code of 9f67bab.
+of its own afterwards, on the code of 25cf76e.
 
 That comparison found a fault: with Q6_K as a byte a weight, the IQ3_S file's prompts were read at 246 tok/s
 (the Q2_0 file's at 390-400). A chunk of a prompt multiplied those layers as floats worked out anew by MLX
