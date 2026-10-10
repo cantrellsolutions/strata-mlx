@@ -75,10 +75,10 @@ not.
 
 The draft head is not in those files. Its 31 tensors, 4.9 GB, are fetched out of the original checkpoint by
 range requests, without downloading its 360 GB, and each is checked against a SHA-256. The script is Strata's
-own, included unchanged in [third_party/strata](third_party/strata):
+own, here unchanged and where Strata has it, in [tools](tools):
 
 ```sh
-python third_party/strata/mtp_fetch.py fetch --out ~/.cache/strata-mlx/mtp     # resumable
+python tools/mtp_fetch.py fetch --out ~/.cache/strata-mlx/mtp     # resumable
 ```
 
 Without the head the engine still runs, at the "no draft head" speeds above.
@@ -108,7 +108,7 @@ caches are 16-bit floats (3.9 GB at 128K tokens). Nothing here has run on a Mac 
 ## License
 
 MIT, see [LICENSE](LICENSE). The projects named below have their own; the one file taken from Strata,
-`third_party/strata/mtp_fetch.py`, keeps Strata's MIT license, which is beside it.
+`tools/mtp_fetch.py`, is Strata's and keeps Strata's MIT license, which is beside it.
 
 ## Thanks to
 
