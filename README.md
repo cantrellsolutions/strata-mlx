@@ -40,6 +40,9 @@ them as ranges.
 | strata-mlx, no draft head | 43-56 | 504-515 |
 | strata-mlx | 65-95 | 510-517 |
 
+"No draft head" still copies guesses from earlier in the conversation where the answer repeats it; one
+token a pass with no guesses at all is 46-48 tok/s (Q2_0) and 41-43 (IQ3_S).
+
 Two things this table does not show, both in [ISSUES.md](ISSUES.md): prompts of a few dozen tokens are read
 slower than by llama.cpp (about 0.6 s to the first token against 0.3 s), and the reading column for this
 engine is from a later session than the other engines'. Ollama 0.35.1 loads neither file.
