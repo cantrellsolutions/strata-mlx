@@ -73,12 +73,18 @@ The model, about 66 GB for Q2_0: both shards of one size from
 side by side in one folder. Q2_0 and IQ3_S have been run; the other sizes have a path in the loader and have
 not.
 
-The draft head is not in those files. Its 31 tensors come from the original checkpoint, as Strata's
-`tools/mtp_fetch.py` leaves them: a folder with one raw file per tensor and `mtp-manifest.json`. Without it
-the engine still runs, at the "no draft head" speeds above.
+The draft head is not in those files. Its 31 tensors, 4.9 GB, are fetched out of the original checkpoint by
+range requests, without downloading its 360 GB, and each is checked against a SHA-256. The script is Strata's
+own, included unchanged in [third_party/strata](third_party/strata):
 
 ```sh
-./strata-mlx --serve --native <shard 1 of the GGUF> --mtp <folder of the draft head>
+python third_party/strata/mtp_fetch.py fetch --out ~/.cache/strata-mlx/mtp     # resumable
+```
+
+Without the head the engine still runs, at the "no draft head" speeds above.
+
+```sh
+./strata-mlx --serve --native <shard 1 of the GGUF> --mtp ~/.cache/strata-mlx/mtp
 ```
 
 The process then speaks Strata's line protocol: it prints `INFO ...` and `READY`, takes
@@ -101,12 +107,14 @@ caches are 16-bit floats (3.9 GB at 128K tokens). Nothing here has run on a Mac 
 
 ## License
 
-MIT, see [LICENSE](LICENSE). The projects named below have their own.
+MIT, see [LICENSE](LICENSE). The projects named below have their own; the one file taken from Strata,
+`third_party/strata/mtp_fetch.py`, keeps Strata's MIT license, which is beside it.
 
 ## Thanks to
 
 - [Strata](https://github.com/Niko1221/Strata) (MIT): the design this follows, the line protocol, the order
-  of its sampler and the idea of its lookup drafter, all written anew here for MLX.
+  of its sampler and the idea of its lookup drafter, all written anew here for MLX; and its script that
+  fetches the draft head, included as it is.
 - [llama.cpp and ggml](https://github.com/ggml-org/llama.cpp) (MIT): the GGUF format and the block types,
   whose unpacking the kernels here follow; the codebook tables come from its `gguf` package at run time.
 - [MLX and mlx-lm](https://github.com/ml-explore/mlx-lm) (MIT), and the port of this model to mlx-lm in
