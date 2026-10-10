@@ -465,10 +465,60 @@ What it took, and what is still wrong:
   of all uses, and one miss in a layer is a read that the whole pass waits for.
 - Not done: on 16 GB the dense weights' 5.6 GB as arrays are 2 GB more than in the file, which kernels on the
   file's blocks, as the experts have, would give to the experts; a layer still waits for its router and for
-  its reads, where the experts the last token used could be asked for ahead; no prompt past 12K tokens has
+  its reads (asking for them ahead was measured and not built, e35 below; the experts the last token used are
+  no guess, they are in memory already); no prompt past 12K tokens has
   been read this way, where attention gathers 0.5 GB at a time and the conversation's caches (30 KB a token)
   come out of memory the budget does not count; and none of this has run on a machine that small or on a
   256-512 GB SSD.
+
+### Reading experts before their router has run: measured, not built (e35)
+
+With part of the experts in memory a layer waits for its router and then for the disk, and the GPU has nothing
+to do meanwhile. Others ask the disk early, for experts guessed with the model's own routers on an earlier
+state: Eliseev and Mazur (arXiv:2312.17238), slotstream for this model, mlx-stream for DeepSeek. Before
+building that here, what it could give was worked out from what is measured and from one recording.
+
+From `bench/results/paged_*.json`, with the draft head, the disk is 65-71% of an answer's time with 2 GB of
+experts in memory (a 16 GB Mac), 58-60% with 4, 43-45% with 8 (a 24 GB Mac) and 6-14% with 16 (a 32 GB one).
+Reads asked for ahead go on beside the GPU's work and no faster: a token then takes the longer of the two, and
+the reads not guessed besides. The rule, set before the recording: build it if that comes to 1.5 times at 2 or
+at 8 GB.
+
+Recorded with every expert in memory, a token at a time, seven conversations, 2,083 tokens of answers: the ten
+experts each layer routes to, and a router's best N for three earlier inputs. Of the ten, among the best N:
+
+    guess                                                              best 6    best 8    best 10   best 16
+    a  layer L's router, on what its hyper-connection reads before
+       L's mixer has written (the mixer ahead)                          53.9%     67.9%     78.0%     89.2%
+    b  the same on the residual as layer L-1's experts find it
+       (a layer ahead)                                                  53.8%     67.2%     77.0%     89.3%
+    c  layer L's router on layer L-1's experts' input (a layer ahead)   45.9%     56.3%     64.2%     77.5%
+    the ten experts the token before went to at that layer              34.1%
+
+Replayed against a memory of some experts (bench/expert_use.py's: the most used elsewhere, the least recently
+used replaced), for b, the best a layer ahead: of the experts that had to be read, the share among its best N,
+the reads it would add for nothing as a share of them, and what an answer would gain by the rule above:
+
+    experts in memory          read a token     best 6              best 8              best 10
+     1,500   2 GB, 16 GB Mac      228.8      45% +9%   1.35x     59% +19%  1.24x     69% +34%  1.10x
+     3,000   4 GB                 150.3      43% +11%  1.34x     57% +22%  1.39x     68% +40%  1.21x
+     6,000   8 GB, 24 GB Mac       68.2      38% +15%  1.20x     52% +30%  1.30x     64% +55%  1.39x
+    12,000  16 GB, 32 GB Mac       20.3      31% +23%  1.03x     44% +48%  1.05x     56% +88%  1.06x
+
+At most 1.35 to 1.39 times, so by the rule it is not built. And that is the most it could be: it takes every
+read asked for ahead to be done in time with a layer's notice; guess b costs a hyper-connection's read more at
+every layer (13 MB of weights each, 0.6 GB a token beside the 5.5 a token reads now); and the disk's shares
+are those with the draft head while the guesses were recorded a token at a time. slotstream, with this model
+on a 48 GB Mac and 20-22 GB for it, measured 1.1 times for its lookahead.
+
+Why so little where the disk matters most: with 2 GB of experts the disk is two thirds of the time, and a guess
+only moves reads beside the GPU's work, it does not make them fewer. A wider guess holds more of the misses and
+reads more for nothing (best 16: 83% held, 107% added), which a disk at its limit pays in full. The experts the
+token before used hold none of the misses: they are in memory already.
+
+What makes the reads fewer is more experts in memory: 229 read a token with 2.1 GB of them, 150 with 4.1, and
+with the draft head 10 tok/s at 2 GB against 12.5 at 4 (above). On a 16 GB Mac the dense weights take 2 GB more
+as arrays than in the file, which is that step. Not built either.
 
 What was measured before building it:
 
