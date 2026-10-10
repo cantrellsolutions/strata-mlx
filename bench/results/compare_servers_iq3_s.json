@@ -183,12 +183,232 @@
   "engine": "strata-mlx, a token a pass (--spec 1)",
   "prompt": "prose",
   "prompt_tokens": 27,
+  "prompt_tps": 38.428693424423564,
+  "tokens": 256,
+  "tps": 43.09909424559749,
+  "guesses_kept": 9,
+  "guesses_made": 22,
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "code",
+  "prompt_tokens": 31,
+  "prompt_tps": 37.62592547639277,
+  "tokens": 256,
+  "tps": 49.326576619973416,
+  "guesses_kept": 55,
+  "guesses_made": 93,
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "reasoning",
+  "prompt_tokens": 49,
+  "prompt_tps": 59.20019330675365,
+  "tokens": 215,
+  "tps": 43.06287179281752,
+  "guesses_kept": 15,
+  "guesses_made": 58,
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "edit",
+  "prompt_tokens": 340,
+  "prompt_tps": 366.85369011653,
+  "tokens": 256,
+  "tps": 52.508512122082294,
+  "guesses_kept": 74,
+  "guesses_made": 116,
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "reading",
+  "prompt_tokens": 1180,
+  "prompt_tps": 504.48909790508765,
+  "tokens": 16,
+  "tps": 45.33862283933126,
+  "guesses_kept": 0,
+  "guesses_made": 0,
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "prose",
+  "prompt_tokens": 27,
+  "prompt_tps": 41.183648566198904,
+  "tokens": 256,
+  "tps": 65.19801349802623,
+  "guesses_kept": 168,
+  "guesses_made": 300,
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "code",
+  "prompt_tokens": 31,
+  "prompt_tps": 31.446540880503143,
+  "tokens": 256,
+  "tps": 80.57662648327091,
+  "guesses_kept": 176,
+  "guesses_made": 231,
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "reasoning",
+  "prompt_tokens": 49,
+  "prompt_tps": 50.34418986951608,
+  "tokens": 218,
+  "tps": 87.50802825947335,
+  "guesses_kept": 157,
+  "guesses_made": 180,
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "edit",
+  "prompt_tokens": 340,
+  "prompt_tps": 318.5310099306726,
+  "tokens": 256,
+  "tps": 87.00676341637494,
+  "guesses_kept": 185,
+  "guesses_made": 210,
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "reading",
+  "prompt_tokens": 1180,
+  "prompt_tps": 510.4247772298641,
+  "tokens": 16,
+  "tps": 97.20534629404618,
+  "guesses_kept": 11,
+  "guesses_made": 11,
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "prose",
+  "prompt_tokens": 27,
+  "prompt_tps": 41.65381055229867,
+  "tokens": 256,
+  "tps": 66.09180564878402,
+  "guesses_kept": 177,
+  "guesses_made": 300,
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "code",
+  "prompt_tokens": 31,
+  "prompt_tps": 32.67629387583008,
+  "tokens": 256,
+  "tps": 78.95386133728103,
+  "guesses_kept": 180,
+  "guesses_made": 239,
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "reasoning",
+  "prompt_tokens": 49,
+  "prompt_tps": 51.77514792899408,
+  "tokens": 215,
+  "tps": 95.48341253275304,
+  "guesses_kept": 162,
+  "guesses_made": 178,
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "edit",
+  "prompt_tokens": 340,
+  "prompt_tps": 366.41879512878546,
+  "tokens": 256,
+  "tps": 88.27890616917824,
+  "guesses_kept": 185,
+  "guesses_made": 210,
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+ },
+ {
+  "engine": "strata-mlx",
+  "prompt": "reading",
+  "prompt_tokens": 1180,
+  "prompt_tps": 516.8185003503854,
+  "tokens": 16,
+  "tps": 96.2116656644618,
+  "guesses_kept": 11,
+  "guesses_made": 11,
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "prose",
+  "prompt_tokens": 27,
+  "prompt_tps": 44.15372035977106,
+  "tokens": 256,
+  "tps": 45.196942144383044,
+  "guesses_kept": 9,
+  "guesses_made": 21,
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "code",
+  "prompt_tokens": 31,
+  "prompt_tps": 31.259453463749114,
+  "tokens": 256,
+  "tps": 49.28574178891841,
+  "guesses_kept": 51,
+  "guesses_made": 83,
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "reasoning",
+  "prompt_tokens": 49,
+  "prompt_tps": 50.49464138499588,
+  "tokens": 215,
+  "tps": 45.3500390221266,
+  "guesses_kept": 15,
+  "guesses_made": 54,
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "edit",
+  "prompt_tokens": 340,
+  "prompt_tps": 329.3935283859717,
+  "tokens": 256,
+  "tps": 56.21061414487407,
+  "guesses_kept": 77,
+  "guesses_made": 111,
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "reading",
+  "prompt_tokens": 1180,
+  "prompt_tps": 514.6545708304257,
+  "tokens": 16,
+  "tps": 46.948356807511736,
+  "guesses_kept": 0,
+  "guesses_made": 0,
+  "run": "this engine alone, twice, with prompts' experts in tiles from the blocks (9f67bab)"
+ },
+ {
+  "engine": "strata-mlx, a token a pass (--spec 1)",
+  "prompt": "prose",
+  "prompt_tokens": 27,
   "prompt_tps": 46.59188955996549,
   "tokens": 256,
   "tps": 43.982475732325405,
   "guesses_kept": 9,
   "guesses_made": 21,
-  "run": "this engine alone, twice, on the code as committed"
+  "run": "this engine alone, twice, on the code as committed; before prompts' experts went in tiles from the blocks"
  },
  {
   "engine": "strata-mlx, a token a pass (--spec 1)",
@@ -199,7 +419,7 @@
   "tps": 50.77753094255792,
   "guesses_kept": 52,
   "guesses_made": 86,
-  "run": "this engine alone, twice, on the code as committed"
+  "run": "this engine alone, twice, on the code as committed; before prompts' experts went in tiles from the blocks"
  },
  {
   "engine": "strata-mlx, a token a pass (--spec 1)",
@@ -210,7 +430,7 @@
   "tps": 44.511614425903694,
   "guesses_kept": 15,
   "guesses_made": 57,
-  "run": "this engine alone, twice, on the code as committed"
+  "run": "this engine alone, twice, on the code as committed; before prompts' experts went in tiles from the blocks"
  },
  {
   "engine": "strata-mlx, a token a pass (--spec 1)",
@@ -221,7 +441,7 @@
   "tps": 53.99363043890916,
   "guesses_kept": 76,
   "guesses_made": 119,
-  "run": "this engine alone, twice, on the code as committed"
+  "run": "this engine alone, twice, on the code as committed; before prompts' experts went in tiles from the blocks"
  },
  {
   "engine": "strata-mlx, a token a pass (--spec 1)",
@@ -232,7 +452,7 @@
   "tps": 46.403712296983755,
   "guesses_kept": 0,
   "guesses_made": 0,
-  "run": "this engine alone, twice, on the code as committed"
+  "run": "this engine alone, twice, on the code as committed; before prompts' experts went in tiles from the blocks"
  },
  {
   "engine": "strata-mlx",
@@ -243,7 +463,7 @@
   "tps": 68.3450356408682,
   "guesses_kept": 171,
   "guesses_made": 290,
-  "run": "this engine alone, twice, on the code as committed"
+  "run": "this engine alone, twice, on the code as committed; before prompts' experts went in tiles from the blocks"
  },
  {
   "engine": "strata-mlx",
@@ -254,7 +474,7 @@
   "tps": 77.19213605113978,
   "guesses_kept": 193,
   "guesses_made": 279,
-  "run": "this engine alone, twice, on the code as committed"
+  "run": "this engine alone, twice, on the code as committed; before prompts' experts went in tiles from the blocks"
  },
  {
   "engine": "strata-mlx",
@@ -265,7 +485,7 @@
   "tps": 89.8783755926613,
   "guesses_kept": 157,
   "guesses_made": 180,
-  "run": "this engine alone, twice, on the code as committed"
+  "run": "this engine alone, twice, on the code as committed; before prompts' experts went in tiles from the blocks"
  },
  {
   "engine": "strata-mlx",
@@ -276,7 +496,7 @@
   "tps": 88.3825306404281,
   "guesses_kept": 185,
   "guesses_made": 210,
-  "run": "this engine alone, twice, on the code as committed"
+  "run": "this engine alone, twice, on the code as committed; before prompts' experts went in tiles from the blocks"
  },
  {
   "engine": "strata-mlx",
@@ -287,7 +507,7 @@
   "tps": 94.45100354191263,
   "guesses_kept": 11,
   "guesses_made": 11,
-  "run": "this engine alone, twice, on the code as committed"
+  "run": "this engine alone, twice, on the code as committed; before prompts' experts went in tiles from the blocks"
  },
  {
   "engine": "strata-mlx",
@@ -298,7 +518,7 @@
   "tps": 74.50090215936208,
   "guesses_kept": 168,
   "guesses_made": 260,
-  "run": "this engine alone, twice, on the code as committed"
+  "run": "this engine alone, twice, on the code as committed; before prompts' experts went in tiles from the blocks"
  },
  {
   "engine": "strata-mlx",
@@ -309,7 +529,7 @@
   "tps": 82.1513381682819,
   "guesses_kept": 176,
   "guesses_made": 231,
-  "run": "this engine alone, twice, on the code as committed"
+  "run": "this engine alone, twice, on the code as committed; before prompts' experts went in tiles from the blocks"
  },
  {
   "engine": "strata-mlx",
@@ -320,7 +540,7 @@
   "tps": 91.60433649886545,
   "guesses_kept": 157,
   "guesses_made": 180,
-  "run": "this engine alone, twice, on the code as committed"
+  "run": "this engine alone, twice, on the code as committed; before prompts' experts went in tiles from the blocks"
  },
  {
   "engine": "strata-mlx",
@@ -331,7 +551,7 @@
   "tps": 88.2849949994827,
   "guesses_kept": 185,
   "guesses_made": 210,
-  "run": "this engine alone, twice, on the code as committed"
+  "run": "this engine alone, twice, on the code as committed; before prompts' experts went in tiles from the blocks"
  },
  {
   "engine": "strata-mlx",
@@ -342,7 +562,7 @@
   "tps": 99.62640099626402,
   "guesses_kept": 11,
   "guesses_made": 11,
-  "run": "this engine alone, twice, on the code as committed"
+  "run": "this engine alone, twice, on the code as committed; before prompts' experts went in tiles from the blocks"
  },
  {
   "engine": "strata-mlx, a token a pass (--spec 1)",
@@ -353,7 +573,7 @@
   "tps": 44.872131952113016,
   "guesses_kept": 9,
   "guesses_made": 21,
-  "run": "this engine alone, twice, on the code as committed"
+  "run": "this engine alone, twice, on the code as committed; before prompts' experts went in tiles from the blocks"
  },
  {
   "engine": "strata-mlx, a token a pass (--spec 1)",
@@ -364,7 +584,7 @@
   "tps": 49.891836058544946,
   "guesses_kept": 51,
   "guesses_made": 88,
-  "run": "this engine alone, twice, on the code as committed"
+  "run": "this engine alone, twice, on the code as committed; before prompts' experts went in tiles from the blocks"
  },
  {
   "engine": "strata-mlx, a token a pass (--spec 1)",
@@ -375,7 +595,7 @@
   "tps": 44.953687247788906,
   "guesses_kept": 16,
   "guesses_made": 62,
-  "run": "this engine alone, twice, on the code as committed"
+  "run": "this engine alone, twice, on the code as committed; before prompts' experts went in tiles from the blocks"
  },
  {
   "engine": "strata-mlx, a token a pass (--spec 1)",
@@ -386,7 +606,7 @@
   "tps": 55.22716486171636,
   "guesses_kept": 75,
   "guesses_made": 111,
-  "run": "this engine alone, twice, on the code as committed"
+  "run": "this engine alone, twice, on the code as committed; before prompts' experts went in tiles from the blocks"
  },
  {
   "engine": "strata-mlx, a token a pass (--spec 1)",
@@ -397,7 +617,7 @@
   "tps": 46.43064422518862,
   "guesses_kept": 0,
   "guesses_made": 0,
-  "run": "this engine alone, twice, on the code as committed"
+  "run": "this engine alone, twice, on the code as committed; before prompts' experts went in tiles from the blocks"
  },
  {
   "engine": "strata-mlx, a token a pass (--spec 1)",

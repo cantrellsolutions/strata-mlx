@@ -238,18 +238,21 @@ Tokens a second, prose / code / reasoning / edit, then reading:
 
     Q2_0    llama-server 0.4.1                38-39 / 38 / 38 / 38                494-495
             LM Studio 0.4.25 (llama.cpp)      43 / 43 / 43 / 43                   426-446
-            this engine, --spec 1             49-50 / 51-54 / 51-53 / 59-60       320-385
-            this engine as it serves          89-93 / 78-90 / 104-116 / 101       370-386
+            this engine, --spec 1             44-48 / 50-53 / 48-51 / 61-67       595-612   (320-385 before e30-e33)
+            this engine as it serves          68-91 / 70-86 / 105-107 / 95-111    570-578   (370-386)
     IQ3_S   llama-server 0.4.1                35 / 35-36 / 35-36 / 35             488-489
             LM Studio 0.4.25 (llama.cpp)      40 / 40 / 40 / 40                   421-424
-            this engine, --spec 1             44-45 / 50-51 / 45 / 54-55          349-377
-            this engine as it serves          68-75 / 77-82 / 90-92 / 88          334-349
+            this engine, --spec 1             43-45 / 49 / 43-45 / 53-56          504-515   (349-377)
+            this engine as it serves          65-66 / 79-81 / 88-95 / 87-88       510-517   (334-349)
 
-Answers come about twice as fast as from either (1.7 to 3.0 times); prompts are read slower than by both.
+Answers come about twice as fast as from either (1.6 to 2.9 times). Prompts were read slower than by both
+when this was first run; since the experts of a prompt go in tiles from the blocks (below) the 1,180 tokens are
+read faster than by either, a prompt of 340 tokens about as fast as by llama.cpp with the Q2_0 file (419-451
+against 427-433) and slower with IQ3_S (319-367), and prompts of 27 to 49 tokens slower (31-112 against 92-148).
 Ollama 0.35.1 loads neither file: its GGUF reader does not know the Q2_0 tensors, which the IQ3_S file has too.
 `--spec 1` is not a token a pass: with no draft head the server copies guesses from the context. The other
 engines' rows are from one run of all engines in turn, twice in opposite orders; this engine's are from a run
-of its own afterwards, on the code as committed.
+of its own afterwards, on the code of 9f67bab.
 
 That comparison found a fault: with Q6_K as a byte a weight, the IQ3_S file's prompts were read at 246 tok/s
 (the Q2_0 file's at 390-400). A chunk of a prompt multiplied those layers as floats worked out anew by MLX
