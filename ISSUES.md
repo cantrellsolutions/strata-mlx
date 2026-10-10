@@ -59,7 +59,7 @@ the graph of a piece that is not compiled. No fix is proposed before one of the 
 `docs/OPTIMIZATION_RECORD.md` and `ROADMAP.md` say the prompt of 1,180 tokens is read faster by this engine
 than by llama.cpp (570-612 against 494-495 tok/s with the Q2_0 file, 504-517 against 488-489 with IQ3_S).
 llama.cpp's and LM Studio's rows are from the first run of the comparison, all engines in turn; this engine's
-are from a run of its own a day later, after its prompt path was rewritten. This machine's speed depends on
+are from a run of its own twelve hours later, after its prompt path was rewritten. This machine's speed depends on
 what it did in the minutes before (it slows under sustained load), so the two are not strictly comparable. The
 gain on this engine's side is 50% and more, which that does not erase, but the 3 to 6% lead with the IQ3_S
 file is within it.
@@ -68,6 +68,8 @@ file is within it.
 only (`bench/compare_servers.py` reads it last, after four answers; a flag to run only that would do).
 
 ## 3. The memory rule does not count the floats kept for prompts
+
+[Issue 3 on GitHub](https://github.com/yibie/strata-mlx/issues/3)
 
 **What is wrong.** Whether a Mac holds a file whole, and how much of its memory the experts get if it does not,
 is worked out in `strata_mlx/paged.py` (`all_fit`, `ExpertStore.fit`) from the experts, the dense weights, the

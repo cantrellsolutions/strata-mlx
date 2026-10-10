@@ -94,7 +94,7 @@ run. Where only part of the experts is in memory the rest is read from the SSD a
 the slow path above (6-7, 19-23 and 28-47 tok/s as a 16, 24 and 32 GB machine, Q2_0, simulated on the M4 Max).
 IQ3_S has not been run that way at all. This table is arithmetic, not a test: the only Mac the engine has run
 on has 128 GB. It leaves 4.2 GB to macOS and other programs and does not count the conversation itself, about
-1 GB for 36,000 tokens. The 64 GB row for IQ3_S is [issue 3](ISSUES.md).
+1 GB for 36,000 tokens. The 64 GB row for IQ3_S is [issue 3](https://github.com/yibie/strata-mlx/issues/3).
 
 ## Running it
 
