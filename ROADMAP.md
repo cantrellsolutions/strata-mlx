@@ -257,6 +257,46 @@ operations, half a second for every piece a prompt is read in. Now one kernel ma
 first prompt, and they are kept: 3.3 GB more held with the IQ3_S file, 0.2 GB with Q2_0. Made anew for each
 prompt they cost a tenth of the reading speed (320 against 355-369 tok/s), the fresh memory and not the work.
 
+### Why prompts are read slower: the ten chosen experts (e30)
+
+Asked after the comparison, and not measured before: the loop above was all about answers. A chunk of a prompt
+is few kernels, each milliseconds long, so its parts can be timed in place (each made to finish at its edges;
+that costs a fifth more time with the Q2_0 file). A piece of 1,024 tokens, Q2_0, 2.4-2.5 s without the stops:
+
+    the ten chosen experts                         1570-1630 ms   52-54%    4.83 T operations   3.0-3.1 T a second
+    delta-net projections                           400-430       14%       4.27                10.0-10.6
+    hyper-connections                               230-270        8%
+    choosing the ten, weighting and adding them     210-230        7%
+    the shared expert                               140-170        5%       0.48                2.9-3.5
+    attention projections                           117-118        4%       1.22                10.4-10.5
+    delta-net convolution and norms 70, its recurrence 53, attention itself 42-44, the routers' product 25-29,
+    the n-gram table 18, glue 17-20, keeping the states 9, the output layer 5-6
+
+The stops flatter the experts' share: without the stops, and with the ten chosen answering zeros, the piece
+takes 850 ms where it takes 2,990 (both files, a warm machine). They are 71% of a prompt's time, at 2.3 T
+operations a second, when the dense products of the same pass run at 10 and the GPU does 14.3 in one large
+product. All else of a pass would read 1,200 tokens a second. So what an earlier note said, that reading is
+near what this GPU can do and the gap to Strata is the hardware's, holds for a third of the pass and not for
+the rest.
+
+Why they are slow, as far as measured: 1,024 tokens are 10,240 pairs for 372 experts of a layer, 27.5 each,
+so every product is small; in tiles of 16 tokens 26% of the slots are filling; a scale to every 64 weights
+makes each tile forty products; and every chunk splits all 512 stacks of every tensor into codes and scales
+whatever its length. With the IQ3_S file, which has no 2-bit operand, each stack goes through 1.7 GB of floats.
+
+The two ways for Q2_0, forced at each length (ms a piece: 2-bit product in tiles / table of sums a pair):
+
+    128 tokens   811 / 376      256   1066 / 667      512   1702 / 1492      1024   2610 / 3469      2048   4143 / 6332
+
+The engine changes to tiles from 3,000 pairs (300 tokens), set before the table of sums existed; at 512 tokens
+the table is still the faster by an eighth. Not changed yet: where they cross between 512 and 1,024 is not
+measured. Not the cause: the cut before the last token (a prompt of 1,180 is read as 1,179 and 1), the draft
+head reading along (3,140 ms against 3,113), the n-gram table, the recurrence.
+
+What would help is a kernel that reads an expert's blocks once for all the tokens that chose it, as the dense
+Q6_K kernel does for a window, with no split and no filling. If the experts ran at half the dense rate a
+piece of 1,024 would take 1.8 s (560 tok/s), at the dense rate 1.3 s (770). Not built.
+
 ## What the Apple GPU can do, measured (M4 Max, macOS 27)
 
 Looked into because prompts are read three to six times slower here than by Strata on an RTX 5070, and the
@@ -270,7 +310,8 @@ question was whether frameworks leave the Apple GPU's speed unused. They do not,
   and MLX already runs at what Apple's own primitive reaches.
 - An earlier note put this GPU's ceiling for reading prompts at 650-750 tok/s, from 8-9.5 TFLOPS measured at
   2048^3. At the larger size it is 14.3: about 1,100 tok/s if every product ran at that rate, which the small
-  per-expert ones do not.
+  per-expert ones do not: they run at 2.3 and are 71% of the time (e30, above), so the engine and not the GPU
+  is what holds prompts at 320-440 tok/s.
 - The hardware, from the reverse-engineered instruction set (M1 generation; nothing public for M4): scalar,
   32 threads to a SIMD group, fused multiply-add in 32 and 16 bits, integer multiply-add and bit-field
   instructions, no dot-product instruction. Apple's guide says the primitive uses "GPU neural accelerators in
