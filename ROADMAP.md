@@ -6,7 +6,8 @@
 - Experts computed on the file's own blocks (`blocks.py`): nine block types, each checked against gguf-py's
   dequantizer on random blocks. Nothing is converted at start (22 s to load Q2_0, was 34-57), and in a pass the
   kernels are as fast as MLX's own 2-bit gather or a little faster (43 tok/s a token at a time, was 38-40), so
-  Q2_0 uses them too. A prompt of 500 tokens or more unpacks each stack to floats for the length of one product.
+  Q2_0 uses them too. A chunk of a prompt multiplies from the blocks too, a tile at a time (e33, below); it
+  unpacked each stack to floats for the length of one product before.
   When comparing with llama.cpp, use a prompt the model answers: forced past its own end token (`ignore_eos`),
   three implementations of the same file disagree by half a nat and the comparison says nothing.
 - Draft-and-verify with the model's draft head, for greedy and for sampled answers (`engine.py`, `mtp.py`,

@@ -3,6 +3,8 @@ name = "strata-mlx"
 version = "0.0.1"
 description = "Qwen3.8-Flash-Next on Apple Silicon: an MLX engine that speaks Strata's line protocol"
 requires-python = ">=3.12,<3.14"
+license = "MIT"
+readme = "README.md"
 dependencies = [
     "mlx>=0.32.1",
     # the qwen4_exp model port (ml-explore/mlx-lm#1788, not merged), pinned to its head
