@@ -18,15 +18,18 @@ at which each engine reads the prompt):
 So 27 tokens take about 0.6 s here and 0.3 s with llama.cpp; with the IQ3_S file 31 tokens took 0.8 to 1.0 s.
 Long prompts are not affected.
 
-**What was measured** (`bench/experiments/e34_after_idle.py`, Q2_0 file, one run):
+**What was measured** (`bench/experiments/e34_after_idle.py`, Q2_0 file):
 
 | | one after another | after 0.5 s of nothing | 2 s | 4 s | 8 s |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| a piece of 64 tokens | 179-184 ms | 190 | 496 | 430 | 580 |
-| a piece of 256 tokens | 643-725 ms | 689 | 694 | 689 | 685 |
-| one token of an answer | 21 ms | | | 21 | 21 |
+| a piece of 64 tokens | 178-180 ms | 205 | 459 | 530 | 506 |
+| a piece of 256 tokens | 484-486 ms | 518 | 526 | 553 | 574 |
+| one token of an answer | 20 ms | 22 | 22 | 22 | 21 |
 
-A piece of 64 tokens takes two to three times as long once the GPU has had nothing to do for two seconds. The
+(A run a few hours earlier gave the same for 64 tokens: 179-184 ms, then 190, 496, 430, 580.)
+
+A piece of 64 tokens takes two to three times as long once the GPU has had nothing to do for two seconds; a
+piece of 256 tokens 30 to 90 ms longer; a single token no longer. The
 comparison rests 8 s between requests, and a person pauses between messages, so every short prompt pays this.
 The pieces by length in `ROADMAP.md` (e30) were each timed after a rest of 4 s too: its rows for 64 and 128
 tokens include it.
@@ -36,7 +39,8 @@ reads at 650: a piece's cost has a part that does not shrink with its length (a 
 with one pair in it as with sixteen; the layers of a piece of more than eight tokens are not compiled). The
 slowness after a rest comes on top.
 
-**Not known.** Why a rest costs 250 to 400 ms, and why a piece of 256 tokens or a single token shows none of it.
+**Not known.** Why a rest costs a piece of 64 tokens 280 to 350 ms, a piece of 256 tokens a quarter of that,
+and a single token nothing.
 
 **The next step**, two minutes: time one fixed matrix product (the 2048-cube of `bench/quiet.py`) after rests
 of 0.5, 2, 4 and 8 s. If it slows down the same way, the GPU's clock comes down while idle and takes some
