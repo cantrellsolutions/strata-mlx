@@ -43,10 +43,19 @@ SEPARATE_UPTO = 80  # pairs up to which each brings its own arrays to the kernel
 SYSTEM, WORKING = int(4.5e9), int(4.0e9)
 DRAFT_HEAD = int(1.6e9)
 DENSE_AS_ARRAYS = 1.6  # the dense tensors take this many times their size in the file: several are held at 8 bits
+LEAST = int(0.5e9)  # of experts in memory, however little is left for them
 
 
 def machine_memory() -> int:
     return os.sysconf("SC_PHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")
+
+
+def sizes(files: list) -> tuple:
+    """(experts, dense tensors) of a model's shards, in bytes as the files have them. The dense tensors are
+    those of the first shard: the n-gram table, in the second, stays on the disk."""
+    experts = sum(t.data.nbytes for f in files for name, t in f.tensors.items() if name.endswith("_exps.weight"))
+    dense = sum(t.data.nbytes for name, t in files[0].tensors.items() if not name.endswith("_exps.weight"))
+    return experts, dense
 
 
 def all_fit(machine: int, experts: int, dense: int) -> bool:
@@ -71,7 +80,7 @@ class ExpertStore:
 
     def fit(self, machine: int) -> int:
         """Set the budget to what a machine of that much memory has left, everything else being loaded now."""
-        self.budget = max(int(0.5e9), machine - SYSTEM - WORKING - (mx.get_active_memory() - self.held))
+        self.budget = max(LEAST, machine - SYSTEM - WORKING - (mx.get_active_memory() - self.held))
         return self.budget
 
     def reset_stats(self):

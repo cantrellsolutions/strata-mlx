@@ -15,6 +15,7 @@ float types. Rows are quantized one at a time in GGUF, so a tensor's leading axe
 """
 
 import mmap
+import re
 import struct
 from dataclasses import dataclass
 
@@ -61,6 +62,7 @@ class Affine:
 
 class GGUF:
     def __init__(self, path: str):
+        self.path = path
         self._f = open(path, "rb")
         self._map = mmap.mmap(self._f.fileno(), 0, access=mmap.ACCESS_READ)
         buf = self._map
@@ -118,6 +120,16 @@ class GGUF:
 
     def __contains__(self, name: str) -> bool:
         return name in self.tensors
+
+
+_SPLIT = re.compile(r"-(\d{5})-of-(\d{5})\.gguf$")
+
+
+def shards(path: str) -> list:
+    """A model's files: the one named and, where its name says it is one of several, the others beside it."""
+    m = _SPLIT.search(path)
+    count = int(m.group(2)) if m else 1
+    return [GGUF(path)] + [GGUF(_SPLIT.sub(f"-{i:05d}-of-{m.group(2)}.gguf", path)) for i in range(2, count + 1)]
 
 
 def to_float(t: Tensor) -> np.ndarray:

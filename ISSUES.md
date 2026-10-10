@@ -66,3 +66,30 @@ file is within it.
 
 **The next step**, about ten minutes a file: run llama.cpp and this engine in turns again, the reading prompt
 only (`bench/compare_servers.py` reads it last, after four answers; a flag to run only that would do).
+
+## 3. The memory rule does not count the floats kept for prompts
+
+**What is wrong.** Whether a Mac holds a file whole, and how much of its memory the experts get if it does not,
+is worked out in `strata_mlx/paged.py` (`all_fit`, `ExpertStore.fit`) from the experts, the dense weights, the
+draft head, 4.5 GB left to macOS and 4.0 GB of working memory. Since the Q6_K layers keep their weights as
+floats from the first prompt on (`dense.py`, so that the IQ3_S file's prompts are not read a tenth slower),
+the process holds more than that rule counts: 3.3 GB with the IQ3_S file, 0.2 GB with Q2_0. The rule was
+written before, and its working memory was measured with Q2_0.
+
+**Whom it concerns.** A Mac that holds the IQ3_S file by the rule and not with those floats: between 63.0 and
+66.1 GB of memory, which is the 64 GB Macs. There the engine holds the file whole and, by the rule's own sizes,
+is 2.1 GB short of what it means to leave to macOS. By what was measured on the 128 GB machine it is short by
+less: IQ3_S with the draft head holds 57.8 GB, 61.1 after its first prompt, and peaks 3.8 GB above that while a
+prompt is read. That is 64.9 GB of a 64 GB Mac's 68.7, which leaves macOS 3.8 GB where the rule means 4.5.
+And a Mac that reads IQ3_S experts from the SSD gives them 3.3 GB that the floats then take; that file has
+never been run that way.
+
+`./strata-mlx --check` counts the floats and says where a Mac is short (`strata_mlx/check.py`), so what it
+reports and what the engine does differ in this one case, on purpose.
+
+**Not known.** What a 64 GB Mac does with that: nothing here has run on one.
+
+**The next step.** Keep the floats only where they fit, and count them in the rule where they are kept: a
+Mac short of them makes them anew for each piece of a prompt, as before (prompts a tenth slower, 320 against
+355-369 tok/s on the M4 Max), and its answers are as fast as ever. Then run IQ3_S as a 64 GB machine
+(`--machine-memory 64`) and see what it holds.

@@ -54,6 +54,12 @@
   beside its place and renamed when whole, refused if it was saved with other model files. 1,515 tokens are
   264 MiB, saved in 0.6 s.
 
+- `strata-mlx --check`: what a Mac of some memory would do with a file (held whole, read from the SSD in
+  part, too small), by the rule the engine starts with and without loading anything; for a Mac that has no file
+  yet the sizes of Q2_0 and IQ3_S are kept in `check.py`. By it Q2_0 is held whole from 46.7 GB of memory and
+  IQ3_S from 66.1. It counts the 3.3 GB of floats the IQ3_S file keeps for prompts, which the rule does not
+  (ISSUES.md, issue 3).
+
 ## Now: what is left of Strata that is worth having on a Mac
 
 - **The larger model sizes.** IQ3_S runs: 56 GB of weights (61 with the draft head), 38-45 tok/s a token at a

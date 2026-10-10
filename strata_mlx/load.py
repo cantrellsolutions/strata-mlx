@@ -14,7 +14,6 @@ The experts, nine tenths of the file, are not converted at all: their blocks go 
 Metal kernels compute on them (blocks.py). Every other quantized tensor becomes MLX's own quantized form.
 """
 
-import re
 from pathlib import Path
 
 import mlx.core as mx
@@ -25,11 +24,10 @@ from mlx_lm.models import qwen4_exp
 
 from .blocks import BLOCK, BlockSwitchGLU, BlockSwitchLinear
 from .dense import ScaledLinear, fits
-from .paged import ExpertStore, PagedSwitchGLU, all_fit
+from .paged import ExpertStore, PagedSwitchGLU, all_fit, sizes
 from .paged import machine_memory as paged_machine_memory
-from .gguf import GGUF, KVALUES_IQ4NL, Tensor, pack, q6k_parts, to_affine, to_float
+from .gguf import KVALUES_IQ4NL, Tensor, pack, q6k_parts, shards, to_affine, to_float
 
-_SPLIT = re.compile(r"-(\d{5})-of-(\d{5})\.gguf$")
 _EXACT_FLOAT = ("F32", "F16", "BF16", "Q6_K")
 
 
@@ -216,21 +214,15 @@ def load(path: str, dtype: mx.Dtype = mx.float16, expert_memory: float | str | N
     `dtype` is the type of the activations and of every float weight and scale. float32 holds each weight of the
     file exactly; float16, the default, rounds the scales to 11 bits and runs multi-token steps 1.5-2 times faster.
     """
-    g = GGUF(path)
-    files = [g]
-    m = _SPLIT.search(path)
-    if m:
-        for i in range(2, int(m.group(2)) + 1):
-            files.append(GGUF(_SPLIT.sub(f"-{i:05d}-of-{m.group(2)}.gguf", path)))
+    files = shards(path)
+    g = files[0]
     tensors = {name: t for f in files for name, t in f.tensors.items()}
     meta = g.meta
     if meta.get("general.architecture") != "qwen4exp":
         raise ValueError(f"{Path(path).name} is a {meta.get('general.architecture')} model, not qwen4exp")
     used = set()
     if expert_memory == "auto":
-        routed = sum(t.data.nbytes for name, t in tensors.items() if name.endswith("_exps.weight"))
-        dense = sum(t.data.nbytes for name, t in g.tensors.items() if not name.endswith("_exps.weight"))
-        expert_memory = None if all_fit(machine_memory or paged_machine_memory(), routed, dense) else 0.0
+        expert_memory = None if all_fit(machine_memory or paged_machine_memory(), *sizes(files)) else 0.0
     store = ExpertStore(int(expert_memory * 1e9)) if expert_memory is not None else None
 
     def take(name: str) -> Tensor:

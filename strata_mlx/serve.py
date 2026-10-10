@@ -28,6 +28,9 @@ Such a machine counts which experts its answers use, in `~/.cache/strata-mlx/exp
 
 The draft head's guesses are worked out over the rows of the output layer that have been in sight (rows.py);
 `--guess-rows off` has them go over all rows.
+
+`strata-mlx --check [--native <shard 1>] [--machine-memory <GiB>]` loads nothing and says which of these a Mac
+of that memory would do with a file (check.py).
 """
 
 import errno
@@ -195,6 +198,10 @@ def _options(argv: list) -> dict:
 
 def main():
     argv = [a for a in sys.argv[1:] if a != "--serve"]
+    if "--check" in argv:
+        from .check import main as check
+
+        return check([a for a in argv if a != "--check"])
     opts, skipped = _options(argv)
     # the protocol owns stdout: anything a library prints goes to the log instead
     wire = os.fdopen(os.dup(1), "w", buffering=1)

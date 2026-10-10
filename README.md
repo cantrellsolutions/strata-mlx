@@ -66,6 +66,36 @@ ones (not run on a small machine): 6-7 tok/s as a 16 GB machine, 19-23 as 24 GB,
 The full account, with what was tried and did not help, is in [ROADMAP.md](ROADMAP.md) (English, as it went)
 and [docs/OPTIMIZATION_RECORD.md](docs/OPTIMIZATION_RECORD.md) (Chinese, by topic).
 
+## Which Mac
+
+`--check` loads nothing and says what a Mac would do with each file. It works before anything is downloaded,
+and for a Mac other than the one it runs on:
+
+```sh
+./strata-mlx --check                         # this Mac
+./strata-mlx --check --machine-memory 48     # a Mac with 48 GB
+./strata-mlx --check --native <shard 1>      # a file on the disk, by its own header
+```
+
+By the same arithmetic the engine starts with:
+
+| Mac's memory | Q2_0 (66 GB on disk) | IQ3_S (84 GB on disk) |
+| :--- | :--- | :--- |
+| 16 GB | 4% of the experts in memory | too small |
+| 24 GB | 29% of the experts in memory | 17% of the experts in memory |
+| 32 GB | 54% of the experts in memory | 34% of the experts in memory |
+| 36 GB | 67% of the experts in memory | 42% of the experts in memory |
+| 48 GB | whole, 1.3 GB to spare | 68% of the experts in memory |
+| 64 GB | whole | whole, 2.1 GB short |
+| 96 GB and more | whole | whole |
+
+"Whole" is the path the speeds under [Measured](#measured) are for, on an M4 Max; other chips have not been
+run. Where only part of the experts is in memory the rest is read from the SSD as tokens ask for it, which is
+the slow path above (6-7, 19-23 and 28-47 tok/s as a 16, 24 and 32 GB machine, Q2_0, simulated on the M4 Max).
+IQ3_S has not been run that way at all. This table is arithmetic, not a test: the only Mac the engine has run
+on has 128 GB. It leaves 4.2 GB to macOS and other programs and does not count the conversation itself, about
+1 GB for 36,000 tokens. The 64 GB row for IQ3_S is [issue 3](ISSUES.md).
+
 ## Running it
 
 Needs an Apple Silicon Mac, Python 3.12 or 3.13 and [uv](https://docs.astral.sh/uv/). Tested on macOS 27
