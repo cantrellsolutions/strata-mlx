@@ -1,0 +1,91 @@
+{
+ "tokens": 1023,
+ "products": [
+  {
+   "kind": "Q2_0",
+   "rows": 640,
+   "cols": 2560,
+   "tile_tokens": 16,
+   "columns": 64,
+   "ms": 4.986445803660899,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "Q2_0",
+   "rows": 640,
+   "cols": 2560,
+   "tile_tokens": 16,
+   "columns": 128,
+   "ms": 6.244637502823025,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "Q2_0",
+   "rows": 640,
+   "cols": 2560,
+   "tile_tokens": 32,
+   "columns": 64,
+   "ms": 6.211753992829472,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "Q2_0",
+   "rows": 640,
+   "cols": 2560,
+   "tile_tokens": 32,
+   "columns": 128,
+   "ms": 6.895074906060472,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "Q2_0",
+   "rows": 2560,
+   "cols": 640,
+   "tile_tokens": 16,
+   "columns": 64,
+   "ms": 4.548400198109448,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "Q2_0",
+   "rows": 2560,
+   "cols": 640,
+   "tile_tokens": 16,
+   "columns": 128,
+   "ms": 6.028100207913667,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "Q2_0",
+   "rows": 2560,
+   "cols": 640,
+   "tile_tokens": 32,
+   "columns": 64,
+   "ms": 6.169583403971046,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "Q2_0",
+   "rows": 2560,
+   "cols": 640,
+   "tile_tokens": 32,
+   "columns": 128,
+   "ms": 6.852649990469217,
+   "operations": 33488896000.0
+  }
+ ],
+ "whole_ms": {
+  "as prompts go now": 22.145233396440744,
+  "tiles of 16 tokens, 64 columns at a time": 16.27285819267854,
+  "tiles of 16 tokens, 128 columns at a time": 19.979866384528577,
+  "tiles of 32 tokens, 64 columns at a time": 20.119724818505347,
+  "tiles of 32 tokens, 128 columns at a time": 22.24759159144014
+ },
+ "largest_difference": {
+  "as prompts go now": 0.0012285012053325772,
+  "tiles of 16 tokens, 64 columns at a time": 0.0012285012053325772,
+  "tiles of 16 tokens, 128 columns at a time": 0.0012285012053325772,
+  "tiles of 32 tokens, 64 columns at a time": 0.0012285012053325772,
+  "tiles of 32 tokens, 128 columns at a time": 0.0012285012053325772
+ }
+}

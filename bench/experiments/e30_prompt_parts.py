@@ -9,9 +9,10 @@ construction; the pass without the stops is timed too, to show what the stops co
 For the parts that are matrix products the operations are counted (2 x rows x columns x tokens), so that each
 can be set against what this GPU does in one large product: 14.3 T operations a second (ROADMAP).
 
-Then the two ways the ten chosen experts are multiplied (the 2-bit product in tiles of 16 tokens an expert,
-blocks.packed_matmul, and the table of sums a pair at a time, blocks.lookup_matvec), each forced at every
-length, and how much of the tiles is filling.
+Then the two ways the ten chosen experts are multiplied (in tiles of 16 tokens an expert, blocks.tile_matmul,
+and a pair at a time: the table of sums for Q2_0, the matvec kernel for the other types), each forced at every
+length, and how much of the tiles is filling. (When this was first run the tiles were the 2-bit product of
+Apple's primitive, Q2_0 only, with the pairs sorted on the CPU: the numbers in ROADMAP are from then.)
 
     uv run python bench/experiments/e30_prompt_parts.py --model <shard 1> [--mtp DIR] [--json out.json]
 """
@@ -108,7 +109,7 @@ def part(owner, name, label, linear=False):
 
 
 tiles = {"pairs": 0, "slots": 0, "experts": 0, "calls": 0}
-_packed_glu = B._packed_glu
+_tiled_glu = B._tiled_glu
 
 
 def counting(x, indices, up, gate, down):
@@ -117,7 +118,7 @@ def counting(x, indices, up, gate, down):
     tiles["slots"] += int((-(-counts // B.TOKENS_TILE) * B.TOKENS_TILE).sum())
     tiles["experts"] += len(counts)
     tiles["calls"] += 1
-    return _packed_glu(x, indices, up, gate, down)
+    return _tiled_glu(x, indices, up, gate, down)
 
 
 mlps = [layer.mlp for layer in m.layers]
@@ -230,9 +231,9 @@ print(f"\nthe pass without the ten chosen (they answer zeros), no stops: {left_o
       f"{1 - left_out['without'] / left_out['whole']:.0%} of the pass, "
       f"{ROUTED_OPS * T * len(m.layers) / 1e12 / ((left_out['whole'] - left_out['without']) / 1e3):.1f} T operations a second")
 
-B._packed_glu = counting
+B._tiled_glu = counting
 read(T, False)
-B._packed_glu = _packed_glu
+B._tiled_glu = _tiled_glu
 filling = None
 if tiles["calls"]:
     filling = {k: v / tiles["calls"] for k, v in tiles.items() if k != "calls"}
@@ -242,22 +243,22 @@ if tiles["calls"]:
 
 print("\none piece of a prompt, by its length (no stops), the ten chosen multiplied either way:")
 lengths = []
-default = B.PACKED_FROM
+default = B.TILES_FROM
 for n in args.lengths:
     row = {"tokens": n}
     for way, at in (("tiles", 0), ("table", 10**9)):
-        B.PACKED_FROM = at
+        B.TILES_FROM = at
         read(n, False)
         ts = []
         for _ in range(3):
             time.sleep(4)
             ts.append(read(n, False))
         row[way] = median(ts)
-    B.PACKED_FROM = default
+    B.TILES_FROM = default
     lengths.append(row)
     now = "tiles" if n * 10 >= default else "table"
-    print(f"  {n:5} tokens   2-bit product in tiles {row['tiles']:6.0f} ms {n / row['tiles'] * 1e3:5.0f} tok/s   "
-          f"table of sums {row['table']:6.0f} ms {n / row['table'] * 1e3:5.0f} tok/s   (now: {now})")
+    print(f"  {n:5} tokens   in tiles {row['tiles']:6.0f} ms {n / row['tiles'] * 1e3:5.0f} tok/s   "
+          f"a pair at a time {row['table']:6.0f} ms {n / row['table'] * 1e3:5.0f} tok/s   (now: {now if now == 'tiles' else 'a pair at a time'})")
 
 print(f"  peak memory so far {mx.get_peak_memory() / 1e9:.1f} GB")
 

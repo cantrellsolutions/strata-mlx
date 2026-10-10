@@ -5,18 +5,19 @@ of the larger files do not fit that: IQ2_S, IQ2_XS and IQ1_M scale every 16 weig
 types fit only at 8 bits, twice their size. Unpacked for MLX the experts of the IQ3_S file would take 94 GB and
 twelve minutes of conversion at every start; as they are in the file they take 50 GB and none.
 
-So the blocks go to the GPU as bytes, and two Metal kernels read them, each built from one small function per
+So the blocks go to the GPU as bytes, and Metal kernels read them, each built from one small function per
 type, `unpack32`, that turns a run of 32 weights into floats:
 
     matvec     out[pair, row] = W[expert of pair, row, :] . x     a few threads per row, for decoding
                (also with every pair's expert as an array of its own, for experts paged in from the SSD)
-    dequant    every weight of the stack as float16 or float32    one thread per run of 32, for reading prompts
+    tiles      the same for the many pairs of a chunk of a prompt, sorted by expert into tiles of 16: a
+               threadgroup unpacks 64 rows by 64 columns of the tile's expert into its own memory and Apple's
+               matrix product for shaders (Metal Performance Primitives) multiplies the tile's tokens by that
+    dequant    every weight of the stack as float16 or float32    for shapes the tiles do not take
 
-Q2_0, whose weights are a 2-bit code times a scale per 64, has two ways of its own. For answers, a table: two
+Q2_0, whose weights are a 2-bit code times a scale per 64, has a way of its own for answers, a table: two
 weights make one of 16 sums of two inputs, so those sums are worked out once for the input and a row is then a
-lookup for every two weights instead of a multiplication for every one (see `lookup_matvec`). For prompts,
-Apple's matrix product for shaders (Metal Performance Primitives) takes 2-bit packed weights as an operand, so
-the stack is only split into its codes and its scales and never unpacked (see `packed_matmul`).
+lookup for every two weights instead of a multiplication for every one (see `lookup_matvec`).
 
 The tables are ggml's, taken from gguf-py. Sums are float32 whatever the type of the activations.
 """
@@ -296,8 +297,9 @@ def dequantize(blocks: mx.array, kind: str, shape: tuple, dtype: mx.Dtype = mx.f
 class BlockSwitchLinear:
     """A stack of linear layers kept as the file's blocks; called like mlx-lm's `QuantizedSwitchLinear`."""
 
-    # From this many (token, expert) pairs on, the stack is unpacked once and multiplied as floats. Measured on an
-    # M4 Max, a gate tensor: 256 tokens 4.5 ms a pair at a time against 10 unpacked, 1,024 tokens 18 against 11.5.
+    # From this many (token, expert) pairs on, the stack is unpacked once and multiplied as floats: 1.7 GB for a
+    # stack of the real model, 5.9 ms to unpack and 5.2 for MLX's gather_mm. Only for shapes `tile_matmul` does
+    # not take; a prompt's pairs otherwise go there (switch_glu) before they get here.
     unpack_from = 5000
 
     def __init__(self, blocks: mx.array, kind: str, shape: tuple, per_row: int | None = None):
@@ -328,104 +330,99 @@ class BlockSwitchLinear:
         return mx.gather_mm(x, w.swapaxes(-1, -2), rhs_indices=indices, sorted_indices=sorted_indices)
 
 
-# ---- Q2_0 for prompts: Apple's matrix product over the 2-bit codes
+# ---- prompts: an expert's blocks a tile at a time, under Apple's matrix product
+#
+# A chunk of a prompt is thousands of pairs for a few hundred experts of a layer (1,024 tokens: 10,240 pairs for
+# 340 to 395 experts, 7 to 13 at the median, some hundreds at most). The pairs are sorted by expert into tiles of
+# TOKENS_TILE; a threadgroup takes a tile and ROWS_TILE rows of its expert, unpacks COLS_TILE columns of those
+# rows into threadgroup memory (`unpack32`, so every type), and the primitive multiplies the tile's tokens by
+# that; then the next columns, into the same memory.
+#
+# Measured on an M4 Max, layers of a real pass (bench/experiments/e31, e33), a product of 10,220 pairs:
+# 4.5-5.4 ms whatever the type, 6.3-7.4 T operations a second. Before, Q2_0 went through the primitive's own
+# 2-bit operand, which needs the stack split into codes and scales and the activations summed by 64 (1.4 + 0.8
+# + 4.6 ms), and the other types were unpacked whole to 1.7 GB of floats for MLX's gather_mm (5.9 + 5.2 ms).
+# A layer's three products: 16 ms, from 22 and from 43 to 79. Tiles of 32 tokens, or 128 columns at a time,
+# are a fifth slower; 256 columns are all the memory a threadgroup has, and came out wrong.
+#
+# In a pass (e30), a piece of a prompt in tiles against a pair at a time (the table of sums for Q2_0, the matvec
+# kernel for the rest), tok/s: Q2_0 128 tokens 283 / 309, 192 429 / 362, 256 476 / 368, 1,024 679 / 378; the
+# IQ3_S file 128 tokens 166 / 178, 192 251 / 241, 256 337 / 277. A tile costs the same with one pair in it as
+# with sixteen, and a short piece has few pairs to an expert.
+TILES_FROM = 1600  # (token, expert) pairs from which a prompt goes this way
+TOKENS_TILE, ROWS_TILE, COLS_TILE, _SIMD_GROUPS = 16, 64, 64, 2
 
-# Measured on an M4 Max, a gate tensor (512 experts, 2560 -> 640), tokens spread evenly over the experts, against
-# unpacking the stack to float16 (5.3 ms) and MLX's gather_mm over it: 1,600 tokens of prompt 7.4 ms against
-# 11.8, 3,300 tokens 13.7 against 16.4, 6,600 tokens the same 25. The product itself runs at 10.5 T operations
-# a second whatever the group sizes, in tiles of 16 tokens by 64 outputs on two SIMD groups; tiles of 64 tokens
-# on four ran at 4.6, and the stack is 0.24 GB on the way instead of 1.7.
-PACKED_FROM = 3000  # (token, expert) pairs from which a prompt goes this way
-TOKENS_TILE, ROWS_TILE, _SIMD_GROUPS = 16, 64, 2
-
-_SPLIT = """
-    uint blk = thread_position_in_grid.x, row = thread_position_in_grid.y;
-    const device uchar* src = blocks + (row * NBLK + blk) * 18;
-    scales[row * NBLK + blk] = as_type<half>(ushort(uint(src[0]) | (uint(src[1]) << 8)));
-    device uchar* dst = codes + (row * NBLK + blk) * 16;
-    for (uint i = 0; i < 16; ++i) {
-        dst[i] = src[2 + i];
-    }
-"""
-
-# One tile: TM token rows of `a`, all of one expert, by TN of its output rows. The scale differs from one 64 of
-# weights to the next, so the product is taken 64 at a time into registers and each part scaled as it is added:
-# w = d * (code - 1), hence d * (codes . a - sum of a).
-_PACKED = """
+_TILES = """
     uint tx = threadgroup_position_in_grid.x, ty = threadgroup_position_in_grid.y;
-    if (uint(tile_expert[ty]) >= EXPERTS) {
+    uint expert = uint(tile_expert[ty]);
+    if (expert >= EXPERTS) {
         return;  // a tile beyond those the pairs fill: there are as many as they could need at most
     }
-    uint row0 = uint(tile_expert[ty]) * ROWS + tx * TN;
-    constexpr auto desc = matmul2d_descriptor(TM, TN, 64, false, true, false);
+    threadgroup InT weights[TN * TK];
+    constexpr auto desc = matmul2d_descriptor(TM, TN, TK, false, true, false);
     matmul2d<desc, execution_simdgroups<SIMD_GROUPS>> op;
-    tensor<device half, dextents<int32_t, 2>, tensor_inline> A((device half *)a, dextents<int32_t, 2>(COLS, int(a_shape[0])));
-    tensor<device uint2b_format, dextents<int32_t, 2>, tensor_inline> B(
-        (device uchar *)codes, dextents<int32_t, 2>(COLS, int(codes_shape[0])));
+    tensor<device InT, dextents<int32_t, 2>, tensor_inline> A((device InT *)a, dextents<int32_t, 2>(COLS, int(a_shape[0])));
+    tensor<threadgroup InT, dextents<int32_t, 2>, tensor_inline> W((threadgroup InT *)weights, dextents<int32_t, 2>(TK, TN));
     tensor<device float, dextents<int32_t, 2>, tensor_inline> C(c, dextents<int32_t, 2>(ROWS, int(a_shape[0])));
-    auto tA = A.slice<64, TM>(0, ty * TM);
-    auto tB = B.slice<64, TN>(0, row0);
-    auto acc = op.get_destination_cooperative_tensor<decltype(tA), decltype(tB), float>();
+    auto tA = A.template slice<TK, TM>(0, ty * TM);  // `template`: A's type hangs on InT
+    auto acc = op.get_destination_cooperative_tensor<decltype(tA), decltype(W), float>();
     for (uint16_t i = 0; i < acc.get_capacity(); ++i) {
         if (acc.is_valid_element(i)) {
             acc[i] = 0;
         }
     }
-    for (uint blk = 0; blk < NBLK; ++blk) {
-        tA = A.slice<64, TM>(blk * 64, ty * TM);
-        tB = B.slice<64, TN>(blk * 64, row0);
-        auto part = op.get_destination_cooperative_tensor<decltype(tA), decltype(tB), float>();
-        for (uint16_t i = 0; i < part.get_capacity(); ++i) {
-            if (part.is_valid_element(i)) {
-                part[i] = 0;
+    const device uchar* rows = blocks + (expert * ROWS + tx * TN) * ROW_BYTES;
+    float w[32];
+    for (uint kt = 0; kt < COLS / TK; ++kt) {
+        // the tile's weights: TN rows of TK / 32 runs, shared out among the threads
+        for (uint u = thread_index_in_threadgroup; u < TN * (TK / 32); u += 32 * SIMD_GROUPS) {
+            uint r = u / (TK / 32), n = u % (TK / 32);
+            unpack32(rows + r * ROW_BYTES, kt * (TK / 32) + n, w);
+            for (uint j = 0; j < 32; ++j) {
+                weights[r * TK + 32 * n + j] = InT(w[j]);
             }
         }
-        op.run(tA, tB, part);
+        threadgroup_barrier(mem_flags::mem_threadgroup);
+        tA = A.template slice<TK, TM>(kt * TK, ty * TM);
+        auto part = op.get_destination_cooperative_tensor<decltype(tA), decltype(W), float>();
+        op.run(tA, W, part);  // sets, does not add
         for (uint16_t i = 0; i < part.get_capacity(); ++i) {
             if (part.is_valid_element(i)) {
-                auto at = part.get_multidimensional_index(i);
-                acc[i] += float(scales[(row0 + at[0]) * NBLK + blk]) * (part[i] - sums[(ty * TM + at[1]) * NBLK + blk]);
+                acc[i] += part[i];
             }
         }
+        threadgroup_barrier(mem_flags::mem_threadgroup);  // all have read the weights before the next are written
     }
     auto tC = C.slice<TN, TM>(tx * TN, ty * TM);
     acc.store(tC);
 """
 
 
-def packable(kind: str, rows: int, cols: int, dtype: mx.Dtype) -> bool:
-    """Whether `packed_matmul` takes such a stack: the primitive multiplies half by 2-bit, not float by 2-bit."""
-    return kind == "Q2_0" and dtype == mx.float16 and rows % ROWS_TILE == 0 and cols % 64 == 0
+def tileable(kind: str, rows: int, cols: int) -> bool:
+    """Whether `tile_matmul` takes a stack of such layers."""
+    return rows % ROWS_TILE == 0 and cols % COLS_TILE == 0 and cols % BLOCK[kind][0] == 0
 
 
-def packed_matmul(blocks: mx.array, shape: tuple, a: mx.array, tile_expert: mx.array) -> mx.array:
-    """out[p] = W[expert of p's tile] . a[p] for a Q2_0 stack `blocks` of `shape` (experts, rows, cols).
+def tile_matmul(blocks: mx.array, kind: str, shape: tuple, a: mx.array, tile_expert: mx.array) -> mx.array:
+    """out[p] = W[expert of p's tile] . a[p] for a stack `blocks` of `shape` (experts, rows, cols).
 
-    a (P, cols) float16, P a multiple of TOKENS_TILE, every TOKENS_TILE rows for one expert; tile_expert (P /
-    TOKENS_TILE,) says which, or names no expert (the number of experts, or more) for a tile to leave out: its
-    rows of the result are then whatever was in memory. Returns (P, rows) float32.
+    a (P, cols) float16 or float32, P a multiple of TOKENS_TILE, every TOKENS_TILE rows for one expert;
+    tile_expert (P / TOKENS_TILE,) says which, or names no expert (the number of experts, or more) for a tile to
+    leave out: its rows of the result are then whatever was in memory. The weights are rounded to the type of
+    `a` before they multiply; sums are float32. Returns (P, rows) float32.
     """
     experts, rows, cols = shape
-    nblk, p = cols // 64, a.shape[0]
-    key = ("packed", rows, cols, experts)
+    key = ("tiles", kind, rows, cols, experts)
     if key not in _kernels:
-        constants = {"ROWS": rows, "COLS": cols, "NBLK": nblk, "TM": TOKENS_TILE, "TN": ROWS_TILE,
-                     "SIMD_GROUPS": _SIMD_GROUPS, "EXPERTS": experts}
         header = ("#include <MetalPerformancePrimitives/MetalPerformancePrimitives.h>\nusing namespace mpp::tensor_ops;\n"
-                  + "".join(f"constant uint {k} = {v};\n" for k, v in constants.items()))
-        _kernels[key] = (
-            mx.fast.metal_kernel(name="q2_split", input_names=["blocks"], output_names=["codes", "scales"],
-                                 source=_SPLIT, header=f"constant uint NBLK = {nblk};\n"),
-            mx.fast.metal_kernel(name="q2_packed", input_names=["a", "sums", "codes", "scales", "tile_expert"],
-                                 output_names=["c"], source=_PACKED, header=header))
-    split, product = _kernels[key]
-    codes, scales = split(inputs=[blocks], grid=(nblk, experts * rows, 1), threadgroup=(min(nblk, 32), 1, 1),
-                          output_shapes=[(experts * rows, cols // 4), (experts * rows, nblk)],
-                          output_dtypes=[mx.uint8, mx.float16])
-    sums = a.reshape(p, nblk, 64).astype(mx.float32).sum(axis=-1)
-    width = 32 * _SIMD_GROUPS
-    (out,) = product(inputs=[a, sums, codes, scales, tile_expert], grid=(width * (rows // ROWS_TILE), p // TOKENS_TILE, 1),
-                     threadgroup=(width, 1, 1), output_shapes=[(p, rows)], output_dtypes=[mx.float32])
+                  + _header(kind, rows, cols, TM=TOKENS_TILE, TN=ROWS_TILE, TK=COLS_TILE, SIMD_GROUPS=_SIMD_GROUPS,
+                            EXPERTS=experts))
+        _kernels[key] = mx.fast.metal_kernel(name=f"tiles_{kind.lower()}", input_names=["blocks", "a", "tile_expert"],
+                                             output_names=["c"], source=_TILES, header=header)
+    width, p = 32 * _SIMD_GROUPS, a.shape[0]
+    (out,) = _kernels[key](inputs=[blocks, a, tile_expert], template=[("InT", a.dtype)],
+                           grid=(width * (rows // ROWS_TILE), p // TOKENS_TILE, 1), threadgroup=(width, 1, 1),
+                           output_shapes=[(p, rows)], output_dtypes=[mx.float32])
     return out
 
 
@@ -456,13 +453,13 @@ def tiles_of(indices: mx.array, experts: int) -> tuple:
     return tile_expert.astype(mx.uint32), token.astype(mx.uint32), where.astype(mx.uint32)
 
 
-def _packed_glu(x: mx.array, indices: mx.array, up, gate, down) -> mx.array:
-    """The three products of a prompt's pairs through `packed_matmul`, the pairs in tiles (`tiles_of`)."""
+def _tiled_glu(x: mx.array, indices: mx.array, up, gate, down) -> mx.array:
+    """The three products of a prompt's pairs through `tile_matmul`, the pairs in tiles (`tiles_of`)."""
     tiles, token, where = tiles_of(indices, gate.num_experts)
     a = x.reshape(-1, x.shape[-1])[token]
 
     def product(lin, a):
-        return packed_matmul(lin.blocks, (lin.num_experts, lin.output_dims, lin.input_dims), a, tiles)
+        return tile_matmul(lin.blocks, lin.kind, (lin.num_experts, lin.output_dims, lin.input_dims), a, tiles)
 
     h = swiglu(product(gate, a), product(up, a)).astype(x.dtype)
     out = product(down, h)[where].astype(x.dtype)
@@ -591,9 +588,9 @@ def _lookup_glu(x: mx.array, indices: mx.array, up, gate, down) -> mx.array:
 
 def switch_glu(x: mx.array, indices: mx.array, up, gate, down) -> mx.array:
     """down(silu(gate(x)) * up(x)) through each token's experts: x (..., in), indices (..., experts per token)."""
-    if indices.size >= PACKED_FROM and all(
-            packable(lin.kind, lin.output_dims, lin.input_dims, x.dtype) for lin in (up, gate, down)):
-        return _packed_glu(x, indices, up, gate, down)
+    if (indices.size >= TILES_FROM and x.dtype in (mx.float16, mx.float32)
+            and all(tileable(lin.kind, lin.output_dims, lin.input_dims) for lin in (up, gate, down))):
+        return _tiled_glu(x, indices, up, gate, down)
     if indices.size >= LOOKUP_FROM and all(lookable(lin, x.dtype) for lin in (up, gate, down)):
         return _lookup_glu(x, indices, up, gate, down)
     # as mlx-lm's SwitchGLU

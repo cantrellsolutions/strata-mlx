@@ -1,0 +1,199 @@
+{
+ "tokens": 1023,
+ "products": [
+  {
+   "kind": "IQ2_S",
+   "rows": 640,
+   "cols": 2560,
+   "tile_tokens": 16,
+   "columns": 64,
+   "ms": 5.347489510313608,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "IQ2_S",
+   "rows": 640,
+   "cols": 2560,
+   "tile_tokens": 16,
+   "columns": 128,
+   "ms": 6.472031265730038,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "IQ2_S",
+   "rows": 640,
+   "cols": 2560,
+   "tile_tokens": 32,
+   "columns": 64,
+   "ms": 6.139093515230343,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "IQ2_S",
+   "rows": 640,
+   "cols": 2560,
+   "tile_tokens": 32,
+   "columns": 128,
+   "ms": 6.654270750004798,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "IQ3_S",
+   "rows": 640,
+   "cols": 2560,
+   "tile_tokens": 16,
+   "columns": 64,
+   "ms": 5.122104019392282,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "IQ3_S",
+   "rows": 640,
+   "cols": 2560,
+   "tile_tokens": 16,
+   "columns": 128,
+   "ms": 6.404083018423989,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "IQ3_S",
+   "rows": 640,
+   "cols": 2560,
+   "tile_tokens": 32,
+   "columns": 64,
+   "ms": 6.726438004989177,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "IQ3_S",
+   "rows": 640,
+   "cols": 2560,
+   "tile_tokens": 32,
+   "columns": 128,
+   "ms": 6.565957970451564,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "IQ3_XXS",
+   "rows": 640,
+   "cols": 2560,
+   "tile_tokens": 16,
+   "columns": 64,
+   "ms": 5.086760764243081,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "IQ3_XXS",
+   "rows": 640,
+   "cols": 2560,
+   "tile_tokens": 16,
+   "columns": 128,
+   "ms": 6.273229519138113,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "IQ3_XXS",
+   "rows": 640,
+   "cols": 2560,
+   "tile_tokens": 32,
+   "columns": 64,
+   "ms": 6.480208510765806,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "IQ3_XXS",
+   "rows": 640,
+   "cols": 2560,
+   "tile_tokens": 32,
+   "columns": 128,
+   "ms": 6.677708239294589,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "IQ4_NL",
+   "rows": 2560,
+   "cols": 640,
+   "tile_tokens": 16,
+   "columns": 64,
+   "ms": 4.74826399780189,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "IQ4_NL",
+   "rows": 2560,
+   "cols": 640,
+   "tile_tokens": 16,
+   "columns": 128,
+   "ms": 6.3101246681374805,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "IQ4_NL",
+   "rows": 2560,
+   "cols": 640,
+   "tile_tokens": 32,
+   "columns": 64,
+   "ms": 6.230638672908147,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "IQ4_NL",
+   "rows": 2560,
+   "cols": 640,
+   "tile_tokens": 32,
+   "columns": 128,
+   "ms": 6.902638997416943,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "Q2_0",
+   "rows": 2560,
+   "cols": 640,
+   "tile_tokens": 16,
+   "columns": 64,
+   "ms": 4.503917007241398,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "Q2_0",
+   "rows": 2560,
+   "cols": 640,
+   "tile_tokens": 16,
+   "columns": 128,
+   "ms": 5.8347705053165555,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "Q2_0",
+   "rows": 2560,
+   "cols": 640,
+   "tile_tokens": 32,
+   "columns": 64,
+   "ms": 5.624583514872938,
+   "operations": 33488896000.0
+  },
+  {
+   "kind": "Q2_0",
+   "rows": 2560,
+   "cols": 640,
+   "tile_tokens": 32,
+   "columns": 128,
+   "ms": 6.797979469411075,
+   "operations": 33488896000.0
+  }
+ ],
+ "whole_ms": {
+  "as prompts go now": 79.0325331967324,
+  "tiles of 16 tokens, 64 columns at a time": 16.341191600076854,
+  "tiles of 16 tokens, 128 columns at a time": 20.251924986951053,
+  "tiles of 32 tokens, 64 columns at a time": 20.160174986813217,
+  "tiles of 32 tokens, 128 columns at a time": 21.53199160238728
+ },
+ "largest_difference": {
+  "as prompts go now": 0.0007363770273514092,
+  "tiles of 16 tokens, 64 columns at a time": 0.000928505090996623,
+  "tiles of 16 tokens, 128 columns at a time": 0.000928505090996623,
+  "tiles of 32 tokens, 64 columns at a time": 0.000928505090996623,
+  "tiles of 32 tokens, 128 columns at a time": 0.000928505090996623
+ }
+}

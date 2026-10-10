@@ -321,8 +321,52 @@ By length, tiles / table of sums, tok/s: 192 tokens 281 / 381, 256 330 / 386, 32
 4.6 GB over the weights. The ten chosen are now 54% of a chunk (980 ms of 1,810), at 4.9 T operations a
 second.
 
-The IQ3_S file's experts do not go this way (no 2-bit operand): each stack is unpacked to 1.7 GB of float16
-(5.8 ms) for MLX's gather_mm (4.1 ms), three times a layer. A kernel on its blocks is what is left to build.
+The IQ3_S file's experts did not go this way (no 2-bit operand): each stack was unpacked to 1.7 GB of float16
+(5.9 ms) for MLX's gather_mm (5.2 ms), three times a layer: 34 ms a layer step by step, 43 in a pass, 79 when
+a layer's three products are made to finish together (three stacks of 1.7 GB at once).
+
+Then the kernel (e33, blocks.tile_matmul), for every type: a threadgroup takes a tile of 16 tokens and 64 rows
+of the tile's expert, unpacks 64 columns of those rows into threadgroup memory (`unpack32`, as the other
+kernels) and Apple's matmul2d multiplies the tile's tokens by that operand; then the next 64 columns. Nothing
+is split, summed or unpacked beforehand. On layers of a real pass, one product of 10,220 pairs:
+
+    IQ2_S 5.3 ms   IQ3_S 5.1   IQ3_XXS 5.1   IQ4_NL 4.8   Q2_0 4.5-5.0        6.3 to 7.4 T operations a second
+    a layer's three products: 16.3 ms; before, Q2_0 22.2 (split 4.1, sums 2.3, products 13.7), IQ3_S file 43-79
+    tiles of 32 tokens, or 128 columns at a time: a fifth slower; 256 columns (all of a threadgroup's memory):
+    wrong results on the real shapes. matmul2d sets its destination, it does not add to it.
+
+So the 2-bit operand of Apple's primitive, the split and the sums are gone again (e30 to e32 are of that code).
+A piece of a prompt, in tiles / a pair at a time (the table of sums for Q2_0, the matvec kernel else), tok/s:
+
+    Q2_0     64 tokens 147 / 154   128 283 / 309   192 429 / 362   256 476 / 368   512 593 / 383   1,024 679 / 378   2,048 696 / 337
+    IQ3_S    64 tokens  89 /  85   128 166 / 178   192 251 / 241   256 337 / 277   384 467 / 288   1,024 633 (358 unpacked)   2,048 671 (382)
+
+Tiles from 1,600 pairs on. As the engine reads, with the draft head reading along, three prompts each:
+
+    Q2_0     1,180 tokens 555-560 tok/s   2,620 652-653   8,668 420-507   peak 2.5 to 4.0 GB over what is held
+    IQ3_S    1,180 tokens 488-513         2,620 633-639   8,668 455-614   peak 5.6 to 7.1 GB (3.3 of them the
+             Q6_K layers' floats, kept from the first prompt on)
+
+The comparison's prompt of 1,180 tokens was read at 370-386 (Q2_0) and 334-349 (IQ3_S) before; llama.cpp reads
+it at 494 and 488, LM Studio at 426-446 and 421-424. The longest prompts slow down as they go: each read is
+15 to 20 s of full load, and the machine slows under it (above).
+
+Checks. Every type on random blocks against the unpacked weights, float16 and float32: 2e-7 of the largest
+value. On real layers against a pair at a time: 1e-4 to 5e-4 a product, 1e-3 through all three, as the ways
+before. Against llama.cpp's saved answers, top token equal a token at a time / four a pass: Q2_0 after 1,537
+tokens 64 / 64, after 3,161 64 / 64, after 6,945 64 / 63 (before 63 / 64), in float32 after 3,161 64 / 64;
+IQ3_S after 1,537 tokens 64 / 64 against both its Metal and its CPU answer (before 63). With part of the
+experts read from the SSD (1.5 and 18.7 GB of them in memory) the 1,537 tokens are read at 273-287 tok/s
+where they were at 136-159, and the answer starts with the same token.
+
+The ten chosen are now half of a chunk's time (49-54%), at 4.9 to 6.1 T operations a second; all else of a
+pass would read 1,200 tokens a second. What is left in them: a tile costs the same with one pair as with
+sixteen, and 26% of the slots are filling at 1,024 tokens.
+
+Open, seen on the way and not looked into: a short piece right after an idle stretch is slow. 64 tokens take
+179 ms one after another and 430 to 580 ms after 2 to 8 s of nothing; one token of an answer is 21 ms either
+way, 256 tokens show little of it. A question of a few dozen tokens therefore waits half a second for its
+first token.
 
 ## What the Apple GPU can do, measured (M4 Max, macOS 27)
 

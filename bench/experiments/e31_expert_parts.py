@@ -13,6 +13,8 @@ are taken from a real pass over a prompt (their activations, and what the router
     this GPU when an expert has thirty tokens
 
     uv run python bench/experiments/e31_expert_parts.py --model <shard 1> [--json out.json]
+(Run on the code of commit 4d72e24. Since then the 2-bit product this takes apart, blocks.packed_matmul, has been
+replaced by blocks.tile_matmul, and these names are gone from blocks.py.)
 """
 
 import argparse
@@ -142,6 +144,29 @@ for layer, (x, indices, up, gate, down) in sorted(taken.items()):
         t, _ = ms(B._lookup_glu, x, indices, up, gate, down)
         steps["(the table of sums instead, all three products)"].append(t)
 
+    else:
+        # the way prompts go with the codebook types: each stack unpacked to floats for MLX's gather_mm
+        t, (xs_, idx_, inv_) = ms(lambda: B._gather_sort(mx.expand_dims(x, (-2, -3)), indices))
+        steps["sorting the pairs by expert (MLX)"].append(t)
+        outs = {}
+        for name, lin, inp in (("gate", gate, xs_), ("up", up, xs_), ("down", down, None)):
+            if inp is None:
+                t, inp = ms(lambda: B.swiglu(outs["gate"], outs["up"]))
+                steps["silu and the product of the two"].append(t)
+            shape_ = (lin.num_experts, lin.output_dims, lin.input_dims)
+            t, w_ = ms(lambda: B.dequantize(lin.blocks, lin.kind, shape_, x.dtype))
+            steps[f"unpacking the stack to floats: {name} ({lin.kind})"].append(t)
+            t, out = ms(lambda: mx.gather_mm(inp, w_.swapaxes(-1, -2), rhs_indices=idx_, sorted_indices=True))
+            steps[f"gather_mm: {name}"].append(t)
+            ways[f"MLX gather_mm over the stack as floats, the product alone: {name}"].append((t, ops[lin]))
+            outs[name] = out
+            del w_
+        t, _ = ms(lambda: B._scatter_unsort(outs["down"], inv_, indices.shape))
+        steps["putting the outputs back in order"].append(t)
+        mx.clear_cache()
+        t, _ = ms(B.switch_glu, x, indices, up, gate, down)
+        steps["all of it, as the engine runs it"].append(t)
+
     # what MLX's own grouped products get from the same pairs: gate only, over forms the file does not have
     shape = (gate.num_experts, gate.output_dims, gate.input_dims)
     xs, idx_sorted, _ = B._gather_sort(mx.expand_dims(x, (-2, -3)), indices)
@@ -180,7 +205,7 @@ if steps:
     print(f"\nthe way prompts go now, a layer (ms, the mean of {len(taken)} layers):")
     for name, ts in steps.items():
         n = 3 if "(x3)" in name else 1
-        print(f"  {name:52} {mean(ts) * n:7.2f}   {mean(ts) * n / whole:5.0%}")
+        print(f"  {name:52} {mean(ts) * n:7.2f}   {mean(ts) * n / whole:5.0%}" + (f"   ({len(ts)} layers)" if len(ts) != len(taken) else ""))
 print("\none product, each way (ms a layer, T operations a second):")
 for name, rows in ways.items():
     t = mean([r[0] for r in rows])

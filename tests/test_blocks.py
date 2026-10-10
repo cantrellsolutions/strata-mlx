@@ -65,32 +65,87 @@ def test_half_precision_activations_come_back_as_half():
     assert mx.abs(out.astype(mx.float32) - want).max().item() <= 2e-3 * mx.abs(want).max().item()
 
 
-# ---- Q2_0 for prompts: Apple's matrix product over the 2-bit codes
+# ---- prompts: an expert's blocks a tile at a time, under Apple's matrix product
 
 from strata_mlx import blocks as blocks_module  # noqa: E402
-from strata_mlx.blocks import BlockSwitchGLU, packable, packed_matmul  # noqa: E402
+from strata_mlx.blocks import BlockSwitchGLU, tile_matmul, tileable  # noqa: E402
+from test_gguf import SCALE_BYTES  # noqa: E402
+
+
+def stack(kind, rng, experts, rows, cols):
+    """Random blocks of a stack of `kind`, and its weights as the unpacking kernel gives them (tested above)."""
+    per_block, block_bytes = BLOCK[kind]
+    n = experts * rows * cols // per_block
+    b = rng.integers(0, 256, (n, block_bytes), dtype=np.uint8)
+    for at in SCALE_BYTES[kind]:
+        b[:, at : at + 2] = rng.uniform(0.001, 0.01, (n, 1)).astype("<f2").view(np.uint8)
+    if kind == "IQ1_M":  # its scale is spread over the top four bits of the four words at byte 48
+        d = rng.uniform(0.001, 0.01, n).astype("<f2").view("<u2")
+        words = b[:, 48:56].copy().view("<u2")
+        for i in range(4):
+            words[:, i] = (words[:, i] & 0x0FFF) | (((d >> (4 * i)) & 15) << 12)
+        b[:, 48:56] = words.view(np.uint8)
+    blocks = mx.array(b.reshape(-1))
+    return blocks, np.array(dequantize(blocks, kind, (experts, rows, cols), mx.float32))
 
 
 def q2_stack(rng, experts, rows, cols):
-    b = rng.integers(0, 256, (experts * rows * cols // 64, 18), dtype=np.uint8)
-    b[:, :2] = rng.uniform(0.005, 0.03, (len(b), 1)).astype("<f2").view(np.uint8)
-    d = b[:, :2].copy().view("<f2").astype(np.float64)
-    code = np.stack([(b[:, 2:] >> s) & 3 for s in (0, 2, 4, 6)], axis=2).reshape(-1, 64)
-    return mx.array(b.reshape(-1)), ((code.astype(np.float64) - 1) * d).reshape(experts, rows, cols)
+    blocks, w = stack("Q2_0", rng, experts, rows, cols)
+    return blocks, w.astype(np.float64)
 
 
-def test_the_packed_product_is_the_product_with_the_weights():
+@pytest.mark.parametrize("kind", sorted(BLOCK))
+@pytest.mark.parametrize("dtype", [np.float16, np.float32])
+def test_the_tile_product_is_the_product_with_the_weights(kind, dtype):
     rng = np.random.default_rng(0)
-    blocks, w = q2_stack(rng, 4, 128, 192)
+    shape = (4, 128, 512)
+    blocks, w = stack(kind, rng, *shape)
+    w = w.astype(dtype).astype(np.float64)  # a tile's weights are rounded to the activations' type
     tiles = np.array([3, 0, 0, 2, 3])  # tiles of 16 rows, each for one expert, in no particular order
-    a = rng.standard_normal((16 * len(tiles), 192)).astype(np.float16)
-    got = np.array(packed_matmul(blocks, (4, 128, 192), mx.array(a), mx.array(tiles.astype(np.uint32))))
+    a = rng.standard_normal((16 * len(tiles), shape[2])).astype(dtype)
+    got = np.array(tile_matmul(blocks, kind, shape, mx.array(a), mx.array(tiles.astype(np.uint32))))
     want = np.einsum("poi,pi->po", w[np.repeat(tiles, 16)], a.astype(np.float64))
     assert got.shape == want.shape and got.dtype == np.float32
-    assert np.abs(got - want).max() <= 2e-3 * np.abs(want).max()  # the activations are float16
+    assert np.abs(got - want).max() <= 2e-6 * np.abs(want).max()  # sums are float32
 
 
-def test_a_prompt_through_packed_products_is_the_prompt_a_pair_at_a_time(monkeypatch):
+@pytest.mark.parametrize("kinds", [("Q2_0", "Q2_0"), ("IQ3_S", "IQ4_NL"), ("IQ2_S", "Q2_0")])
+@pytest.mark.parametrize("dtype", [np.float16, np.float32])
+def test_a_prompt_through_tiles_is_the_prompt_a_pair_at_a_time(monkeypatch, kinds, dtype):
+    rng = np.random.default_rng(1)
+    experts, hidden, inner, k = 7, 256, 64, 3
+    stacks = {name: (kind, *stack(kind, rng, experts, rows, cols))
+              for name, kind, (rows, cols) in (("gate", kinds[0], (inner, hidden)), ("up", kinds[0], (inner, hidden)),
+                                               ("down", kinds[1], (hidden, inner * 4)))}
+    # down reads four times what gate and up give: the test's own widening, so that its rows end on a block
+    glu = BlockSwitchGLU(*(BlockSwitchLinear(stacks[n][1], stacks[n][0], stacks[n][2].shape) for n in ("gate", "up")),
+                         BlockSwitchLinear(stacks["down"][1], stacks["down"][0], stacks["down"][2].shape))
+    assert all(tileable(stacks[n][0], *stacks[n][2].shape[1:]) for n in stacks)
+    rows = 211
+    x = rng.standard_normal((1, rows, hidden)).astype(dtype)
+    idx = rng.integers(0, experts - 1, (1, rows, k))  # runs of every length; the last expert is never chosen
+    idx[0, :40] = 2  # and one expert far more than the others
+    w = {n: stacks[n][2].astype(np.float64) for n in stacks}
+
+    def through(glu_fn):
+        gate_, up_, down_ = glu.gate_proj, glu.up_proj, glu.down_proj
+        xs, ix = mx.array(x), mx.array(idx)
+        t, token, where = blocks_module.tiles_of(ix, experts)
+        a = xs.reshape(-1, hidden)[token]
+        g = glu_fn(gate_, a, t)[where].reshape(1, rows, k, inner)
+        u = glu_fn(up_, a, t)[where].reshape(1, rows, k, inner)
+        return np.array(g).astype(np.float64), np.array(u).astype(np.float64)
+
+    g, u = through(lambda lin, a, t: tile_matmul(lin.blocks, lin.kind, (experts, lin.output_dims, lin.input_dims), a, t))
+    xs = x.astype(np.float64)[0]
+    tol = 2e-3 if dtype == np.float16 else 2e-5
+    for got, name in ((g, "gate"), (u, "up")):
+        want = np.einsum("tkoi,ti->tko", w[name][idx[0]], xs)
+        assert np.abs(got[0] - want).max() <= tol * np.abs(want).max()
+
+
+def test_a_prompts_three_products_go_through_tiles(monkeypatch):
+    """switch_glu sends a chunk's pairs through the tiles, and what comes out is what a pair at a time gives."""
     rng = np.random.default_rng(1)
     experts, hidden, inner, k = 7, 128, 64, 3
     stacks = {name: q2_stack(rng, experts, rows, cols)
@@ -99,20 +154,24 @@ def test_a_prompt_through_packed_products_is_the_prompt_a_pair_at_a_time(monkeyp
     x = mx.array(rng.standard_normal((1, 211, hidden)).astype(np.float16))
     idx = rng.integers(0, experts - 1, (1, 211, k))  # runs of every length; the last expert is never chosen
     idx[0, :40] = 2  # and one expert far more than the others
-    assert all(packable("Q2_0", *stacks[n][1].shape[1:], mx.float16) for n in stacks)
 
+    called = []
+    tiled = blocks_module._tiled_glu
+    monkeypatch.setattr(blocks_module, "_tiled_glu", lambda *a: called.append(1) or tiled(*a))
     monkeypatch.setattr(blocks_module, "LOOKUP_FROM", 1 << 62)
+    monkeypatch.setattr(blocks_module, "TILES_FROM", 1 << 62)
     a_pair = np.array(glu(x, mx.array(idx))).astype(np.float64)
-    monkeypatch.setattr(blocks_module, "PACKED_FROM", 100)
-    packed = np.array(glu(x, mx.array(idx))).astype(np.float64)
-    assert packed.shape == a_pair.shape == (1, 211, k, hidden)
+    assert not called
+    monkeypatch.setattr(blocks_module, "TILES_FROM", 100)
+    in_tiles = np.array(glu(x, mx.array(idx))).astype(np.float64)
+    assert called and in_tiles.shape == a_pair.shape == (1, 211, k, hidden)
 
     xs = np.array(x).astype(np.float64)[0]
     gate, up = (np.einsum("tkoi,ti->tko", stacks[n][1][idx[0]], xs) for n in ("gate", "up"))
     want = np.einsum("tkoi,tki->tko", stacks["down"][1][idx[0]], gate / (1 + np.exp(-gate)) * up)
     scale = np.abs(want).max()
     assert np.abs(a_pair[0] - want).max() <= 5e-3 * scale
-    assert np.abs(packed[0] - want).max() <= 5e-3 * scale
+    assert np.abs(in_tiles[0] - want).max() <= 5e-3 * scale
 
 
 @pytest.mark.parametrize("tokens, k, experts", [(211, 3, 7), (5, 2, 40), (64, 10, 512), (1, 1, 3)])
@@ -141,48 +200,13 @@ def test_a_tile_of_no_expert_is_left_out():
     blocks, w = q2_stack(rng, 4, 128, 192)
     tiles = np.array([1, 4, 2, 9])  # the second and the last name no expert
     a = rng.standard_normal((16 * len(tiles), 192)).astype(np.float16)
-    got = np.array(packed_matmul(blocks, (4, 128, 192), mx.array(a), mx.array(tiles.astype(np.uint32))))
+    got = np.array(tile_matmul(blocks, "Q2_0", (4, 128, 192), mx.array(a), mx.array(tiles.astype(np.uint32))))
     for t in (0, 2):
         want = np.einsum("oi,pi->po", w[tiles[t]], a[16 * t : 16 * t + 16].astype(np.float64))
-        assert np.abs(got[16 * t : 16 * t + 16] - want).max() <= 2e-3 * np.abs(want).max()
+        assert np.abs(got[16 * t : 16 * t + 16] - want).max() <= 2e-6 * np.abs(want).max()
 
 
-def test_only_half_floats_over_q2_0_go_the_packed_way():
-    assert packable("Q2_0", 640, 2560, mx.float16)
-    assert not packable("Q2_0", 640, 2560, mx.float32)  # the primitive has no float32 by 2-bit product
-    assert not packable("IQ4_NL", 640, 2560, mx.float16)
-    assert not packable("Q2_0", 32, 64, mx.float16)  # fewer output rows than a tile
-
-
-
-@pytest.mark.parametrize("tokens", [1, 2, 5, 9, 70])
-def test_an_answer_through_lookups_is_the_answer_with_the_weights(tokens, monkeypatch):
-    """Windows of an answer and short chunks: few pairs with many threads to a row, many with few."""
-    rng = np.random.default_rng(tokens)
-    experts, hidden, inner, k = 9, 256, 128, 4
-    stacks = {name: q2_stack(rng, experts, rows, cols)
-              for name, (rows, cols) in (("gate", (inner, hidden)), ("up", (inner, hidden)), ("down", (hidden, inner)))}
-    glu = BlockSwitchGLU(*(BlockSwitchLinear(stacks[n][0], "Q2_0", stacks[n][1].shape) for n in ("gate", "up", "down")))
-    x = mx.array(rng.standard_normal((1, tokens, hidden)).astype(np.float16))
-    idx = np.stack([rng.choice(experts, k, replace=False) for _ in range(tokens)])[None]
-    got = glu(x, mx.array(idx))
-    assert got.shape == (1, tokens, k, hidden) and got.dtype == mx.float16
-    xs = np.array(x).astype(np.float64)[0]
-    gate, up = (np.einsum("tkoi,ti->tko", stacks[n][1][idx[0]], xs) for n in ("gate", "up"))
-    want = np.einsum("tkoi,tki->tko", stacks["down"][1][idx[0]], gate / (1 + np.exp(-gate)) * up)
-    assert np.abs(np.array(got).astype(np.float64)[0] - want).max() <= 5e-3 * np.abs(want).max()
-    monkeypatch.setattr(blocks_module, "LOOKUP_FROM", 1 << 62)
-    plain = np.array(glu(x, mx.array(idx))).astype(np.float64)[0]
-    assert np.abs(plain - want).max() <= 5e-3 * np.abs(want).max()
-
-
-def test_float32_activations_do_not_go_through_lookups(monkeypatch):
-    """The table holds float16: the exact way stays as it was."""
-    rng = np.random.default_rng(3)
-    stacks = {name: q2_stack(rng, 5, rows, cols) for name, (rows, cols) in (("gate", (64, 128)), ("up", (64, 128)), ("down", (128, 64)))}
-    glu = BlockSwitchGLU(*(BlockSwitchLinear(stacks[n][0], "Q2_0", stacks[n][1].shape) for n in ("gate", "up", "down")))
-    x = mx.array(rng.standard_normal((1, 3, 128)).astype(np.float32))
-    idx = mx.array(rng.integers(0, 5, (1, 3, 2)))
-    got = glu(x, idx)
-    monkeypatch.setattr(blocks_module, "LOOKUP_FROM", 1 << 62)
-    assert got.dtype == mx.float32 and mx.array_equal(got, glu(x, idx)).item()
+def test_what_fits_in_tiles():
+    assert tileable("Q2_0", 640, 2560) and tileable("IQ3_S", 640, 2560) and tileable("IQ4_NL", 2560, 640)
+    assert not tileable("IQ3_S", 2560, 640)  # its blocks are 256 weights: a row of 640 does not end on one
+    assert not tileable("Q2_0", 2, 2560)  # rows by the 64

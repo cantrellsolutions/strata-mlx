@@ -1,0 +1,99 @@
+{
+ "tokens": 1023,
+ "layers": [
+  {
+   "layer": 1,
+   "pairs": 10220,
+   "experts": 384,
+   "most": 231,
+   "median": 12.0,
+   "kinds": [
+    "IQ2_S",
+    "Q2_0"
+   ]
+  },
+  {
+   "layer": 13,
+   "pairs": 10220,
+   "experts": 357,
+   "most": 302,
+   "median": 13.0,
+   "kinds": [
+    "IQ2_S",
+    "Q2_0"
+   ]
+  },
+  {
+   "layer": 25,
+   "pairs": 10220,
+   "experts": 393,
+   "most": 565,
+   "median": 10.0,
+   "kinds": [
+    "IQ3_S",
+    "IQ4_NL"
+   ]
+  },
+  {
+   "layer": 37,
+   "pairs": 10220,
+   "experts": 395,
+   "most": 566,
+   "median": 9.0,
+   "kinds": [
+    "IQ3_XXS",
+    "IQ4_NL"
+   ]
+  },
+  {
+   "layer": 46,
+   "pairs": 10220,
+   "experts": 340,
+   "most": 746,
+   "median": 7.0,
+   "kinds": [
+    "IQ3_XXS",
+    "IQ4_NL"
+   ]
+  }
+ ],
+ "steps_ms": {
+  "sorting the pairs by expert (MLX)": 0.5310583859682083,
+  "unpacking the stack to floats: gate (IQ2_S)": 5.892292014323175,
+  "gather_mm: gate": 5.224508594255894,
+  "unpacking the stack to floats: up (IQ2_S)": 5.876478971913457,
+  "gather_mm: up": 5.236866802442819,
+  "silu and the product of the two": 0.19766659243032336,
+  "unpacking the stack to floats: down (Q2_0)": 5.684666510205716,
+  "gather_mm: down": 4.8135832301341,
+  "putting the outputs back in order": 0.39173340192064643,
+  "all of it, as the engine runs it": 79.28285001544282,
+  "unpacking the stack to floats: gate (IQ3_S)": 5.879458039999008,
+  "unpacking the stack to floats: up (IQ3_S)": 5.903040990233421,
+  "unpacking the stack to floats: down (IQ4_NL)": 6.257819341650854,
+  "unpacking the stack to floats: gate (IQ3_XXS)": 5.870167020475492,
+  "unpacking the stack to floats: up (IQ3_XXS)": 5.935395980486646
+ },
+ "ways": {
+  "MLX gather_mm over the stack as floats, the product alone: gate": {
+   "ms": 5.224508594255894,
+   "operations": 33488896000.0
+  },
+  "MLX gather_mm over the stack as floats, the product alone: up": {
+   "ms": 5.236866802442819,
+   "operations": 33488896000.0
+  },
+  "MLX gather_mm over the stack as floats, the product alone: down": {
+   "ms": 4.8135832301341,
+   "operations": 33488896000.0
+  },
+  "MLX gather_mm over the stack as float16: gate": {
+   "ms": 3.976824798155576,
+   "operations": 33488896000.0
+  },
+  "(unpacking the stack to float16: gate)": {
+   "ms": 5.8167331968434155,
+   "operations": 0.0
+  }
+ }
+}

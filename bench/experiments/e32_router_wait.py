@@ -13,6 +13,8 @@ until the GPU had the routers' choice. Here the same chunk is read four ways, in
     sorting on the GPU (blocks.tiles_of), as the engine reads it since
 
     uv run python bench/experiments/e32_router_wait.py --model <shard 1> [--json out.json]
+(Run on the code of commit 4d72e24. Since then the 2-bit product this takes apart, blocks.packed_matmul, has been
+replaced by blocks.tile_matmul, and these names are gone from blocks.py.)
 """
 
 import argparse
