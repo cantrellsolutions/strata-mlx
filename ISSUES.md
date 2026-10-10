@@ -5,6 +5,8 @@ Problems that are known and not solved. What was tried and measured on the way t
 
 ## 1. Short prompts are read slowly, and slower still after an idle stretch
 
+[Issue 1 on GitHub](https://github.com/yibie/strata-mlx/issues/1)
+
 **What is seen.** A question of a few dozen tokens waits about half a second for the first token of its
 answer. In the comparison with llama.cpp and LM Studio (`bench/compare_servers.py`, M4 Max, tokens a second
 at which each engine reads the prompt):
@@ -51,6 +53,8 @@ buffer cache holds before and after the rest (`mx.get_cache_memory()`), and at t
 the graph of a piece that is not compiled. No fix is proposed before one of the two is seen.
 
 ## 2. The comparison's reading speeds are from two sessions
+
+[Issue 2 on GitHub](https://github.com/yibie/strata-mlx/issues/2)
 
 `docs/OPTIMIZATION_RECORD.md` and `ROADMAP.md` say the prompt of 1,180 tokens is read faster by this engine
 than by llama.cpp (570-612 against 494-495 tok/s with the Q2_0 file, 504-517 against 488-489 with IQ3_S).
