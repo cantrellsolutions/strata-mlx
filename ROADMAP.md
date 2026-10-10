@@ -293,9 +293,36 @@ the table is still the faster by an eighth. Not changed yet: where they cross be
 measured. Not the cause: the cut before the last token (a prompt of 1,180 is read as 1,179 and 1), the draft
 head reading along (3,140 ms against 3,113), the n-gram table, the recurrence.
 
-What would help is a kernel that reads an expert's blocks once for all the tokens that chose it, as the dense
-Q6_K kernel does for a window, with no split and no filling. If the experts ran at half the dense rate a
-piece of 1,024 would take 1.8 s (560 tok/s), at the dense rate 1.3 s (770). Not built.
+What would help, it seemed, was a kernel that reads an expert's blocks once for all the tokens that chose it.
+Measured before building it (e31, e32), the product was not what was slow:
+
+    a layer's ten chosen, their inputs given (e31, ms, the mean of five layers of a real pass, 10,220 pairs):
+    splitting the three stacks into codes and scales 4.1, the sums of the activations 2.3, the three products
+    4.7 + 4.6 + 4.4, sorting the pairs on the CPU 0.5, the gathers 1.4, silu 0.5: 20.4 in all, 1.0 s a chunk
+
+    one product (gate), T operations a second: the 2-bit product in tiles 7.1, MLX's gather_mm over the stack
+    as float16 8.1, MLX's gather_qmm over the stack requantized at 2 bits 6.8, the table of sums 2.8
+
+So the product was already where MLX's own grouped products are, and a chunk paid 1.7-2.1 s for 1.0 s of
+experts. The rest was the wait: the pairs were sorted by expert on the CPU, so a pass stopped at every layer
+until the GPU had the routers' choice, and what followed each stop ran slower. With the choices known
+beforehand (taken from a pass before) the same chunk took 1.8 s instead of 2.7 (e32).
+
+Now the GPU sorts them (blocks.tiles_of): the tiles are laid out by array operations, in as many tiles as the
+pairs could need at most, and the kernel leaves out those nothing fills. In turns, one piece of 1,024 tokens:
+
+    sorting on the CPU 2723 ms (376 tok/s)   the choices known beforehand 1821 (562)   sorting on the GPU 1832 (559)
+
+The first token of the answer is the same each way; against llama.cpp's answers after prompts of 3,161 and
+6,945 tokens the top token is equal at 64 of 64 and 63 of 64 steps a token at a time, 64 and 64 four a pass,
+as before. A prompt of 1,180 tokens as the engine reads it: 2,298 ms (514 tok/s) where it took 2,885-3,113.
+By length, tiles / table of sums, tok/s: 192 tokens 281 / 381, 256 330 / 386, 320 380 / 388, 384 410 / 390,
+1,024 561 / 361, 2,048 627 / 344; the change of way stays at 3,000 pairs. Peak memory with chunks of 2,048:
+4.6 GB over the weights. The ten chosen are now 54% of a chunk (980 ms of 1,810), at 4.9 T operations a
+second.
+
+The IQ3_S file's experts do not go this way (no 2-bit operand): each stack is unpacked to 1.7 GB of float16
+(5.8 ms) for MLX's gather_mm (4.1 ms), three times a layer. A kernel on its blocks is what is left to build.
 
 ## What the Apple GPU can do, measured (M4 Max, macOS 27)
 

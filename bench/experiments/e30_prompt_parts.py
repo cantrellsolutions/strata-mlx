@@ -259,6 +259,8 @@ for n in args.lengths:
     print(f"  {n:5} tokens   2-bit product in tiles {row['tiles']:6.0f} ms {n / row['tiles'] * 1e3:5.0f} tok/s   "
           f"table of sums {row['table']:6.0f} ms {n / row['table'] * 1e3:5.0f} tok/s   (now: {now})")
 
+print(f"  peak memory so far {mx.get_peak_memory() / 1e9:.1f} GB")
+
 print("\na prompt as the engine reads it (cut for its checkpoints), 1,180 tokens:")
 whole = []
 long = prompt[:1180]

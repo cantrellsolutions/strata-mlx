@@ -1,0 +1,98 @@
+{
+ "tokens": 1023,
+ "layers": [
+  {
+   "layer": 1,
+   "pairs": 10220,
+   "experts": 383,
+   "most": 231,
+   "median": 12.0,
+   "kinds": [
+    "Q2_0"
+   ]
+  },
+  {
+   "layer": 13,
+   "pairs": 10220,
+   "experts": 360,
+   "most": 360,
+   "median": 13.0,
+   "kinds": [
+    "Q2_0"
+   ]
+  },
+  {
+   "layer": 25,
+   "pairs": 10220,
+   "experts": 393,
+   "most": 563,
+   "median": 11.0,
+   "kinds": [
+    "Q2_0"
+   ]
+  },
+  {
+   "layer": 37,
+   "pairs": 10220,
+   "experts": 393,
+   "most": 548,
+   "median": 11.0,
+   "kinds": [
+    "Q2_0"
+   ]
+  },
+  {
+   "layer": 46,
+   "pairs": 10220,
+   "experts": 340,
+   "most": 733,
+   "median": 7.0,
+   "kinds": [
+    "Q2_0"
+   ]
+  }
+ ],
+ "steps_ms": {
+  "sorting the pairs by expert on the CPU": 0.5442250170744956,
+  "gathering the activations": 0.41737499414011836,
+  "splitting a stack into codes and scales (x3)": 4.093900613952428,
+  "sums of the activations (x3)": 2.2694254061207175,
+  "the product: gate": 4.714925203006715,
+  "the product: up": 4.573541600257158,
+  "silu and the product of the two": 0.47474978491663933,
+  "the product: down": 4.388899786863476,
+  "gathering the outputs back": 0.9757749852724373,
+  "all of it, as the engine runs it": 20.42814160231501,
+  "(the table of sums instead, all three products)": 38.034858589526266
+ },
+ "ways": {
+  "2-bit product in tiles, the product alone: gate": {
+   "ms": 4.714925203006715,
+   "operations": 33488896000.0
+  },
+  "2-bit product in tiles, the product alone: up": {
+   "ms": 4.573541600257158,
+   "operations": 33488896000.0
+  },
+  "2-bit product in tiles, the product alone: down": {
+   "ms": 4.388899786863476,
+   "operations": 33488896000.0
+  },
+  "table of sums a pair at a time: gate": {
+   "ms": 11.880483594723046,
+   "operations": 33488896000.0
+  },
+  "MLX gather_mm over the stack as float16: gate": {
+   "ms": 4.130566422827542,
+   "operations": 33488896000.0
+  },
+  "MLX gather_qmm over the stack requantized at 2 bits: gate": {
+   "ms": 4.9377915798686445,
+   "operations": 33488896000.0
+  },
+  "(unpacking the stack to float16: gate)": {
+   "ms": 5.785916815511882,
+   "operations": 0.0
+  }
+ }
+}

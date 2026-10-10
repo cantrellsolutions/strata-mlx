@@ -353,6 +353,9 @@ _SPLIT = """
 # w = d * (code - 1), hence d * (codes . a - sum of a).
 _PACKED = """
     uint tx = threadgroup_position_in_grid.x, ty = threadgroup_position_in_grid.y;
+    if (uint(tile_expert[ty]) >= EXPERTS) {
+        return;  // a tile beyond those the pairs fill: there are as many as they could need at most
+    }
     uint row0 = uint(tile_expert[ty]) * ROWS + tx * TN;
     constexpr auto desc = matmul2d_descriptor(TM, TN, 64, false, true, false);
     matmul2d<desc, execution_simdgroups<SIMD_GROUPS>> op;
@@ -399,13 +402,15 @@ def packed_matmul(blocks: mx.array, shape: tuple, a: mx.array, tile_expert: mx.a
     """out[p] = W[expert of p's tile] . a[p] for a Q2_0 stack `blocks` of `shape` (experts, rows, cols).
 
     a (P, cols) float16, P a multiple of TOKENS_TILE, every TOKENS_TILE rows for one expert; tile_expert (P /
-    TOKENS_TILE,) says which. Returns (P, rows) float32.
+    TOKENS_TILE,) says which, or names no expert (the number of experts, or more) for a tile to leave out: its
+    rows of the result are then whatever was in memory. Returns (P, rows) float32.
     """
     experts, rows, cols = shape
     nblk, p = cols // 64, a.shape[0]
-    key = ("packed", rows, cols)
+    key = ("packed", rows, cols, experts)
     if key not in _kernels:
-        constants = {"ROWS": rows, "COLS": cols, "NBLK": nblk, "TM": TOKENS_TILE, "TN": ROWS_TILE, "SIMD_GROUPS": _SIMD_GROUPS}
+        constants = {"ROWS": rows, "COLS": cols, "NBLK": nblk, "TM": TOKENS_TILE, "TN": ROWS_TILE,
+                     "SIMD_GROUPS": _SIMD_GROUPS, "EXPERTS": experts}
         header = ("#include <MetalPerformancePrimitives/MetalPerformancePrimitives.h>\nusing namespace mpp::tensor_ops;\n"
                   + "".join(f"constant uint {k} = {v};\n" for k, v in constants.items()))
         _kernels[key] = (
@@ -424,28 +429,44 @@ def packed_matmul(blocks: mx.array, shape: tuple, a: mx.array, tile_expert: mx.a
     return out
 
 
+def tiles_of(indices: mx.array, experts: int) -> tuple:
+    """The pairs of `indices` (..., k) laid out in tiles of TOKENS_TILE, each tile one expert's.
+
+    -> (the expert of each tile, or `experts` for a tile nothing fills; the token of each slot; the slot of
+    each pair). All of it is worked out by the GPU, in a number of tiles that depends only on the number of
+    pairs: as many as they could need, however the routers chose. Sorting on the CPU instead made a pass stop
+    at every layer until the GPU had the routers' choice, and those stops were a third of the time a prompt
+    took (bench/experiments/e32: 1,024 tokens in 2.6 s, in 1.8 with the choices known beforehand).
+    """
+    k, flat = indices.shape[-1], indices.reshape(-1).astype(mx.int32)
+    pairs = flat.size
+    order = mx.argsort(flat)
+    expert = flat[order]  # of each pair, in order of expert
+    counts = (flat[:, None] == mx.arange(experts, dtype=mx.int32)[None]).sum(axis=0)
+    tiles = (counts + (TOKENS_TILE - 1)) // TOKENS_TILE
+    tile_end, pair_end = mx.cumsum(tiles), mx.cumsum(counts)
+    slot = ((tile_end - tiles)[expert] * TOKENS_TILE + mx.arange(pairs, dtype=mx.int32) - (pair_end - counts)[expert])
+    most = pairs // TOKENS_TILE + min(experts, pairs)  # every expert's last tile may be all but empty
+    token = mx.zeros((most * TOKENS_TILE,), dtype=mx.int32)
+    token[slot] = order.astype(mx.int32) // k  # what fills a tile is token 0, computed and thrown away
+    where = mx.zeros((pairs,), dtype=mx.int32)
+    where[order] = slot
+    # a tile's expert is the first whose tiles end after it: as many experts end at or before it
+    tile_expert = (tile_end[None] <= mx.arange(most, dtype=mx.int32)[:, None]).sum(axis=1)
+    return tile_expert.astype(mx.uint32), token.astype(mx.uint32), where.astype(mx.uint32)
+
+
 def _packed_glu(x: mx.array, indices: mx.array, up, gate, down) -> mx.array:
-    """The three products of a prompt's pairs through `packed_matmul`: pairs sorted by expert, each expert's run
-    filled up to whole tiles (what fills it is computed and thrown away)."""
-    idx = np.array(indices)  # the tiles depend on what the router chose: the pass waits for it here
-    k, flat = idx.shape[-1], idx.reshape(-1)
-    order = np.argsort(flat, kind="stable")
-    used, counts = np.unique(flat, return_counts=True)
-    padded = -(-counts // TOKENS_TILE) * TOKENS_TILE
-    slot = np.repeat(np.cumsum(padded) - padded, counts) + np.arange(len(flat)) - np.repeat(np.cumsum(counts) - counts, counts)
-    token = np.zeros(int(padded.sum()), dtype=np.uint32)
-    token[slot] = order // k  # the token each slot stands for, in order of expert
-    where = np.empty(len(flat), dtype=np.uint32)
-    where[order] = slot  # and the slot of each pair
-    tiles = mx.array(np.repeat(used, padded // TOKENS_TILE).astype(np.uint32))
-    a = x.reshape(-1, x.shape[-1])[mx.array(token)]
+    """The three products of a prompt's pairs through `packed_matmul`, the pairs in tiles (`tiles_of`)."""
+    tiles, token, where = tiles_of(indices, gate.num_experts)
+    a = x.reshape(-1, x.shape[-1])[token]
 
     def product(lin, a):
         return packed_matmul(lin.blocks, (lin.num_experts, lin.output_dims, lin.input_dims), a, tiles)
 
     h = swiglu(product(gate, a), product(up, a)).astype(x.dtype)
-    out = product(down, h)[mx.array(where)].astype(x.dtype)
-    return out.reshape(*idx.shape, down.output_dims)
+    out = product(down, h)[where].astype(x.dtype)
+    return out.reshape(*indices.shape, down.output_dims)
 
 
 # ---- Q2_0 for answers: a table of sums instead of a multiplication for every weight

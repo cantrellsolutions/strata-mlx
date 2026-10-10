@@ -1,0 +1,11 @@
+{
+ "tokens": 1024,
+ "ms": {
+  "sorting on the CPU": 2722.906624956522,
+  "sorting on the CPU, two stops a layer": 2794.1417080000974,
+  "the choices known beforehand": 1821.3655840372667,
+  "sorting on the GPU": 1831.9432089920156
+ },
+ "experts_ms": 1711.3450028700754,
+ "rest_ms": 1087.7155830385163
+}

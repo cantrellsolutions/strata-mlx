@@ -115,6 +115,38 @@ def test_a_prompt_through_packed_products_is_the_prompt_a_pair_at_a_time(monkeyp
     assert np.abs(packed[0] - want).max() <= 5e-3 * scale
 
 
+@pytest.mark.parametrize("tokens, k, experts", [(211, 3, 7), (5, 2, 40), (64, 10, 512), (1, 1, 3)])
+def test_tiles_hold_every_pair_with_its_expert(tokens, k, experts):
+    from strata_mlx.blocks import TOKENS_TILE, tiles_of
+
+    rng = np.random.default_rng(tokens)
+    idx = rng.integers(0, experts, (1, tokens, k))
+    idx[0, : tokens // 3] = 1  # one expert with many pairs; and where it can be, runs of exactly a tile and one more
+    if tokens >= 33 and experts > 4:
+        idx[0, -33:, 0] = np.repeat([3, 4], [16, 17])
+    tile_expert, token, where = (np.array(a) for a in tiles_of(mx.array(idx), experts))
+    flat = idx.reshape(-1)
+    assert len(tile_expert) * TOKENS_TILE == len(token) and len(where) == len(flat)
+    assert len(set(where.tolist())) == len(flat)  # a slot to each pair
+    np.testing.assert_array_equal(tile_expert[where // TOKENS_TILE], flat)  # in a tile of its expert
+    np.testing.assert_array_equal(token[where], np.arange(len(flat)) // k)  # and the slot knows its token
+    used = np.zeros(len(tile_expert), dtype=bool)
+    used[where // TOKENS_TILE] = True
+    assert (tile_expert[~used] == experts).all() and (tile_expert[used] < experts).all()
+    assert used.sum() == sum(-(-c // TOKENS_TILE) for c in np.bincount(flat))  # no expert has a tile to spare
+
+
+def test_a_tile_of_no_expert_is_left_out():
+    rng = np.random.default_rng(3)
+    blocks, w = q2_stack(rng, 4, 128, 192)
+    tiles = np.array([1, 4, 2, 9])  # the second and the last name no expert
+    a = rng.standard_normal((16 * len(tiles), 192)).astype(np.float16)
+    got = np.array(packed_matmul(blocks, (4, 128, 192), mx.array(a), mx.array(tiles.astype(np.uint32))))
+    for t in (0, 2):
+        want = np.einsum("oi,pi->po", w[tiles[t]], a[16 * t : 16 * t + 16].astype(np.float64))
+        assert np.abs(got[16 * t : 16 * t + 16] - want).max() <= 2e-3 * np.abs(want).max()
+
+
 def test_only_half_floats_over_q2_0_go_the_packed_way():
     assert packable("Q2_0", 640, 2560, mx.float16)
     assert not packable("Q2_0", 640, 2560, mx.float32)  # the primitive has no float32 by 2-bit product
