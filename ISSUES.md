@@ -134,3 +134,41 @@ cache and 149-162 with it dropped. Both records are corrected.
 
 Before either, time `whole` over the 48 layers with nothing computing: it reads at about 4.5 GB/s here where
 `bench/ssd_reads.py` measured 6.5 GB/s for this disk.
+
+## 6. On a real 32 GB Mac the default leaves macOS too little memory, and it swaps
+
+[Issue 6 on GitHub](https://github.com/yibie/strata-mlx/issues/6)
+
+**What is seen.** On a MacBook Air M5 with 32 GB (macOS 27.0.1, MLX 0.32.3, commit `1d75ad4`, Q2_0 with the
+draft head, about 2 GB of other programs open) the engine by default keeps 20.5 GB of experts in memory, and the
+machine swaps. With fewer experts in memory it is about twice as fast. Measured by @guoggg
+([comment on issue 3](https://github.com/yibie/strata-mlx/issues/3#issuecomment-6110466402)) with
+`bench/paged.py`, four prompts by two rounds of 200 tokens, and `--read` of a 1,180-token prompt:
+
+| experts in memory | draft head tok/s (mean) | one token a pass (mean) | read 1,180 tokens, tok/s | arrays at peak | swap peak | swapped out during run |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 14 GB (`--budget 14`) | 20.9-24.8 (23.6) | 13.6 | 152, 155 | 22.4 GB | not recorded | not recorded |
+| 16 GB | 23.4-26.8 (25.3) | 13.8 | 95, 119 | 24.5 GB | 2.8 GB | 1.7 GB |
+| 18 GB | 12.0-24.4 (15.4) | 9.2 | 89, 110 | 26.5 GB | 5.1 GB | 39 GB |
+| 20.5 GB (the default) | 5.8-19.2 (11.9) | 7.1 | 49, 136 | 29.1 GB | 6.9 GB | 106 GB |
+
+Each row is one run; the prompt read is the reporter's own text, not the one used here.
+
+**What it says.** The rule in `strata_mlx/paged.py` counts the process rightly: in all four rows the arrays
+peak at the experts' budget plus 8.4 to 8.6 GB. What is too little is what it leaves to macOS and other
+programs, `SYSTEM`, 4.5 GB: with the default the machine swapped 106 GB out during the run, and with about 8 GB
+left it hardly swapped.
+
+**Why it was not seen here.** The speeds given for 16, 24 and 32 GB machines are from the 128 GB M4 Max with
+the experts' budget limited. Nothing else is short of memory there, so it never swaps. The README's 23-38 tok/s
+"as 32 GB" is such a figure; the real machine's default gave 5.8-19.2.
+
+**Not known.** How much of the 8 GB is macOS and how much the 2 GB of other programs; whether a 16, 24 or
+36 GB Mac needs the same amount or the same share; and what an M5 with more memory does. One machine, one run
+a row.
+
+**For now.** On a 32 GB Mac, `--expert-memory 14` to `16`. `SYSTEM` is not changed: 8 GB would turn a 48 GB
+Mac's Q2_0 from whole to part, on one machine's evidence.
+
+**The next step.** A row at 16 GB with nothing else open on the 32 GB machine, and any run on a real 16, 24 or
+48 GB Mac. Then set `SYSTEM` from those.
