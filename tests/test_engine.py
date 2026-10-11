@@ -443,3 +443,101 @@ def test_a_machine_counts_what_its_answers_use(block_model, tmp_path):
     assert paged.load_profile(str(tmp_path / "none.npy")).shape == (48, 512)  # the profile that comes with the engine
     store.clear()
     assert store.held == 0 and store.preload(counts) == int((counts > 0).sum())
+
+
+# ---- dense layers kept as the file's blocks (dense.BlockLinear, BlockEmbedding)
+
+import itertools  # noqa: E402
+
+import mlx.nn as nn  # noqa: E402
+
+from strata_mlx.blocks import BLOCK  # noqa: E402
+from strata_mlx.dense import AS_BLOCKS  # noqa: E402
+from strata_mlx.gguf import Tensor  # noqa: E402
+from strata_mlx.load import embedding, linear, v_heads_grouped  # noqa: E402
+
+# rows of 256 weights, a block of these types, wherever a dense layer of the real file is one of them
+WIDE = dict(TEXT, hidden_size=256, num_attention_heads=8, linear_value_head_dim=64)
+_D = {"Q3_K": (108, 5e-4, 1e-3), "IQ4_XS": (0, 1.5e-5, 3e-5)}  # where a block's scale is, and a range for it
+
+
+def _with_dense(as_blocks: bool):
+    """A wider small model with its projections and its embedding drawn as random Q3_K and IQ4_XS blocks, the
+    delta net's reordered as the loader reorders them: kept as blocks, or unpacked to floats."""
+    mx.random.seed(3)
+    model = qwen4_exp.Model(qwen4_exp.ModelArgs(text_config=WIDE))
+    a, rng, kinds = model.args.text, np.random.default_rng(13), itertools.cycle(AS_BLOCKS)
+    n_k, n_v, d_v = a.linear_num_key_heads, a.linear_num_value_heads, a.linear_value_head_dim
+    v_rows = v_heads_grouped(n_k, n_v // n_k, d_v)
+    qk = 2 * n_k * a.linear_key_head_dim
+    qkv_rows = np.concatenate([np.arange(qk), qk + v_rows])
+
+    def drawn(rows, cols):
+        kind = next(kinds)
+        at, low, high = _D[kind]
+        b = rng.integers(0, 256, (rows * cols // BLOCK[kind][0], BLOCK[kind][1]), dtype=np.uint8)
+        b[:, at : at + 2] = rng.uniform(low, high, (len(b), 1)).astype("<f2").view(np.uint8)
+        return Tensor(kind, (rows, cols), kind, b.reshape(-1))
+
+    def floats(t, rows=None, cols=None):
+        w = np.array(dequantize(mx.array(t.data), t.type, t.shape))
+        w = w if rows is None else w[rows]
+        return mx.array(np.ascontiguousarray(w if cols is None else w[:, cols]))
+
+    def put(owner, name, rows=None, cols=None):
+        t = drawn(*getattr(owner, name).weight.shape)
+        if as_blocks:
+            setattr(owner, name, linear(t, rows, cols, AS_BLOCKS))
+        else:
+            plain = nn.Linear(1, 1, bias=False)
+            plain.weight = floats(t, rows, cols)
+            setattr(owner, name, plain)
+
+    for layer in model.layers:
+        if layer.layer_type == "linear_attention":
+            put(layer.linear_attn, "in_proj_qkv", rows=qkv_rows)
+            put(layer.linear_attn, "in_proj_z", rows=v_rows)
+            put(layer.linear_attn, "out_proj", cols=v_rows)
+        else:
+            for name in ("q_proj", "k_proj", "v_proj", "o_proj"):
+                put(layer.self_attn, name)
+        put(layer.mlp.shared_expert, "gate_proj")
+        put(layer.mlp.shared_expert, "up_proj")
+    t = drawn(a.vocab_size, a.hidden_size)
+    if as_blocks:
+        model.model.embed_tokens = embedding(t, mx.float32, AS_BLOCKS)
+    else:
+        model.model.embed_tokens.weight = floats(t)
+    mx.eval(model.parameters())
+    model.eval()
+    return model
+
+
+@pytest.fixture(scope="module")
+def dense_model():
+    return _with_dense(True)
+
+
+def test_dense_layers_as_blocks_write_what_their_weights_as_floats_write(dense_model):
+    answer = Engine(dense_model).generate(PROMPT, N)
+    assert answer == Engine(_with_dense(False)).generate(PROMPT, N)
+    assert len(set(answer)) > 4  # an answer of one token over and over would say little
+
+
+@pytest.mark.parametrize("window, wrong", [(3, 0.4), (7, 0.25)])
+def test_windows_over_dense_blocks_give_the_plain_answer(dense_model, window, wrong):
+    answer = Engine(dense_model).generate(PROMPT, N)
+    rng = random.Random(window)
+    engine = Engine(dense_model)
+    out = [engine.prefill(PROMPT)]
+    while len(out) < N:
+        truth = answer[len(out) : len(out) + window]
+        engine.guesses = [t if rng.random() >= wrong else (t + 1) % TEXT["vocab_size"] for t in truth]
+        out += engine.step()
+    assert out[:N] == answer
+
+
+def test_a_long_prompt_over_dense_blocks_reads_as_token_by_token(dense_model):
+    prompt = [(7 * i + 3) % TEXT["vocab_size"] for i in range(90)]
+    assert Engine(dense_model).read(prompt) == Engine(dense_model, chunk=1).read(prompt)
+    assert Engine(dense_model).read(prompt) == Engine(_with_dense(False)).read(prompt)

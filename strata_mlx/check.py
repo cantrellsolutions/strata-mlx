@@ -9,6 +9,10 @@ its weights, less the dense weights and the draft head, is the experts'. If all 
 whole. If not, the rest is read from the SSD as tokens ask for it. If under half a GB is left for them, the
 Mac is too small.
 
+Where experts are read from the SSD, the dense tensors of two types stay the file's blocks (dense.BlockLinear)
+and take that much less than the rule's arrays; that is counted for such a Mac, as the engine finds it when it
+starts.
+
 One thing is counted here that the engine's rule leaves out: the weights of the Q6_K layers as floats, kept
 from the first prompt on (dense.py), 3.3 GB with the IQ3_S file. On a Mac that lacks just that, the engine still
 holds the file whole, and the report says by how much it is short.
@@ -25,7 +29,7 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
-from .dense import fits
+from .dense import fits, spared
 from .gguf import shards
 from .paged import DENSE_AS_ARRAYS, DRAFT_HEAD, LEAST, SYSTEM, WORKING, all_fit, machine_memory, sizes
 
@@ -43,11 +47,12 @@ class Model:
     dense: int  # the dense tensors, as the file has them
     floats: int  # its Q6_K layers but the output layer as float16: held once a prompt has been read
     disk: int
+    spared: int = 0  # what the dense tensors take less as blocks, where experts are read from the SSD
 
 
 # The files that have been run, for a Mac that does not have them yet: what `of` reads from their headers.
-KNOWN = (Model("Q2_0", 33_973_862_400, 3_638_853_120, 205_783_040, 66_423_878_624),
-         Model("IQ3_S", 50_292_326_400, 4_514_173_440, 3_306_946_560, 83_617_662_656))
+KNOWN = (Model("Q2_0", 33_973_862_400, 3_638_853_120, 205_783_040, 66_423_878_624, 1_739_248_640),
+         Model("IQ3_S", 50_292_326_400, 4_514_173_440, 3_306_946_560, 83_617_662_656, 567_336_960))
 
 
 def of(path: str, files: list | None = None) -> Model:
@@ -58,7 +63,8 @@ def of(path: str, files: list | None = None) -> Model:
     floats = sum(2 * t.shape[0] * t.shape[1] for name, t in files[0].tensors.items()
                  if t.type == "Q6_K" and len(t.shape) == 2 and fits(*t.shape) and name != "output.weight")
     m = _NAME.search(path)
-    return Model(m.group(1) if m else Path(path).stem, experts, dense, floats, sum(os.path.getsize(f.path) for f in files))
+    return Model(m.group(1) if m else Path(path).stem, experts, dense, floats, sum(os.path.getsize(f.path) for f in files),
+                 spared(files[0].tensors))
 
 
 @dataclass
@@ -71,7 +77,8 @@ class Plan:
 
 def plan(m: Model, machine: int) -> Plan:
     fixed = int(SYSTEM + WORKING + DENSE_AS_ARRAYS * m.dense + DRAFT_HEAD)
-    return Plan(all_fit(machine, m.experts, m.dense), fixed + m.experts + m.floats, machine - fixed, fixed + LEAST)
+    paged = fixed - m.spared
+    return Plan(all_fit(machine, m.experts, m.dense), fixed + m.experts + m.floats, machine - paged, paged + LEAST)
 
 
 def lines(m: Model, machine: int) -> list:

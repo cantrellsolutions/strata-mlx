@@ -22,6 +22,7 @@ from pathlib import Path
 import mlx.core as mx
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
+from strata_mlx.dense import AS_BLOCKS  # noqa: E402
 from strata_mlx.engine import Engine  # noqa: E402
 from strata_mlx.load import load  # noqa: E402
 
@@ -67,6 +68,9 @@ def main():
                                  "on the next, so the two models need not be in memory together")
     p.add_argument("--windows", nargs="*", type=int, default=[], help="also through the engine, this many tokens a pass")
     p.add_argument("--engine-only", action="store_true")
+    p.add_argument("--expert-memory", type=float, help="GB of experts in memory, the others read from the SSD")
+    p.add_argument("--dense", choices=["blocks", "arrays"], help="the dense tensors of two types as the file's blocks "
+                                                                "or as MLX's arrays (default: as the loader chooses)")
     args = p.parse_args()
 
     if args.ref and Path(args.ref).exists():
@@ -88,7 +92,8 @@ def main():
     gen = [step["id"] for step in ref]
     print(f"prompt {len(prompt)} tokens, continuation {len(gen)} tokens")
 
-    model, _ = load(args.model, getattr(mx, args.dtype))
+    model, _ = load(args.model, getattr(mx, args.dtype), expert_memory=args.expert_memory,
+                    dense_blocks={"blocks": AS_BLOCKS, "arrays": (), None: None}[args.dense])
     n = len(prompt)
 
     if not args.engine_only:

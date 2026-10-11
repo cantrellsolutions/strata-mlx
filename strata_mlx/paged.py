@@ -42,7 +42,11 @@ SEPARATE_UPTO = 80  # pairs up to which each brings its own arrays to the kernel
 # of reading a 1,500-token prompt (a layer's tensors read whole, the activations), MLX's pool of 0.5.
 SYSTEM, WORKING = int(4.5e9), int(4.0e9)
 DRAFT_HEAD = int(1.6e9)
-DENSE_AS_ARRAYS = 1.6  # the dense tensors take this many times their size in the file: several are held at 8 bits
+# The dense tensors as MLX's arrays take this many times their size in the file: several are held at 8 bits. So a
+# machine that holds the model whole has them. One that reads experts from the SSD keeps two of those types as
+# the file's blocks (dense.BlockLinear), 1.7 GB less with the Q2_0 file; its store finds that out when it fits
+# itself to what is loaded (`fit`), and `check.py` counts it.
+DENSE_AS_ARRAYS = 1.6
 LEAST = int(0.5e9)  # of experts in memory, however little is left for them
 
 

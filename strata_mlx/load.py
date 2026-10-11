@@ -11,7 +11,9 @@ The norms need nothing: GGUF and the port both hold the weight with the referenc
 n-gram table is not loaded: its rows are read from the file as tokens ask for them.
 
 The experts, nine tenths of the file, are not converted at all: their blocks go to the GPU as they are and
-Metal kernels compute on them (blocks.py). Every other quantized tensor becomes MLX's own quantized form.
+Metal kernels compute on them (blocks.py). Every other quantized tensor becomes MLX's own quantized form, but
+where experts are read from the SSD: there the Q3_K and IQ4_XS ones, which MLX can only hold at 8 bits, stay
+blocks too (dense.py), and the memory that spares is the experts'.
 """
 
 from pathlib import Path
@@ -23,7 +25,8 @@ from mlx.utils import tree_flatten
 from mlx_lm.models import qwen4_exp
 
 from .blocks import BLOCK, BlockSwitchGLU, BlockSwitchLinear
-from .dense import ScaledLinear, fits
+from .dense import AS_BLOCKS, BlockEmbedding, BlockLinear, ScaledLinear, fits
+from .dense import as_blocks as stays_blocks
 from .paged import ExpertStore, PagedSwitchGLU, all_fit, sizes
 from .paged import machine_memory as paged_machine_memory
 from .gguf import KVALUES_IQ4NL, Tensor, pack, q6k_parts, shards, to_affine, to_float
@@ -162,11 +165,15 @@ def scaled(t: Tensor, rows: np.ndarray | None = None, cols: np.ndarray | None = 
     return ScaledLinear(*whole)
 
 
-def linear(t: Tensor, rows: np.ndarray | None = None, cols: np.ndarray | None = None):
+def linear(t: Tensor, rows: np.ndarray | None = None, cols: np.ndarray | None = None, as_blocks: tuple = ()):
     """A layer holding the tensor's weights, called like a Linear; `rows` and `cols` reorder its outputs and
-    inputs."""
+    inputs. A tensor of a type in `as_blocks` stays the file's blocks."""
     if t.type == "Q6_K" and fits(*t.shape):
         return scaled(t, rows, cols)
+    if stays_blocks(t, as_blocks):
+        raw = t.data.reshape(t.shape[0], -1)
+        return BlockLinear(mx.array(np.ascontiguousarray(raw if rows is None else raw[rows]).reshape(-1)), t.type,
+                           (t.shape[0] if rows is None else len(rows), t.shape[1]), cols)
     if t.type in _EXACT_FLOAT:
         parts = []
         for sub in _row_chunks(t, rows):
@@ -189,7 +196,9 @@ def experts(t: Tensor) -> BlockSwitchLinear:
     return BlockSwitchLinear(mx.array(t.data), t.type, t.shape)
 
 
-def embedding(t: Tensor) -> nn.Module:
+def embedding(t: Tensor, dtype: mx.Dtype = mx.float16, as_blocks: tuple = ()):
+    if stays_blocks(t, as_blocks):
+        return BlockEmbedding(mx.array(t.data), t.type, t.shape, dtype)
     (weight, scales, biases), (bits, group) = _affine(t)
     q = nn.QuantizedEmbedding(1, group, group_size=group, bits=bits)
     q.weight, q.scales, q.biases = weight, scales, biases
@@ -203,13 +212,17 @@ def conv(t: Tensor, order: np.ndarray | None = None) -> mx.array:
 
 
 def load(path: str, dtype: mx.Dtype = mx.float16, expert_memory: float | str | None = None,
-         machine_memory: int | None = None):
+         machine_memory: int | None = None, dense_blocks: tuple | None = None):
     """The model from shard 1 of a GGUF (shard 2, beside it, holds the n-gram table). Returns (model, metadata).
 
     `expert_memory`, in GB: keep only that much of the experts in memory and read the others from the file as
     tokens ask for them (paged.py); the store is `model.expert_store`. None: all of them in memory. "auto": all
     of them if the machine (`machine_memory` bytes, by default this one's) holds the model, else a store whose
     budget the caller sets with `store.fit()` once everything else is loaded.
+
+    `dense_blocks`: the types of dense tensors to keep as the file's blocks. By default those of AS_BLOCKS
+    when experts are read from the file, none when all are in memory: the blocks are 1.7 GB less with the Q2_0
+    file, and a millisecond a pass slower once a pass has four tokens.
 
     `dtype` is the type of the activations and of every float weight and scale. float32 holds each weight of the
     file exactly; float16, the default, rounds the scales to 11 bits and runs multi-token steps 1.5-2 times faster.
@@ -224,10 +237,15 @@ def load(path: str, dtype: mx.Dtype = mx.float16, expert_memory: float | str | N
     if expert_memory == "auto":
         expert_memory = None if all_fit(machine_memory or paged_machine_memory(), *sizes(files)) else 0.0
     store = ExpertStore(int(expert_memory * 1e9)) if expert_memory is not None else None
+    if dense_blocks is None:
+        dense_blocks = AS_BLOCKS if store is not None else ()
 
     def take(name: str) -> Tensor:
         used.add(name)
         return tensors[name]
+
+    def lin(name: str, rows: np.ndarray | None = None, cols: np.ndarray | None = None):
+        return linear(take(name), rows, cols, dense_blocks)
 
     def vec(name: str) -> mx.array:
         return mx.array(np.ascontiguousarray(to_float(take(name))))
@@ -281,30 +299,30 @@ def load(path: str, dtype: mx.Dtype = mx.float16, expert_memory: float | str | N
 
     def residual(gr, prefix: str, inject: bool = True):
         gr.hc_norm.weight = vec(prefix + "_norm.weight")
-        gr.input_mix_weight_down = linear(take(prefix + "_down.weight"))
-        gr.input_mix_weight_up = linear(take(prefix + "_up.weight"))
+        gr.input_mix_weight_down = lin(prefix + "_down.weight")
+        gr.input_mix_weight_up = lin(prefix + "_up.weight")
         if inject:
-            gr.block_inject_weight = linear(take(prefix + "_inject.weight"))
+            gr.block_inject_weight = lin(prefix + "_inject.weight")
 
     for i, layer in enumerate(model.layers):
         b = f"blk.{i}."
         if layer.layer_type == "linear_attention":
             la = layer.linear_attn
-            la.in_proj_qkv = linear(take(b + "attn_qkv.weight"), rows=qkv_rows)
-            la.in_proj_z = linear(take(b + "attn_gate.weight"), rows=v_rows)
-            la.in_proj_a = linear(take(b + "ssm_alpha.weight"), rows=v_one)
-            la.in_proj_b = linear(take(b + "ssm_beta.weight"), rows=v_one)
-            la.out_proj = linear(take(b + "ssm_out.weight"), cols=v_rows)
+            la.in_proj_qkv = lin(b + "attn_qkv.weight", rows=qkv_rows)
+            la.in_proj_z = lin(b + "attn_gate.weight", rows=v_rows)
+            la.in_proj_a = lin(b + "ssm_alpha.weight", rows=v_one)
+            la.in_proj_b = lin(b + "ssm_beta.weight", rows=v_one)
+            la.out_proj = lin(b + "ssm_out.weight", cols=v_rows)
             la.conv1d.weight = conv(take(b + "ssm_conv1d.weight"), qkv_rows)
             la.A_log = mx.array(np.log(-to_float(take(b + "ssm_a"))[v_one]))
             la.dt_bias = mx.array(np.ascontiguousarray(to_float(take(b + "ssm_dt.bias"))[v_one]))
             la.norm.weight = vec(b + "ssm_norm.weight")
         else:
             sa = layer.self_attn
-            sa.q_proj = linear(take(b + "attn_q.weight"))
-            sa.k_proj = linear(take(b + "attn_k.weight"))
-            sa.v_proj = linear(take(b + "attn_v.weight"))
-            sa.o_proj = linear(take(b + "attn_output.weight"))
+            sa.q_proj = lin(b + "attn_q.weight")
+            sa.k_proj = lin(b + "attn_k.weight")
+            sa.v_proj = lin(b + "attn_v.weight")
+            sa.o_proj = lin(b + "attn_output.weight")
             sa.q_norm.weight = vec(b + "attn_q_norm.weight")
             sa.k_norm.weight = vec(b + "attn_k_norm.weight")
             both = np.concatenate([to_float(take(b + "indexer.q_proj.weight")),
@@ -321,16 +339,16 @@ def load(path: str, dtype: mx.Dtype = mx.float16, expert_memory: float | str | N
             mlp.switch_mlp = PagedSwitchGLU(i, store, *routed)
         else:
             mlp.switch_mlp = BlockSwitchGLU(*(experts(t) for t in routed))
-        mlp.shared_expert.gate_proj = linear(take(b + "ffn_gate_shexp.weight"))
-        mlp.shared_expert.up_proj = linear(take(b + "ffn_up_shexp.weight"))
-        mlp.shared_expert.down_proj = linear(take(b + "ffn_down_shexp.weight"))
+        mlp.shared_expert.gate_proj = lin(b + "ffn_gate_shexp.weight")
+        mlp.shared_expert.up_proj = lin(b + "ffn_up_shexp.weight")
+        mlp.shared_expert.down_proj = lin(b + "ffn_down_shexp.weight")
         residual(layer.attn_hyper_connection, b + "hc_attn")
         residual(layer.mlp_hyper_connection, b + "hc_ffn")
 
         if layer.ple is not None:
             ple = layer.ple
-            ple.key_proj = linear(take(b + "ple_key.weight"))
-            ple.value_proj = linear(take(b + "ple_value.weight"))
+            ple.key_proj = lin(b + "ple_key.weight")
+            ple.value_proj = lin(b + "ple_value.weight")
             ple.norm_key.weight = vec(b + "ple_norm_key.weight")
             ple.norm_query.weight = vec(b + "ple_norm_query.weight")
             ple.norm_conv.weight = vec(b + "ple_norm_conv.weight")
@@ -346,8 +364,8 @@ def load(path: str, dtype: mx.Dtype = mx.float16, expert_memory: float | str | N
         layer.set_dtype(dtype)
         mx.eval(layer.parameters())
 
-    model.model.embed_tokens = embedding(take("token_embd.weight"))
-    model.lm_head = linear(take("output.weight"))
+    model.model.embed_tokens = embedding(take("token_embd.weight"), dtype, dense_blocks)
+    model.lm_head = linear(take("output.weight"))  # never blocks: a guess takes some of its rows (rows.py)
     residual(model.model.hyper_connection_mixer, "output_hc", inject=False)
     model.set_dtype(dtype)
     mx.eval(model.parameters())

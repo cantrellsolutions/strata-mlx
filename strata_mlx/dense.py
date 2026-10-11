@@ -19,11 +19,15 @@ less of 26.7 for one token, 3.2 of 42.9 for four, 1.4 of 54.5 for six, 1.7 more 
 The kernel is laid out as MLX's own quantized product: 32 threads share four rows, each takes eight weights of
 each row at a time and goes along the rows; the activations come with a position's tokens side by side, so one
 load brings a weight's activations for the whole window, once for the four rows. Sums are float32.
+
+Below that, layers and an embedding kept as the file's blocks: what a machine that reads experts from the SSD
+has in place of MLX's arrays of Q3_K and IQ4_XS tensors, which take more than twice the memory.
 """
 
 import mlx.core as mx
 import numpy as np
 
+from .blocks import BLOCK, dequantize, window_matvec
 
 MAX_TOKENS = 8  # more than a window: a chunk of a prompt, multiplied as floats
 _ROWS, _WEIGHTS = 4, 8  # to 32 threads; to a thread at a time
@@ -150,3 +154,80 @@ class ScaledLinear:
                                grid=(32 * rows // _ROWS, 1, 1), threadgroup=(32, 1, 1),
                                output_shapes=[(tokens, rows)], output_dtypes=[dtype])
         return out.reshape(*lead, rows)
+
+
+# ---- layers kept as the file's blocks, for a machine that needs its memory for experts
+#
+# MLX holds a Q3_K or an IQ4_XS weight at 8 bits, 2.6 and 2.1 times the file's bytes: with the Q2_0 file 2.9 GB
+# of arrays for 1.2 GB of file, most of what its dense tensors take beyond their size in the file. The kernels
+# the experts have read the blocks as they are (blocks.py).
+#
+# All of a pass's products of these types, the real model's 146 tensors (bench/experiments/e36), as blocks
+# against MLX's arrays: 3.8 against 4.7 ms for one token, 4.3 / 4.8 for two, 5.7 / 4.8 for four, 9.3 / 7.4 for
+# eight. A machine with every expert in memory answers four tokens a pass with its draft head and has no use
+# for the memory, so it keeps the arrays.
+
+AS_BLOCKS = ("Q3_K", "IQ4_XS")  # the types kept so where experts are read from the SSD (load.py)
+ARRAY_BYTES = 1.125  # a weight of these as MLX holds it: a byte, and a float16 scale and bias to every 32
+
+
+def as_blocks(t, kinds: tuple = AS_BLOCKS) -> bool:
+    """Whether a dense tensor can stay blocks: of one of `kinds`, and rows that end on a block."""
+    return t.type in kinds and len(t.shape) == 2 and t.shape[1] % BLOCK[t.type][0] == 0
+
+
+def spared(tensors: dict) -> int:
+    """Bytes that the dense tensors of a file's first shard take less as blocks than as MLX's arrays. The output
+    layer is not among them: it stays arrays whatever its type."""
+    return sum(int(ARRAY_BYTES * int(np.prod(t.shape))) - t.data.nbytes for name, t in tensors.items()
+               if as_blocks(t) and not name.endswith("_exps.weight") and name != "output.weight")
+
+
+class BlockLinear:
+    """A linear layer held as the file's blocks; called like `nn.Linear`.
+
+    `blocks` are the rows in the order of the layer's outputs. `inputs`, if given, is where in the file's row
+    each input is: the blocks cannot be reordered inside, so the activations are, before they multiply.
+    """
+
+    def __init__(self, blocks: mx.array, kind: str, shape: tuple, inputs: np.ndarray | None = None):
+        self.blocks, self.kind = blocks, kind
+        self.output_dims, self.input_dims = shape
+        self.to_file = None if inputs is None else mx.array(np.argsort(inputs).astype(np.uint32))
+
+    @property
+    def nbytes(self) -> int:
+        return self.blocks.nbytes
+
+    def __call__(self, x: mx.array) -> mx.array:
+        rows, cols = self.output_dims, self.input_dims
+        lead, dtype = x.shape[:-1], x.dtype
+        tokens = int(np.prod(lead))
+        x = x.reshape(tokens, cols)
+        if self.to_file is not None:
+            x = mx.take(x, self.to_file, axis=1)
+        if tokens <= MAX_TOKENS:
+            out = window_matvec(self.blocks, self.kind, rows, cols, x)
+        else:
+            # A chunk of a prompt: the weights unpacked for it and let go, at most 63 MB at a time. All of a
+            # pass's products of 1,024 tokens (bench/experiments/e36): 290-307 ms so, 310-312 as MLX's 8-bit
+            # arrays, 423-454 through the experts' tiles with the layer as a stack of one; and in a pass as a
+            # 16 GB machine the 1,537-token prompt at 170 tok/s so, 154 through tiles, the peak of memory the same.
+            out = x @ dequantize(self.blocks, self.kind, (rows, cols), dtype).T
+        return out.reshape(*lead, rows)
+
+
+class BlockEmbedding:
+    """An embedding held as the file's blocks; a token's row is unpacked when the token comes."""
+
+    def __init__(self, blocks: mx.array, kind: str, shape: tuple, dtype: mx.Dtype):
+        self.num_embeddings, self.dims = shape
+        self.rows, self.kind, self.dtype = blocks.reshape(self.num_embeddings, -1), kind, dtype
+
+    @property
+    def nbytes(self) -> int:
+        return self.rows.nbytes
+
+    def __call__(self, ids: mx.array) -> mx.array:
+        taken = mx.take(self.rows, ids.reshape(-1), axis=0)
+        return dequantize(taken.reshape(-1), self.kind, (ids.size, 1, self.dims), self.dtype).reshape(*ids.shape, self.dims)

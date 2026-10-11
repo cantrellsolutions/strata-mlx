@@ -97,3 +97,78 @@ def test_a_shape_the_kernel_does_not_take_stays_floats():
     blocks = np.zeros((6 * 2, 210), dtype=np.uint8)
     lin = linear(Tensor("odd", (6, 512), "Q6_K", blocks.reshape(-1)))  # six rows: not groups of four
     assert not isinstance(lin, ScaledLinear) and lin.weight.shape == (6, 512)
+
+
+# ---- layers kept as the file's blocks (BlockLinear, BlockEmbedding)
+
+from strata_mlx.dense import BlockEmbedding, BlockLinear, as_blocks  # noqa: E402
+from strata_mlx.load import AS_BLOCKS, embedding  # noqa: E402
+from test_gguf import random_tensor  # noqa: E402
+from test_gguf import reference as weights  # noqa: E402
+
+
+@pytest.mark.parametrize("kind", AS_BLOCKS)
+@pytest.mark.parametrize("dtype", [mx.float32, mx.float16])
+@pytest.mark.parametrize("tokens", [1, 2, 3, 4, 8, MAX_TOKENS + 1, 40])
+def test_a_layer_of_blocks_multiplies_as_its_weights_do(kind, tokens, dtype):
+    t = random_tensor(kind, seed=tokens)
+    lin = linear(t, as_blocks=AS_BLOCKS)
+    assert isinstance(lin, BlockLinear) and lin.nbytes == t.data.nbytes
+    x = mx.random.normal((1, tokens, t.shape[1])).astype(dtype)
+    got = np.array(lin(x).astype(mx.float32))
+    want = np.array(x.astype(mx.float32)).astype(np.float64) @ weights(t).astype(np.float64).T
+    assert got.shape == (1, tokens, t.shape[0]) and lin(x).dtype == dtype
+    # float16: the output is rounded to it, and a chunk of a prompt multiplies weights rounded to it
+    assert np.abs(got - want).max() <= (2e-5 if dtype == mx.float32 else 4e-3) * np.abs(want).max()
+
+
+@pytest.mark.parametrize("kind", AS_BLOCKS)
+@pytest.mark.parametrize("tokens", [1, 4, MAX_TOKENS + 4])
+def test_a_layer_of_blocks_with_outputs_and_inputs_reordered(kind, tokens):
+    t = random_tensor(kind, seed=7)
+    rng = np.random.default_rng(1)
+    rows = rng.permutation(t.shape[0])
+    cols = (rng.permutation(t.shape[1] // 128)[:, None] * 128 + np.arange(128)).reshape(-1)  # heads of 128 inputs change places
+    lin = linear(t, rows=rows, cols=cols, as_blocks=AS_BLOCKS)
+    x = mx.random.normal((tokens, t.shape[1]))
+    want = np.array(x).astype(np.float64) @ weights(t).astype(np.float64)[rows][:, cols].T
+    assert np.abs(np.array(lin(x)) - want).max() <= 2e-5 * np.abs(want).max()
+
+
+@pytest.mark.parametrize("kind", AS_BLOCKS)
+def test_a_window_over_blocks_gives_each_token_what_it_gets_alone(kind):
+    t = random_tensor(kind, seed=3)
+    lin = linear(t, as_blocks=AS_BLOCKS)
+    x = mx.random.normal((5, t.shape[1])).astype(mx.float16)
+    together = np.array(lin(x))
+    for i in range(5):
+        assert (np.array(lin(x[i : i + 1])) == together[i : i + 1]).all()
+
+
+def test_a_type_not_asked_for_as_blocks_is_held_as_before():
+    t = random_tensor("Q3_K")
+    assert not isinstance(linear(t), BlockLinear)
+    assert not isinstance(linear(t, as_blocks=("IQ4_XS",)), BlockLinear)
+
+
+def test_rows_that_do_not_end_on_a_block_are_held_as_before():
+    odd = Tensor("odd", (2, 4, 320), "Q3_K", np.zeros(2 * 4 * 320 // 256 * 110, dtype=np.uint8))  # not a layer
+    short = Tensor("short", (4, 320), "Q3_K", np.zeros(4 * 320 // 256 * 110, dtype=np.uint8))  # 320 is not 256s
+    assert not as_blocks(odd) and not as_blocks(short) and as_blocks(random_tensor("Q3_K"))
+    assert not as_blocks(random_tensor("Q4_K"))
+
+
+@pytest.mark.parametrize("kind", AS_BLOCKS)
+@pytest.mark.parametrize("dtype", [mx.float32, mx.float16])
+def test_an_embedding_of_blocks_gives_the_rows_of_the_weights(kind, dtype):
+    t = random_tensor(kind, seed=2)
+    emb = embedding(t, dtype, AS_BLOCKS)
+    assert isinstance(emb, BlockEmbedding) and emb.nbytes == t.data.nbytes
+    ids = mx.array([[5, 0, 3, 3, 1]])
+    got = emb(ids)
+    want = weights(t)[np.array(ids)]
+    assert got.shape == (1, 5, t.shape[1]) and got.dtype == dtype
+    assert np.abs(np.array(got.astype(mx.float32)) - want).max() <= (1e-6 if dtype == mx.float32 else 1e-3) * np.abs(want).max()
+    one = emb(mx.array([4]))
+    assert one.shape == (1, t.shape[1])
+    assert (np.array(one) == np.array(embedding(t, dtype, AS_BLOCKS)(mx.array([[4]])))[0]).all()

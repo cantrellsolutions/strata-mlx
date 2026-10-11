@@ -146,7 +146,8 @@ Tried, no gain:
   78 / 81 on its 8-bit form, 2.6 times the bytes. MLX's quantized product is flat up to four tokens and reads
   at 370-400 GB/s; the block kernel is held back by its million threads and by what each must do to undo the
   format. (With the layer's scales left in float32, MLX's product takes 134 us for four tokens: the first run
-  of this experiment had it so, and the block kernel looked a third faster.)
+  of this experiment had it so, and the block kernel looked a third faster.) Where experts are read from the
+  SSD the blocks are used since, for the memory they spare and with another kernel: e36.
 - A copy of the output layer at fewer bits for the head's guesses (e16): 0.2 to 0.4 ms less a guess, and 3%,
   8%, 14% of the guesses change at 4, 3, 2 bits.
 - A kernel for picking the largest logit: in a chain MLX's argmax of 248,320 takes 30 us (e17); the 0.4 ms it
@@ -366,8 +367,9 @@ value. On real layers against a pair at a time: 1e-4 to 5e-4 a product, 1e-3 thr
 before. Against llama.cpp's saved answers, top token equal a token at a time / four a pass: Q2_0 after 1,537
 tokens 64 / 64, after 3,161 64 / 64, after 6,945 64 / 63 (before 63 / 64), in float32 after 3,161 64 / 64;
 IQ3_S after 1,537 tokens 64 / 64 against both its Metal and its CPU answer (before 63). With part of the
-experts read from the SSD (1.5 and 18.7 GB of them in memory) the 1,537 tokens are read at 273-287 tok/s
-where they were at 136-159, and the answer starts with the same token.
+experts read from the SSD (1.5 and 18.7 GB of them in memory) the answer starts with the same token. (This
+said the 1,537 tokens were then read at 273-287 tok/s where they had been at 136-159. That was measured with
+the model's file in the page cache, which answered for the disk: with it dropped it is 146-171. See e36 below.)
 
 The ten chosen are now half of a chunk's time (49-54%), at 4.9 to 6.1 T operations a second; all else of a
 pass would read 1,200 tokens a second. What is left in them: a tile costs the same with one pair as with
@@ -422,7 +424,7 @@ On a machine whose memory does not hold the model, only part of the experts stay
 used dropped first; a layer waits for its router, reads what is missing from the SSD and goes on
 (`strata_mlx/paged.py`). How much stays is worked out from the machine's memory: 4.5 GB are left to macOS and
 other programs, 4 GB to what this process needs beyond its weights, the dense weights and the draft head take
-7.4, the experts get the rest. `--expert-memory <GB>` sets it by hand; `--machine-memory <GiB>` runs as a
+7.4 (5.6 since e36 below), the experts get the rest. `--expert-memory <GB>` sets it by hand; `--machine-memory <GiB>` runs as a
 machine of that size would, which is how these were measured, on the M4 Max with Q2_0, the engine process driven
 over the line protocol with the draft head, the file dropped from the page cache and reads going past it:
 
@@ -431,6 +433,8 @@ over the line protocol with the draft head, the file dropped from the page cache
      24 GB         10.1 GB          18-19 GB (21)     19-23              146
      32 GB         18.7 GB          27 GB (29)        28-47              159
     128 GB       all, 34 GB         41 GB             64-83 (116 rewriting a file)   440
+
+(Since e36 below: 3.3, 11.9 and 20.5 GB of experts in memory and answers at 11-12, 18-27 and 23-38 tok/s.)
 
 Tests hold it to the same tokens as the model with every expert in memory, at a budget of nothing, of five
 experts and of all, and with a window spread over several kernel calls. By budget, a token at a time and with
@@ -463,8 +467,9 @@ What it took, and what is still wrong:
   three requests left; 45 for an answer that follows one like it), and stays at 22 and at 6-7 as a 24 and a
   16 GB one. Which experts a conversation needs is not what was used most before: the profile's 13,500 hold 91%
   of all uses, and one miss in a layer is a read that the whole pass waits for.
-- Not done: on 16 GB the dense weights' 5.6 GB as arrays are 2 GB more than in the file, which kernels on the
-  file's blocks, as the experts have, would give to the experts; a layer still waits for its router and for
+- Done since (e36 below): the dense weights' 5.6 GB as arrays were 2 GB more than in the file; two types of
+  them now stay the file's blocks and the experts have 1.7 GB more.
+- Not done: a layer still waits for its router and for
   its reads (asking for them ahead was measured and not built, e35 below; the experts the last token used are
   no guess, they are in memory already); no prompt past 12K tokens has
   been read this way, where attention gathers 0.5 GB at a time and the conversation's caches (30 KB a token)
@@ -518,7 +523,75 @@ token before used hold none of the misses: they are in memory already.
 
 What makes the reads fewer is more experts in memory: 229 read a token with 2.1 GB of them, 150 with 4.1, and
 with the draft head 10 tok/s at 2 GB against 12.5 at 4 (above). On a 16 GB Mac the dense weights take 2 GB more
-as arrays than in the file, which is that step. Not built either.
+as arrays than in the file, which is that step: built next.
+
+### The dense tensors of two types as the file's blocks (e36)
+
+By type, the Q2_0 file's dense tensors (the n-gram table apart, which stays on the disk): 3.64 GB in the file,
+5.49 as the loader held them. Of the difference 1.25 GB is in 91 Q3_K tensors (0.44 of it the embedding), 0.49
+in 56 IQ4_XS ones and 0.11 in all the others: MLX can hold those two types only at 8 bits. Where experts are
+read from the SSD they now stay the file's blocks (`dense.BlockLinear`, `BlockEmbedding`), 1.74 GB less, which
+the store gives to the experts when it fits itself to what is loaded. A machine that holds every expert keeps
+the arrays.
+
+What it took: an `unpack32` for Q3_K (IQ4_XS had one, for the experts of other files); a kernel that unpacks a
+run of weights once and multiplies a window's tokens by it, each token's sum taken in the same order whatever
+the window (`blocks.window_matvec`); the delta net's output projection, whose inputs the loader reorders half
+a block at a time, reorders its activations instead; the embedding takes a token's row of blocks and unpacks
+that.
+
+All of a pass's products of these types, the real model's 146 tensors, as blocks against as arrays
+(`bench/experiments/e36_dense_as_blocks.py`, two runs): 3.8 against 4.7 ms for one token, 4.2-4.3 / 4.7-4.8
+for two, 5.6-5.7 / 4.8 for four, 9.3-9.4 / 7.4-7.5 for eight. (e15 found a Q3_K projection no faster as blocks
+and stopped there; that was one tensor and a kernel of another layout.) A chunk of 1,024 tokens: 310-312 ms as
+arrays, 290-307 with the weights unpacked for the chunk and multiplied by MLX's matmul, 423-454 through the
+experts' tiles with a layer as a stack of one expert. So a chunk unpacks, 63 MB at a time at most and let go
+after: the peak of arrays while a 1,537-token prompt is read is the same either way, 11.4-11.5 GB as a 16 GB
+machine.
+
+In a pass (`bench/paged.py --machine-memory <GiB> --dense arrays|blocks`): four conversations of 200 tokens,
+twice over, with the draft head, the file dropped from the page cache; first the arrays and then the blocks,
+and at 24 and 32 GB again in the other order:
+
+    machine   dense as   experts     answers, tok/s (mean)                  experts read a token
+     16 GB    arrays      1.59 GB     6.4-7.7  (7.2)                             352-431
+              blocks      3.33 GB     9.5-11.8 (10.9)                            193-211
+     24 GB    arrays     10.18 GB    14.9-23.5 (19.2), then 20.3-25.4 (23.3)      40-80
+              blocks     11.92 GB    17.5-28.2 (20.3), then 23.7-29.0 (26.4)      32-65
+     32 GB    arrays     18.77 GB    21.1-40.1 (33.3), then 30.1-41.7 (36.5)      11-32
+              blocks     20.51 GB    23.8-37.2 (33.2), then 26.2-40.4 (35.5)      10-34
+
+Half again as fast as a 16 GB machine, where the experts in memory double and the reads halve. As a 24 GB one 6
+and 13% in the two runs, which is less than the same form differs from one run to the other. Nothing as a
+32 GB one: a tenth fewer reads and a millisecond more a pass. It is on wherever experts are read from the SSD:
+one rule, and nowhere measurably slower. It fits the budgets measured before (with the draft head 9 tok/s and
+257 reads a token at 2 GB, 12.5 and 175 at 4): a 16 GB machine went from under the first to near the second.
+
+The server started as each machine (`bench/compare_servers.py --only "strata-mlx default" --engine-args
+"--machine-memory 16"`, the file dropped from the page cache first, two starts, 256 tokens an answer):
+
+    machine    experts in memory    answers        1,180-token prompt    up in
+     16 GB          3.3 GB          11-12 tok/s      107-121 tok/s        19-24 s
+     24 GB         11.9 GB          18-27            125-133              21-24 s
+     32 GB         20.5 GB          23-38            109-145              21-26 s
+
+As a 32 GB machine one answer of sixteen came at 9.7 tok/s, its prompt at half the usual speed too; two more
+starts did not repeat it (their eight answers are in the range above). The 28-47 of the first version's table
+is from another day; in turns today the two forms do not differ at that size. The process is as large as
+before: what the blocks spare, the experts take.
+
+Against llama.cpp's saved answers with 3.3 GB of experts in memory, top token equal a token at a time / four a
+pass: after 1,537 tokens 64 / 64, after 3,161 tokens 64 / 64, and the same with the arrays; in float32, a token
+at a time, 64 against its Metal answer and 63 against its CPU one, and the same with the arrays.
+
+**A figure above was wrong**, found on the way. The 273-287 tok/s for the 1,537-token prompt on these machines
+was measured with the model's file in the page cache, and a read past the cache is still answered from it when
+the pages are there. The same script, 3.3 GB of experts in memory: 255-277 tok/s with the file in the page
+cache, 149-162 with it dropped. A chunk of a thousand tokens uses nearly every expert of a layer, so every layer
+is read whole: 30 GB from the disk for one chunk, 8 to 11 s. With the page cache dropped, 1,537 tokens as a 16,
+24 and 32 GB machine: 146-171 tok/s with the dense tensors as arrays, 160-182 as blocks; the first version had
+136-159. So the tiles made a prompt on these machines a tenth faster, not twice as fast, and reading one is
+bound by the disk.
 
 What was measured before building it:
 

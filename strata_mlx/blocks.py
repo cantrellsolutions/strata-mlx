@@ -10,6 +10,8 @@ type, `unpack32`, that turns a run of 32 weights into floats:
 
     matvec     out[pair, row] = W[expert of pair, row, :] . x     a few threads per row, for decoding
                (also with every pair's expert as an array of its own, for experts paged in from the SSD)
+    window     the same for one layer and a window of tokens, its weights unpacked once for all of them
+               (the dense layers of a machine that needs its memory for experts: dense.BlockLinear)
     tiles      the same for the many pairs of a chunk of a prompt, sorted by expert into tiles of 16: a
                threadgroup unpacks 64 rows by 64 columns of the tile's expert into its own memory and Apple's
                matrix product for shaders (Metal Performance Primitives) multiplies the tile's tokens by that
@@ -32,7 +34,8 @@ from .gguf import KVALUES_IQ4NL
 
 # type -> (weights per block, bytes per block)
 BLOCK = {"IQ4_NL": (32, 18), "IQ4_XS": (256, 136), "IQ3_S": (256, 110), "IQ3_XXS": (256, 98),
-         "IQ2_S": (256, 82), "IQ2_XS": (256, 74), "IQ2_XXS": (256, 66), "IQ1_M": (256, 56), "Q2_0": (64, 18)}
+         "IQ2_S": (256, 82), "IQ2_XS": (256, 74), "IQ2_XXS": (256, 66), "IQ1_M": (256, 56), "Q2_0": (64, 18),
+         "Q3_K": (256, 110)}
 
 _COMMON = """
 inline float half_at(const device uchar* b) {
@@ -41,6 +44,12 @@ inline float half_at(const device uchar* b) {
 inline uint u16_at(const device uchar* b) { return uint(b[0]) | (uint(b[1]) << 8); }
 inline uint u32_at(const device uchar* b) {
     return uint(b[0]) | (uint(b[1]) << 8) | (uint(b[2]) << 16) | (uint(b[3]) << 24);
+}
+// the k-th of a Q3_K block's sixteen 6-bit scales, less 32: their low four bits in eight bytes, their high two in four
+inline float q3k_scale(const device uchar* s, uint k) {
+    uint p = k % 4, word = k / 4;
+    uint low = word < 2 ? (uint(s[4 * word + p]) & 15) : (uint(s[4 * (word - 2) + p]) >> 4);
+    return float(int(low | (((uint(s[8 + p]) >> (2 * word)) & 3) << 4)) - 32);
 }
 """
 
@@ -148,6 +157,20 @@ _UNPACK = {
             float v = d * float(g[j]);
             w[8 * l + j] = (sign >> j) & 1 ? -v : v;
         }
+    }
+"""),
+    # a weight is two bits and a third from a mask of the block's first 32 bytes, less 4 where that is unset;
+    # the run's two halves each have a scale
+    "Q3_K": ((), """
+    const device uchar* b = row + (n / 8) * 110;
+    uint r = n % 8;
+    const device uchar* q = b + 32 + 32 * (r / 4);
+    uint shift = 2 * (r % 4);
+    float d = half_at(b + 108);
+    float s0 = d * q3k_scale(b + 96, 2 * r), s1 = d * q3k_scale(b + 96, 2 * r + 1);
+    for (uint i = 0; i < 32; ++i) {
+        int v = int((uint(q[i]) >> shift) & 3) - (((uint(b[i]) >> r) & 1) ? 0 : 4);
+        w[i] = (i < 16 ? s0 : s1) * float(v);
     }
 """),
     # the block's 16-bit scale is spread over the top four bits of its four scale words
@@ -281,6 +304,54 @@ def matvec_separate(experts: list, kind: str, rows: int, cols: int, x: mx.array,
     (out,) = _kernels[key](
         inputs=[*experts, x], template=[("OutT", x.dtype)], grid=(per_row * rows, n, 1), threadgroup=(32, 1, 1),
         output_shapes=[(n, rows)], output_dtypes=[x.dtype])
+    return out
+
+
+# One layer, not a stack, and a window of a few tokens: a run of weights is unpacked once and multiplies every
+# token's activations. Each token's sum is taken in the same order whatever the window.
+_WINDOW = """
+    uint part = thread_position_in_grid.x % P;
+    uint r = thread_position_in_grid.x / P;
+    const device uchar* row = blocks + r * ROW_BYTES;
+    float w[32];
+    float sum[T];
+    for (uint t = 0; t < T; ++t) {
+        sum[t] = 0.0f;
+    }
+    for (uint n = part; n < RUNS; n += P) {
+        unpack32(row, n, w);
+        for (uint t = 0; t < T; ++t) {
+            auto xr = x + t * COLS + 32 * n;
+            float s = 0.0f;
+            for (uint j = 0; j < 32; ++j) {
+                s += w[j] * float(xr[j]);
+            }
+            sum[t] += s;
+        }
+    }
+    for (uint t = 0; t < T; ++t) {
+        float total = sum[t];
+        for (ushort k = 1; k < P; ++k) {
+            total += simd_shuffle_xor(sum[t], k);  // the other threads of this row
+        }
+        if (part == 0) {
+            out[t * ROWS + r] = static_cast<OutT>(total);
+        }
+    }
+"""
+
+
+def window_matvec(blocks: mx.array, kind: str, rows: int, cols: int, x: mx.array, per_row: int | None = None) -> mx.array:
+    """out[t] = W . x[t] for one layer `blocks` of (rows, cols) and x (tokens, cols). Returns (tokens, rows)."""
+    tokens, per_row = x.shape[0], per_row or _threads_per_row(cols // 32)
+    key = ("window", kind, rows, cols, tokens, per_row)
+    if key not in _kernels:
+        _kernels[key] = mx.fast.metal_kernel(
+            name=f"window_{kind.lower()}_{tokens}", input_names=["blocks", "x"], output_names=["out"],
+            source=_WINDOW, header=_header(kind, rows, cols, P=per_row, T=tokens))
+    (out,) = _kernels[key](
+        inputs=[blocks, x], template=[("OutT", x.dtype)], grid=(per_row * rows, 1, 1), threadgroup=(32, 1, 1),
+        output_shapes=[(tokens, rows)], output_dtypes=[x.dtype])
     return out
 
 

@@ -105,7 +105,7 @@ class Strata:
         self.model = args.model
         self.log = open(args.log_dir / "strata-mlx.log", "w")
         self.p = subprocess.Popen([str(ROOT / "strata-mlx"), "--serve", "--native", args.model, "--mtp", args.mtp,
-                                   *([] if head else ["--spec", "1"])],
+                                   *([] if head else ["--spec", "1"]), *args.engine_args.split()],
                                   stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.log, text=True, env=ENV)
         self.info = next(l for l in self._until("READY") if l.startswith("INFO"))
 
@@ -146,6 +146,8 @@ def main():
     p.add_argument("--port", type=int, default=8091)
     p.add_argument("--log-dir", type=Path, default=Path("."))
     p.add_argument("--only", nargs="*", default=[], help="engines to run, by a word of their name")
+    p.add_argument("--engine-args", default="", help="more arguments for this engine, in one string: "
+                                                     "'--machine-memory 16' runs it as a Mac of 16 GB would")
     p.add_argument("--json")
     args = p.parse_args()
     makers = [("llama.cpp", lambda: LlamaCpp(args))] + ([("LM Studio", lambda: LMStudio(args))] if args.lms_key else []) + [
@@ -157,6 +159,8 @@ def main():
             t0 = time.perf_counter()
             engine = make()
             print(f"{engine.name}: up in {time.perf_counter() - t0:.0f} s", flush=True)
+            if isinstance(engine, Strata) and args.engine_args:
+                print(f"  {engine.info}", flush=True)
             try:
                 engine.run(chat("Say hi."), 8)  # the first request pays for what is compiled once
                 for name, text in PROMPTS.items():

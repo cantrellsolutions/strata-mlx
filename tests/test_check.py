@@ -5,8 +5,8 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from strata_mlx import check, paged, serve
-from strata_mlx.check import GB, KNOWN, lines, of, plan
+from strata_mlx import check, dense, paged, serve
+from strata_mlx.check import GB, KNOWN, Model, lines, of, plan
 from strata_mlx.gguf import Tensor
 
 Q2, IQ3S = KNOWN
@@ -28,8 +28,10 @@ def test_whole_is_what_the_engine_decides(model):
 
 def test_the_experts_kept_are_about_what_a_start_measured():
     # ROADMAP: Q2_0 with the draft head, started as a machine of 16, 24 and 32 GB, gave its experts this much
-    for gb, measured in ((16, 1.5e9), (24, 10.1e9), (32, 18.7e9)):
-        assert abs(plan(Q2, gb * GB).kept - measured) < 0.3e9
+    # (1.5, 10.1 and 18.7 GB before its dense tensors of two types stayed blocks)
+    for gb, measured in ((16, 3.3e9), (24, 11.9e9), (32, 20.5e9)):
+        assert abs(plan(Q2, gb * GB).kept - measured) < 0.4e9
+    assert Q2.spared == pytest.approx(1.74e9, rel=0.01)  # each of those starts gave the experts that much more
 
 
 def test_floats_kept_for_prompts_are_counted_though_the_engine_does_not_count_them():
@@ -59,6 +61,28 @@ def test_sizes_are_read_from_a_models_files(tmp_path):
     files = [SimpleNamespace(tensors=tensors, path=str(path)) for tensors, path in zip((first, second), paths)]
     m = of(str(paths[0]), files)
     assert (m.name, m.experts, m.dense, m.floats, m.disk) == ("Q9_Z", 1500, 1070, 2 * 512 * 2560, 33)
+    assert m.spared == 0  # none of these is of a type kept as blocks
+
+
+def test_blocks_spare_what_the_arrays_of_their_tensors_take_more(tmp_path):
+    def t(name, shape, kind):
+        per_block, block_bytes = {"Q3_K": (256, 110), "IQ4_XS": (256, 136), "Q4_K": (256, 144)}[kind]
+        return Tensor(name, shape, kind, np.zeros(int(np.prod(shape)) // per_block * block_bytes, dtype=np.uint8))
+
+    tensors = {t.name: t for t in (
+        t("token_embd.weight", (8, 2560), "Q3_K"),  # a byte and an eighth a weight as arrays, 110 bytes to 256 here
+        t("blk.0.attn_q.weight", (4, 2560), "IQ4_XS"),
+        t("blk.0.attn_k.weight", (4, 2560), "Q4_K"),  # as arrays either way
+        t("output.weight", (8, 2560), "Q3_K"),  # and so is the output layer, whatever its type
+        t("blk.0.ffn_up_exps.weight", (2, 4, 2560), "IQ4_XS"))}  # experts are blocks already
+    assert dense.spared(tensors) == 8 * 2560 // 256 * (288 - 110) + 4 * 2560 // 256 * (288 - 136)
+    path = tmp_path / "some-Q9_Z-00001-of-00001.gguf"
+    path.write_bytes(b"0")
+    m = of(str(path), [SimpleNamespace(tensors=tensors, path=str(path))])
+    whole_rule = plan(Model("x", m.experts, m.dense, 0, 0), 16 * GB)
+    assert plan(m, 16 * GB).kept - whole_rule.kept == m.spared == dense.spared(tensors)
+    assert plan(m, 16 * GB).least == whole_rule.least - m.spared
+    assert plan(m, 16 * GB).needs == whole_rule.needs  # a Mac that holds the file whole holds arrays
 
 
 def test_the_report_is_of_this_mac_or_of_the_one_asked_about(capsys):

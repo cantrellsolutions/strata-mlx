@@ -1,0 +1,122 @@
+[
+ {
+  "run": 1,
+  "machine_gib": 24,
+  "engine": "strata-mlx",
+  "prompt": "prose",
+  "prompt_tokens": 27,
+  "prompt_tps": 22.50562640660165,
+  "tokens": 256,
+  "tps": 18.131595722076636,
+  "guesses_kept": 170,
+  "guesses_made": 339
+ },
+ {
+  "run": 1,
+  "machine_gib": 24,
+  "engine": "strata-mlx",
+  "prompt": "code",
+  "prompt_tokens": 31,
+  "prompt_tps": 19.045278613995208,
+  "tokens": 256,
+  "tps": 23.39672994141678,
+  "guesses_kept": 177,
+  "guesses_made": 308
+ },
+ {
+  "run": 1,
+  "machine_gib": 24,
+  "engine": "strata-mlx",
+  "prompt": "reasoning",
+  "prompt_tokens": 49,
+  "prompt_tps": 23.179904442026587,
+  "tokens": 256,
+  "tps": 22.69463307388167,
+  "guesses_kept": 198,
+  "guesses_made": 238
+ },
+ {
+  "run": 1,
+  "machine_gib": 24,
+  "engine": "strata-mlx",
+  "prompt": "edit",
+  "prompt_tokens": 340,
+  "prompt_tps": 68.41459243012658,
+  "tokens": 256,
+  "tps": 20.119617412900134,
+  "guesses_kept": 186,
+  "guesses_made": 230
+ },
+ {
+  "run": 1,
+  "machine_gib": 24,
+  "engine": "strata-mlx",
+  "prompt": "reading",
+  "prompt_tokens": 1180,
+  "prompt_tps": 125.44917182284024,
+  "tokens": 16,
+  "tps": 13.16439032417311,
+  "guesses_kept": 11,
+  "guesses_made": 13
+ },
+ {
+  "run": 1,
+  "machine_gib": 24,
+  "engine": "strata-mlx",
+  "prompt": "prose",
+  "prompt_tokens": 27,
+  "prompt_tps": 26.403285742225698,
+  "tokens": 256,
+  "tps": 22.091628480941658,
+  "guesses_kept": 170,
+  "guesses_made": 337
+ },
+ {
+  "run": 1,
+  "machine_gib": 24,
+  "engine": "strata-mlx",
+  "prompt": "code",
+  "prompt_tokens": 31,
+  "prompt_tps": 19.89475035297138,
+  "tokens": 256,
+  "tps": 26.491985139652087,
+  "guesses_kept": 177,
+  "guesses_made": 308
+ },
+ {
+  "run": 1,
+  "machine_gib": 24,
+  "engine": "strata-mlx",
+  "prompt": "reasoning",
+  "prompt_tokens": 49,
+  "prompt_tps": 24.403605757258827,
+  "tokens": 256,
+  "tps": 26.880873628392923,
+  "guesses_kept": 195,
+  "guesses_made": 240
+ },
+ {
+  "run": 1,
+  "machine_gib": 24,
+  "engine": "strata-mlx",
+  "prompt": "edit",
+  "prompt_tokens": 340,
+  "prompt_tps": 79.68314232815393,
+  "tokens": 256,
+  "tps": 20.407512515544788,
+  "guesses_kept": 195,
+  "guesses_made": 236
+ },
+ {
+  "run": 1,
+  "machine_gib": 24,
+  "engine": "strata-mlx",
+  "prompt": "reading",
+  "prompt_tokens": 1180,
+  "prompt_tps": 132.67669612539075,
+  "tokens": 16,
+  "tps": 16.482950448130214,
+  "guesses_kept": 11,
+  "guesses_made": 12
+ }
+]

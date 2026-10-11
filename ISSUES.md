@@ -83,8 +83,10 @@ written before, and its working memory was measured with Q2_0.
 is 2.1 GB short of what it means to leave to macOS. By what was measured on the 128 GB machine it is short by
 less: IQ3_S with the draft head holds 57.8 GB, 61.1 after its first prompt, and peaks 3.8 GB above that while a
 prompt is read. That is 64.9 GB of a 64 GB Mac's 68.7, which leaves macOS 3.8 GB where the rule means 4.5.
-And a Mac that reads IQ3_S experts from the SSD gives them 3.3 GB that the floats then take; that file has
-never been run that way.
+And a Mac that reads IQ3_S experts from the SSD gives them 3.3 GB that the floats then take. Seen since, in the
+one time that file was run that way (`bench/paged.py --machine-memory 24`, one conversation of 60 tokens, to
+see that it runs): the experts were given 10.5 GB, everything else was 7.0 GB when they were, and after the
+first prompt the process held 21.1 GB of arrays, 3.6 more than the two.
 
 `./strata-mlx --check` counts the floats and says where a Mac is short (`strata_mlx/check.py`), so what it
 reports and what the engine does differ in this one case, on purpose.
@@ -95,3 +97,40 @@ reports and what the engine does differ in this one case, on purpose.
 Mac short of them makes them anew for each piece of a prompt, as before (prompts a tenth slower, 320 against
 355-369 tok/s on the M4 Max), and its answers are as fast as ever. Then run IQ3_S as a 64 GB machine
 (`--machine-memory 64`) and see what it holds.
+
+## 4. Where experts are read from the SSD, a prompt waits for the disk two thirds of the time
+
+[Issue 4 on GitHub](https://github.com/yibie/strata-mlx/issues/4)
+
+**What is seen.** As a 16, 24 or 32 GB machine (Q2_0, simulated on the M4 Max, the file dropped from the page
+cache) a prompt of 1,537 tokens is read at 160-182 tok/s, and one of 1,180 tokens through the server at
+107-145: 8 to 11 s before the answer's first token, where the machine with every expert in memory takes 2 to
+3 s.
+
+**What was measured** (`bench/paged.py --machine-memory <GiB> --engines head --read <prompt>`, 1,537 tokens):
+
+| as a machine of | experts in memory | read from the disk for the prompt | of the time reading | tok/s |
+| --- | ---: | ---: | ---: | ---: |
+| 16 GB | 3.3 GB | 27.7-30.3 GB | 67% | 165 |
+| 32 GB | 20.5 GB | 25.9-26.6 GB | 67% | 159-163 |
+
+A chunk of a thousand tokens uses nearly every expert of a layer, so the layer's three tensors are read whole,
+in file order, and none of it is kept (`ExpertStore.whole`). The pass waits for each layer's read, 6.2 of
+9.3 s, and the disk waits while the GPU computes the layer, the other 3.1 s. And what is in memory is read
+again: with 59% of the experts in memory the prompt still reads 26 GB.
+
+**A figure that was wrong.** `ROADMAP.md` and `docs/OPTIMIZATION_RECORD.md` said such a machine read the
+1,537 tokens at 273-287 tok/s. That was measured with the model's file in the page cache, and a read past the
+cache is answered from it when the pages are there: the same script gives 255-277 tok/s with the file in the
+cache and 149-162 with it dropped. Both records are corrected.
+
+**The next step.** Two things, neither of which needs a guess:
+
+1. Read the next layer's tensors while the GPU computes this one: the whole layer is read anyway. At best the
+   longer of the two instead of their sum, 1.5 times. Two layers' tensors are then in memory at once, 0.7 GB
+   more at the peak, which a 16 GB machine's working memory must have.
+2. With a large share of the experts in memory, read only the runs that are not: as a 32 GB machine two
+   fifths of the bytes.
+
+Before either, time `whole` over the 48 layers with nothing computing: it reads at about 4.5 GB/s here where
+`bench/ssd_reads.py` measured 6.5 GB/s for this disk.
