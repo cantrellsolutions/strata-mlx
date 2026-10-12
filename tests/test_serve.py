@@ -151,6 +151,9 @@ def test_arguments_of_the_other_engine_are_skipped():
                                     "--kv", "int8", "--max-context", "65536"])
     assert opts["--native"] == "m.gguf" and opts["--spec"] == "4" and opts["--max-context"] == "65536"
     assert skipped == ["--expert-cache", "--stream-experts", "--kv"]
+    assert opts["--prompt-by-layer"] == opts["--read-ahead"] == "on"  # where experts are read from the SSD
+    opts, skipped = serve._options(["--prompt-by-layer", "off", "--read-ahead", "off"])
+    assert (opts["--prompt-by-layer"], opts["--read-ahead"], skipped) == ("off", "off", [])
 
 
 def test_a_conversation_is_saved_and_restored_over_the_protocol(session, tmp_path):

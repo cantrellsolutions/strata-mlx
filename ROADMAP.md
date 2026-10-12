@@ -742,7 +742,8 @@ time on this disk and would from about 2.4 GB/s down, which waits for a machine 
 
 **Built** (`strata_mlx/bylayer.py`; `ExpertStore.hold` and `ahead` in `paged.py`). `Engine.read` goes this way
 when experts are read from the SSD and more than a chunk is to be read (`Engine(piece=8192, ahead=True)`;
-`piece=0` for never); every other read is the loop it was. Two things are not as designed:
+`piece=0` for never; the server's `--prompt-by-layer off` and `--read-ahead off`); every other read is the loop
+it was. Two things are not as designed:
 
 - A layer is not always read whole in stage one. A piece of two chunks uses 303-396 of a layer's 512 experts,
   one of four 368-430, and a machine that has half its experts in memory reads 18-19 GB for such a piece
@@ -798,6 +799,34 @@ of three and their range:
 - The memory rule's working memory is 5 GB where it was 4, for the 0.9-1.1 GB more at the peak of a piece of
   8,192 tokens: a 32 GB machine keeps 15.2 GB of experts where it kept 16.2, a 24 GB one 6.6 where 7.6
   (`--check`: 45% and 19% of Q2_0's). The reads above were made before that change.
+
+**What those reads did not drop: the n-gram table.** e37 to e40 dropped the experts' shard from the page cache
+before a read and not the other shard, which is the n-gram table (28.8 GB) that the engine leaves on the disk
+and reads by page faults, a few rows a token. A machine with memory to spare has it in the cache; a 32 GB one
+cannot hold it. Through the line protocol, the engine started as a 32 GB machine for each way and asked for two
+prompts of 8,192 tokens, two rounds in turns (`bench/prompt_by_layer.py`, `--drop all` and `--drop experts`),
+seconds, the median of four and their range:
+
+| before each prompt | chunk by chunk | a layer at a time | and read ahead |
+| --- | ---: | ---: | ---: |
+| the experts' shard dropped, the table cached (as e40) | 33.6 (31.6-34.3) | 25.0 (23.5-26.9), 1.34 times | 22.3 (20.2-25.5), 1.51 |
+| both shards dropped | 46.9 (45.8-47.6) | 38.0 (36.7-39.4), 1.24 | 36.2 (34.3-45.0), 1.30 |
+
+- With the table cold a prompt of 8,192 tokens takes 13-14 s more, whichever way: the layers' first halves
+  were 22 s where they are 6.6 with the table cached, the experts' halves 15-16 s in both. (This was found as
+  "the server is slower than the benchmark": it was the benchmark that left the table in the cache.)
+- So by the rule's letter, files dropped, the whole is 1.30 times and not 1.5: the rule is met with the table
+  cached and not with it cold. The reads above it in this section, and e37's, are of the first kind. It was
+  left the default: it was the faster or the same in every pair, and what is slow with the table cold is not
+  the experts.
+- With the table cold the reads ahead buy less (38.0 to 36.2 s): the page faults and the reads ahead ask the
+  same disk.
+- The rows a piece needs are known from its tokens before anything is computed. Reading them ahead, in
+  parallel and not a fault at a time, is the next thing to try, for every way of reading and for answers'
+  first tokens too. Not built, not measured.
+- These runs also halved, start after start, the counts in this machine's own expert profile
+  (`~/.cache/strata-mlx/expert-use-*.npy`): every start of the engine as a small machine keeps half of what
+  was counted before. The benchmark now gives the engine a profile of its own.
 
 Not done, not known:
 

@@ -49,6 +49,7 @@ import sys
 import threading
 import time
 
+from . import bylayer
 from .conversations import Parked, resume
 from .engine import Engine, Stats
 from .paged import load_profile, machine_memory, save_profile
@@ -207,7 +208,8 @@ def _options(argv: list) -> dict:
     known = {"--native": None, "--mtp": None, "--spec": "4", "--max-context": "131072", "--dtype": "float16",
              "--prefill": "2048", "--suffix-draft": "auto", "--expert-memory": "auto", "--machine-memory": None,
              "--expert-profile": "auto", "--guess-rows": "on", "--conversation-cache-mib": "0",
-             "--conversation-cache-slots": "4", "--conversation-cache-min-tokens": "0"}
+             "--conversation-cache-slots": "4", "--conversation-cache-min-tokens": "0",
+             "--prompt-by-layer": "on", "--read-ahead": "on"}
     out, skipped, i = dict(known), [], 0
     while i < len(argv):
         a = argv[i]
@@ -273,7 +275,11 @@ def main():
     head = mtp if int(opts["--spec"]) > 1 else None
     copies = opts["--suffix-draft"]
     engine = Engine(model, head, lookup=head is None if copies == "auto" else int(copies) > 0,
-                    chunk=chunk, guess_rows=opts["--guess-rows"] != "off")
+                    chunk=chunk, guess_rows=opts["--guess-rows"] != "off",
+                    # where experts are read from the SSD (bylayer.py): `off` for a prompt read chunk by chunk
+                    # as before, and for no layer's experts read while another is computed
+                    piece=bylayer.PIECE if opts["--prompt-by-layer"] != "off" else 0,
+                    ahead=opts["--read-ahead"] != "off")
     engine.identity = model_identity(opts["--native"], opts["--dtype"])
     if paged and wanted == "auto":
         store.fit(machine)  # now that everything else is in memory: what is left is the experts'

@@ -78,7 +78,9 @@ a 32 GB machine's experts 16 GB, and the three figures above have not been measu
 
 A prompt of more than 2,048 tokens is read a layer at a time there, each layer's experts once and the next
 layer's while this one is computed, to the same state bit for bit: as a 32 GB machine 8,192 tokens in 19 s
-where chunk by chunk took 32, and 32,768 in 117 s for 193. A shorter prompt is read as before
+where chunk by chunk took 32, and 32,768 in 117 s for 193, with the model's n-gram table in the page cache;
+with that dropped too, which is nearer a real 32 GB machine, 36 s where it took 47. A shorter prompt is read
+as before
 ([ROADMAP.md](ROADMAP.md), "A prompt read a layer at a time"). It holds 1 GB more while it reads, which
 the experts give up: a 32 GB machine's are 15 GB where they were 16.
 
@@ -157,7 +159,9 @@ Options: `--spec 1` (draft head off), `--dtype float32`, `--max-context N`, `--e
 the experts to keep in memory; by default all of them if the machine holds the model), `--machine-memory GiB`
 (run as a machine of that size would), `--guess-rows off`, `--expert-profile off`,
 `--conversation-cache-mib MiB` (park conversations that other requests interrupt, in that much memory; off by
-default, and the memory is taken from the experts' on a Mac that does not hold the model whole).
+default, and the memory is taken from the experts' on a Mac that does not hold the model whole),
+`--prompt-by-layer off` (where experts are read from the SSD: read a long prompt chunk by chunk, as before),
+`--read-ahead off` (and do not read a layer's experts while the one before it is computed).
 
 The benchmarks in `bench/` tokenize with llama.cpp's `llama-tokenize`, and `bench/compare_servers.py` starts
 `llama-server` and LM Studio's `lms` if they are installed.
