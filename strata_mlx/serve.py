@@ -6,7 +6,8 @@ The server starts `<exe> --serve <args>` and talks over stdin and stdout. Prompt
             READY <max context> stop
     server  GEN <max new> [key=value ...] <id>,<id>,...
     engine  RESUME <tokens reused from the conversation held>
-            PP <read> <total> <ms> <tokens/s>          after each chunk of the prompt
+            PP <read> <total> <ms> <tokens/s>          after each chunk of the prompt; of one read a layer at a
+                                                       time, after each layer, in proportion to the layers done
             T <id>                                     each token of the answer, the end token included
             DONE <tokens> <prompt tokens> <prompt ms> <decode ms> <stop|length|cancel> <guesses kept>
                  <guesses made> <reused> 0 <lookup passes> 0 0 0.0 <prompt tokens read> 0
@@ -142,12 +143,17 @@ class Session:
             if self.stop.is_set():
                 raise _Cancelled
 
+        def step():
+            if self.stop.is_set():
+                raise _Cancelled
+
         produced, finish = 0, "length"
         try:
-            token = e.read(prompt, on_chunk=progress, keep=keep, pin=pin)
+            token = e.read(prompt, on_chunk=progress, keep=keep, pin=pin, on_step=step)
             e.one_shot = not keep
         except _Cancelled:
-            # the prompt is read as far as the last chunk; what was read stays for the next request
+            # the prompt is read as far as the last chunk, or the last piece of one read a layer at a time
+            # (bylayer.py); what was read stays for the next request
             self._done(0, prompt, reused, (time.perf_counter() - t0) * 1e3, 0.0, "cancel", read=len(e.tokens) - reused)
             return
         t1 = time.perf_counter()

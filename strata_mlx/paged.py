@@ -42,7 +42,11 @@ SEPARATE_UPTO = 80  # pairs up to which each brings its own arrays to the kernel
 # of reading a 1,500-token prompt (a layer's tensors read whole, the activations), MLX's pool of 0.5.
 # #6: macOS had 4.5 GB until a 32 GB MacBook Air was heard from: with nothing else open it holds 6.1 GB itself, and
 # the machine swapped until the experts had 16 GB and not 20.5, which is what 8.5 GB gives them. One machine.
-SYSTEM, WORKING = int(8.5e9), int(4.0e9)
+# A prompt of more than a chunk is read a layer at a time (bylayer.py) and holds more while it is: its chunks'
+# residuals, and two layers' experts where one was, the one computed and the one read ahead. Measured (e40) at
+# the peak above rest, against chunk by chunk: 3.90 GB and 2.82-3.03 for 8,192 tokens, 5.00 and 3.72 for 32,768.
+# So the working memory is 5 GB where it was 4.
+SYSTEM, WORKING = int(8.5e9), int(5.0e9)
 DRAFT_HEAD = int(1.6e9)
 # The dense tensors as MLX's arrays take this many times their size in the file: several are held at 8 bits. So a
 # machine that holds the model whole has them. One that reads experts from the SSD keeps two of those types as
@@ -82,6 +86,10 @@ class ExpertStore:
         self.use = {}  # (layer, expert) -> times an answer asked for it since the start
         self.fds = {}
         self.pool = ThreadPoolExecutor(threads)
+        # while a prompt goes through a layer chunk after chunk (bylayer.py): what was read of that layer's
+        # experts, kept from the first chunk that reads it to the last; and the next layer's, being read
+        self.kept = None  # [layer, its tensors whole or None, {expert: its arrays}]
+        self.reader, self.coming = ThreadPoolExecutor(1), None  # (layer, the read under way)
         self.reset_stats()
 
     def fit(self, machine: int) -> int:
@@ -92,6 +100,7 @@ class ExpertStore:
     def reset_stats(self):
         self.hits = self.misses = self.bytes_read = 0
         self.read_s = 0.0
+        self.waited_s = 0.0  # of the reads ahead, what the prompt still waited for
 
     def _fd(self, path: str) -> int:
         if path not in self.fds:
@@ -107,7 +116,55 @@ class ExpertStore:
             raise OSError(f"{t.name}: short read")
         return mx.array(np.frombuffer(data, dtype=np.uint8))
 
-    def whole(self, tensors: tuple) -> list:
+    def hold(self, layer: int):
+        """From here to `release` or the next `hold`, what a prompt's chunks read of this layer's experts is
+        read once: the layer whole if it was asked for ahead or a chunk uses that much of it, else each expert
+        the first time a chunk uses it."""
+        stacks = None
+        if self.coming is not None:
+            ahead, read = self.coming
+            self.coming = None
+            t0 = time.perf_counter()
+            stacks = read.result() if ahead == layer else (read.exception() and None)
+            self.waited_s += time.perf_counter() - t0
+        self.kept = [layer, stacks, {}]
+
+    def ahead(self, layer: int):
+        """Begin reading a layer whole in a thread of its own, for the `hold` of that layer to take. The thread
+        reads and makes arrays and evaluates nothing."""
+        if self.coming is not None and self.coming[0] == layer:
+            return
+        self.release_ahead()
+        self.coming = (layer, self.reader.submit(self._whole, self.layers[layer]))
+
+    def release_ahead(self):
+        if self.coming is not None:
+            self.coming[1].exception()  # waited for: nothing of it is used
+            self.coming = None
+
+    def release(self):
+        self.kept = None
+        self.release_ahead()
+
+    def whole(self, tensors: tuple, layer: int | None = None) -> list:
+        """A layer's tensors, all experts: read, and kept only while the layer is held."""
+        if self.kept is None or self.kept[0] != layer:
+            return self._whole(tensors)
+        if self.kept[1] is None:
+            self.kept[1] = self._whole(tensors)
+            self.kept[2] = {}  # what was read one by one is all in there
+        return self.kept[1]
+
+    def _held(self, layer: int, tensors: tuple, experts: list) -> list:
+        _, stacks, each = self.kept
+        if stacks is not None:
+            ones = [t.data.nbytes // t.shape[0] for t in tensors]
+            return [tuple(s[e * one : (e + 1) * one] for s, one in zip(stacks, ones)) for e in experts]
+        missing = [e for e in experts if e not in each]
+        each.update(zip(missing, self._get(layer, tensors, missing, False)))
+        return [each[e] for e in experts]
+
+    def _whole(self, tensors: tuple) -> list:
         """A layer's tensors, all experts, read in file order and not kept.
 
         In pieces of 1 MiB, into a buffer that starts on a page: read so, nothing is left in the page cache
@@ -133,6 +190,7 @@ class ExpertStore:
         self.lru.clear()
         self.use.clear()
         self.held = 0
+        self.release()
 
     def preload(self, counts: np.ndarray, group: int = 512) -> int:
         """Fill what is free of the budget with the experts `counts` (layers, experts) says are used most.
@@ -174,6 +232,11 @@ class ExpertStore:
 
     def get(self, layer: int, tensors: tuple, experts: list, keep: bool = True) -> list:
         """The arrays of each of `experts`, read if they are not in memory."""
+        if not keep and self.kept is not None and self.kept[0] == layer:
+            return self._held(layer, tensors, experts)
+        return self._get(layer, tensors, experts, keep)
+
+    def _get(self, layer: int, tensors: tuple, experts: list, keep: bool) -> list:
         if keep:  # an answer's tokens, not a prompt's
             for e in experts:
                 self.use[(layer, e)] = self.use.get((layer, e), 0) + 1
@@ -229,7 +292,7 @@ class PagedSwitchGLU:
         if idx.size <= SEPARATE_UPTO:
             return self._separately(x, idx, used)
         if len(used) >= WHOLE_FROM:
-            stacks, n = self.store.whole(self.tensors), self.tensors[0].shape[0]
+            stacks, n = self.store.whole(self.tensors, self.layer), self.tensors[0].shape[0]
         else:
             each = self.store.get(self.layer, self.tensors, used.tolist(), keep=idx.size <= KEEP_UPTO)
             stacks, n = [mx.concatenate(col) if len(col) > 1 else col[0] for col in zip(*each)], len(used)

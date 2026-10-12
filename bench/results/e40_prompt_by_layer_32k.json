@@ -1,0 +1,32 @@
+[
+ {
+  "tokens": 32768,
+  "way": "ahead",
+  "round": 1,
+  "s": 116.83,
+  "tok_s": 280.5,
+  "read_gb": 136.0,
+  "disk_s": 32.4,
+  "waited_s": 0.27,
+  "experts_gb": 16.4,
+  "rest_gb": 22.24,
+  "peak_above_rest_gb": 5.0,
+  "longest_step_ms": 10380,
+  "state": "fac3e166c07e3ec1"
+ },
+ {
+  "tokens": 32768,
+  "way": "chunks",
+  "round": 1,
+  "s": 192.87,
+  "tok_s": 169.9,
+  "read_gb": 363.9,
+  "disk_s": 86.4,
+  "waited_s": 0.0,
+  "experts_gb": 14.9,
+  "rest_gb": 20.94,
+  "peak_above_rest_gb": 3.72,
+  "longest_step_ms": null,
+  "state": "fac3e166c07e3ec1"
+ }
+]

@@ -73,16 +73,17 @@ only (`bench/compare_servers.py` reads it last, after four answers; a flag to ru
 
 **What is wrong.** Whether a Mac holds a file whole, and how much of its memory the experts get if it does not,
 is worked out in `strata_mlx/paged.py` (`all_fit`, `ExpertStore.fit`) from the experts, the dense weights, the
-draft head, 8.5 GB left to macOS (4.5 until issue 6) and 4.0 GB of working memory. Since the Q6_K layers keep their weights as
+draft head, 8.5 GB left to macOS (4.5 until issue 6) and 4.0 GB of working memory (5.0 since prompts are read
+a layer at a time: section 4). Since the Q6_K layers keep their weights as
 floats from the first prompt on (`dense.py`, so that the IQ3_S file's prompts are not read a tenth slower),
 the process holds more than that rule counts: 3.3 GB with the IQ3_S file, 0.2 GB with Q2_0. The rule was
 written before, and its working memory was measured with Q2_0.
 
 **Whom it concerns.** A Mac that reads IQ3_S experts from the SSD gives them 3.3 GB that the floats then take,
-so macOS is left that much less than the rule means. Since issue 6 that is every Mac under 66.7 GB, the 64 GB
-ones among them: they keep 95% of the experts in memory. (While the rule left macOS 4.5 GB, a 64 GB Mac held the
+so macOS is left that much less than the rule means. Since issue 6 that is every Mac under 67.7 GB, the 64 GB
+ones among them: they keep 93% of the experts in memory. (While the rule left macOS 4.5 GB, a 64 GB Mac held the
 file whole and was 2.1 GB short by the rule's own sizes. A Mac that holds it whole by the rule and not with the
-floats now has between 66.7 and 69.8 GB, and none has.) Seen since, in the
+floats now has between 67.7 and 70.7 GB, and none has.) Seen since, in the
 one time that file was run that way (`bench/paged.py --machine-memory 24`, one conversation of 60 tokens, to
 see that it runs): the experts were given 10.5 GB, everything else was 7.0 GB when they were, and after the
 first prompt the process held 21.1 GB of arrays, 3.6 more than the two.
@@ -136,10 +137,16 @@ cache and 149-162 with it dropped. Both records are corrected.
 - Reading the next layer ahead with the order left as it is, the first step this section named, is 1.26-1.58
   times by estimate for 8,192 tokens: a chunk reads only 10 to 15 of its layers whole.
 
-**The next step.** Designed and not built: a prompt of more than one chunk goes a layer at a time in pieces of
-8,192 tokens, each layer's experts read once, and then the next layer's are read while this one is computed. A
-prototype of the first part gives the engine's state bit for bit and reads 36.9 GB where the engine reads
-106.9. Reading only the experts memory lacks is left until a machine with a slow disk is heard from.
+**What was done** (`strata_mlx/bylayer.py`; `ROADMAP.md`, "A prompt read a layer at a time"). A prompt of more
+than one chunk goes a layer at a time in pieces of 8,192 tokens, each layer's experts read once, the next
+layer's read while this one is computed. The state it leaves is the engine's bit for bit. As a 32 GB machine
+(e40, medians of three, in turns): 8,192 tokens in 19.2 s where chunk by chunk took 32.4, and 34 GB read
+where it read 70; 4,096 tokens 9.7 s for 15.1; 32,768 tokens, once, 116.8 s for 192.9. A prompt of one chunk
+is read as before, 6.3 s for 1,537 tokens, and still waits for the disk half of that.
+
+**Still open.** One chunk, and so every short prompt, waits for the disk as it did. With a large share of the
+experts in memory only what is lacking need be read, as a 32 GB machine 18 of 34 GB a piece: not built, and it
+matters where the disk is slower than this one. None of this has run on a small machine.
 
 ## 6. On a real 32 GB Mac the default leaves macOS too little memory, and it swaps
 
@@ -178,7 +185,8 @@ the experts' budget limited. Nothing else is short of memory there, so it never 
 **What was done.** `SYSTEM` is 8.5 GB, which gives a 32 GB machine's experts 16.2 GB: the row that was
 fastest. By the same rule a 16 GB Mac is left the least, 0.5 GB of Q2_0's experts (it kept 9% of them; `--check`
 calls that too small), a 48 GB Mac keeps
-98% of Q2_0's experts where it held the file whole, and a 64 GB Mac 95% of IQ3_S's.
+98% of Q2_0's experts where it held the file whole, and a 64 GB Mac 95% of IQ3_S's. (Since the working memory
+is 5 GB, section 4: 15.2 GB for a 32 GB machine, and 95% and 93%.)
 
 **Not known.** Whether a 16, 24, 36 or 48 GB Mac needs the same amount, or less, or the same share: this is one
 machine, one run a row. A 16 GB Mac may well do with less than 8.5 GB and is cut to the least here on no

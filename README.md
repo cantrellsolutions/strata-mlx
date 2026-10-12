@@ -24,6 +24,7 @@ host memory. A Mac with unified memory does not need that half of it. This engin
 - **Long conversations**, measured to 128K tokens of context.
 - **Less memory than the model.** Experts that do not fit are read from the SSD as tokens ask for them, and
   the dense tensors MLX would hold at twice their size stay the file's blocks, which leaves the experts more.
+  A long prompt goes through the layers one at a time, so each layer's experts are read once for it.
 - **Strata's line protocol** on stdin and stdout (`strata_mlx/serve.py`).
 
 ## Measured
@@ -75,6 +76,12 @@ and wrote answers at 6-19 tok/s; with 16 GB it wrote them at 23-29
 ([issue 6](https://github.com/yibie/strata-mlx/issues/6)). So the engine now leaves macOS 7.9 GB, which gives
 a 32 GB machine's experts 16 GB, and the three figures above have not been measured again with it.
 
+A prompt of more than 2,048 tokens is read a layer at a time there, each layer's experts once and the next
+layer's while this one is computed, to the same state bit for bit: as a 32 GB machine 8,192 tokens in 19 s
+where chunk by chunk took 32, and 32,768 in 117 s for 193. A shorter prompt is read as before
+([ROADMAP.md](ROADMAP.md), "A prompt read a layer at a time"). It holds 1 GB more while it reads, which
+the experts give up: a 32 GB machine's are 15 GB where they were 16.
+
 The full account, with what was tried and did not help, is in [ROADMAP.md](ROADMAP.md) (English, as it went)
 and [docs/OPTIMIZATION_RECORD.md](docs/OPTIMIZATION_RECORD.md) (Chinese, by topic).
 
@@ -94,11 +101,11 @@ By the same arithmetic the engine starts with:
 | Mac's memory | Q2_0 (66 GB on disk) | IQ3_S (84 GB on disk) |
 | :--- | :--- | :--- |
 | 16 GB | too small | too small |
-| 24 GB | 22% of the experts in memory | 10% of the experts in memory |
-| 32 GB | 48% of the experts in memory | 27% of the experts in memory |
-| 36 GB | 60% of the experts in memory | 36% of the experts in memory |
-| 48 GB | 98% of the experts in memory | 61% of the experts in memory |
-| 64 GB | whole | 95% of the experts in memory |
+| 24 GB | 19% of the experts in memory | 8% of the experts in memory |
+| 32 GB | 45% of the experts in memory | 25% of the experts in memory |
+| 36 GB | 57% of the experts in memory | 34% of the experts in memory |
+| 48 GB | 95% of the experts in memory | 59% of the experts in memory |
+| 64 GB | whole | 93% of the experts in memory |
 | 96 GB and more | whole | whole |
 
 "Whole" is the path the speeds under [Measured](#measured) are for, on an M4 Max; other chips have not been

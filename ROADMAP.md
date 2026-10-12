@@ -479,8 +479,9 @@ MacBook Air M5, swapped with those 20.5 GB of experts (106 GB swapped out during
 tok/s) and was about twice as fast with 16 (23.4-26.8, and 24.3-28.8 with nothing else open). The arrays peaked
 at the experts plus 8.5 GB in every run, as the rule counts; macOS itself held 6.1 GB, not 4.5. Capping the
 budget on a 128 GB machine could not show this: nothing else is short of memory there. So macOS is left 8.5 GB
-now, and a machine of 24 or 32 GB keeps 7.6 or 16.2 GB of experts; a 16 GB one is left the least, 0.5 GB, on
-no 16 GB machine's evidence. The table above is of the budgets it names, not measured again.
+now, and a machine of 24 or 32 GB keeps 7.6 or 16.2 GB of experts (6.6 and 15.2 since the working memory
+grew by 1 GB for prompts read a layer at a time, below); a 16 GB one is left the least, 0.5 GB, on no 16 GB
+machine's evidence. The table above is of the budgets it names, not measured again.
 
 Tests hold it to the same tokens as the model with every expert in memory, at a budget of nothing, of five
 experts and of all, and with a window spread over several kernel calls. By budget, a token at a time and with
@@ -666,7 +667,7 @@ Settled: the target file is Q2_0, the one on disk (no space for the Coder or any
 budget that one build serves 16, 24 and 32 GB machines with; it is measured here by capping the budget, reading
 experts past the page cache. 24 and 32 GB machines are the easier case: the 6,000 and 12,000 rows.
 
-### A prompt read a layer at a time: designed, not built (e37 to e39)
+### A prompt read a layer at a time (e37 to e40, bylayer.py)
 
 Where experts are read from the SSD a prompt is read in chunks of 2,048 tokens, each through all the layers,
 and a chunk reads each layer's experts and keeps none of them. So a prompt of several chunks reads the same
@@ -697,12 +698,13 @@ the new way costs itself:
 | a layer at a time, the read still waited for | 1.43-1.60 | 0.78: left as it is |
 | a layer at a time and the next layer read ahead | 1.84-2.35 | 1.1 |
 
-Only the third is over the line with room, and it is what was designed, in two stages each to be measured.
+Only the third is over the line with room. It was designed in two stages, prototyped, and is built: the
+section ends with what it measures.
 
 **Stage one: the layers outside, the chunks inside.** A prompt goes in pieces of 8,192 tokens; a piece goes
 through layer 1 chunk by chunk, then layer 2, and a layer's experts are read whole once and kept until its
-last chunk. What a chunk computes at a layer is not changed. A throwaway prototype of this (the branch
-`prototype/layer-major`, which drives the engine's parts in the other order and changes none of them) found:
+last chunk. What a chunk computes at a layer is not changed. A throwaway prototype of this, which drove the engine's parts in the other order and changed none of them,
+found:
 
 - The state is the same bit for bit, in float32 and in float16: the small model of the tests in four
   combinations with a draft head and three checkpoints, and Q2_0 with a prompt of 8,192 tokens, all 188 arrays,
@@ -738,21 +740,76 @@ main thread takes them when it comes to that layer; a stop waits for the read un
 memory are read again like the rest: reading only what is lacking (18 of 34 GB as a 32 GB machine) saves no
 time on this disk and would from about 2.4 GB/s down, which waits for a machine with such a disk.
 
-When it is built:
+**Built** (`strata_mlx/bylayer.py`; `ExpertStore.hold` and `ahead` in `paged.py`). `Engine.read` goes this way
+when experts are read from the SSD and more than a chunk is to be read (`Engine(piece=8192, ahead=True)`;
+`piece=0` for never); every other read is the loop it was. Two things are not as designed:
 
-- Stage one is measured before stage two is begun. Under 1.3 times for 8,192 tokens as a 32 GB machine, it
-  stops there.
-- The whole is measured by the rule above: under 1.5 times it is not the default, and is recorded as measured
-  and not built.
-- The memory rule's working memory grows by what is measured at the peak, out of the experts' share (0.5-1 GB
-  expected from the prototype's 0.9-1.2, some of which is the prototype's own; stage two holds two layers'
-  experts, 0.7 GB more).
-- A prompt of 32K tokens is read once this way for its peak: none past 16K has been.
-- Whether a piece of two chunks also uses most of each layer's experts is looked at first: the 368-430 are
-  from a piece of four.
-- Then the 32 GB MacBook Air of issue 6 is asked for both ways of reading. All of the above is one M4 Max
-  with a 6.5 GB/s disk, a small machine simulated: no pressure on memory, and a 256 GB model's disk gives a
-  quarter to a half of that.
+- A layer is not always read whole in stage one. A piece of two chunks uses 303-396 of a layer's 512 experts,
+  one of four 368-430, and a machine that has half its experts in memory reads 18-19 GB for such a piece
+  expert by expert where whole layers are 34. So without reads ahead a layer's experts are held as the chunks
+  ask for them: whole if a chunk uses 384 of them, else each the first time it is used. With reads ahead the
+  layer is whole before its first chunk.
+- The draft head's cells are added after the last layer, chunk by chunk, and a stop is seen between them; the
+  conversation's own bookkeeping (tokens, the states, checkpoints, the answer's first token and guesses) follows
+  and is not interrupted.
+
+Tests (`tests/test_bylayer.py`, the small model with its experts in a file and a draft head, float32 and
+float16): the state after a prompt is the engine's bit for bit, every array of the conversation and of its
+checkpoints, with `ckpt=0`, `pin`, prompts of several pieces, chunks that read a layer whole and chunks that
+do not, with and without reads ahead, and the answers and a follow-up are the same; a layer's experts are read
+once for a piece; a read stopped at any of a spread of steps, from an empty conversation, in a later piece, by
+what hears the progress, or where attention goes by pooled keys, leaves what was there before the piece, and
+read again leaves what a read never stopped leaves; through the line protocol a line of progress a layer, and
+`DONE` says what stays read.
+
+**Measured** (e40, `bench/results/e40_prompt_by_layer_*.json`): Q2_0, float16, as a 32 GB machine with the
+experts its answers used most in memory as the server has them (15.9-16.4 GB then), the files dropped from the
+page cache before every read, the three ways in turns three times with 10 s between reads. Seconds, the median
+of three and their range:
+
+| prompt | chunk by chunk | a layer at a time | and the next layer read ahead |
+| ---: | ---: | ---: | ---: |
+| 1,537 tokens (one chunk: the same code) | 6.3 (6.3-6.3) | 6.2 (6.1-6.3) | 6.6 (6.3-6.7) |
+| 2,560 | 10.5 (10.5-10.6) | 9.5 (9.4-9.7), 1.11 times | 8.8 (8.5-8.9), 1.20 times |
+| 4,096 | 15.1 (14.9-15.1) | 12.3 (12.2-12.4), 1.22 | 9.7 (9.2-9.8), 1.56 |
+| 8,192 | 32.4 (32.2-32.5) | 22.8 (22.0-23.4), 1.43 | 19.2 (18.2-19.9), 1.69 |
+| 32,768, once | 192.9 | | 116.8, 1.65 |
+
+| 8,192 tokens | read from the disk | of the time | arrays at the peak above rest | longest step |
+| --- | ---: | ---: | ---: | ---: |
+| chunk by chunk | 69.8-71.0 GB | 15.9-16.0 s | 2.82-3.03 GB | a chunk: 8 s |
+| a layer at a time | 26.7 GB | 6.1-6.3 s | 3.09 GB | 0.26-0.28 s |
+| and read ahead | 34.0 GB | 0.2 s waited for | 3.90 GB | 0.26-0.30 s |
+
+- Both rules are met: stage one 1.43 times where 1.3 was asked, the whole 1.69 where 1.5 was. An earlier
+  run of the same nine reads with 3 s between them, the machine slowing through it, gave 1.64 and 1.53 (40.2,
+  24.5 and 26.3 s): the figures move with the machine's state by more than stage two is worth, and the order
+  of the three did not change in any round but one of that run.
+- The digest of the state (every array, the checkpoints, the first token, the guesses, 16 tokens of answer)
+  was the same in every read of a prompt, whichever way.
+- Read ahead, the prompt waits 0.2 s for the disk in all; the reads themselves take 8.6-9.3 s beside the GPU's
+  work, 3.7-4.0 GB/s. The piece is 19 s where the layers' own time is about 16: reading beside the engine costs
+  it something that reading beside synthetic work (e39) did not. Reads of 16 MiB pieces were no different.
+- A prompt of one chunk is the code it was, and its three columns are the noise: 6.1 to 6.7 s.
+- 32,768 tokens were read, to the same state as chunk by chunk, with 5.00 GB of arrays above rest at the peak
+  against 3.72; most of either is the conversation's own caches, which the memory rule does not count. In that
+  run one step took 10.4 s; read again with every step timed, the longest of 1,648 was 0.28 s and the read
+  96.8 s. What the 10 s were is not known.
+- The memory rule's working memory is 5 GB where it was 4, for the 0.9-1.1 GB more at the peak of a piece of
+  8,192 tokens: a 32 GB machine keeps 15.2 GB of experts where it kept 16.2, a 24 GB one 6.6 where 7.6
+  (`--check`: 45% and 19% of Q2_0's). The reads above were made before that change.
+
+Not done, not known:
+
+- All of it is one M4 Max with a 6.5 GB/s disk and a small machine simulated: no pressure on memory. The
+  32 GB MacBook Air of issue 6 has not been asked. A 256 GB model's disk gives a quarter to a half of this
+  one's: there a layer's read (0.13 s here) is longer than a short piece's layer (0.12 s at 2,560 tokens,
+  0.33 at 8,192), and reading only what memory lacks of a layer, 18 of 34 GB as a 32 GB machine, would count.
+  It is not built.
+- The IQ3_S file has not been read this way. In float32 Q2_0's 8,192 tokens were read once each way, to one
+  state: 37.6, 28.0 and 23.1 s, with 4.46, 3.83 and 5.23 GB of arrays above rest at the peak.
+- A read stopped inside a piece gives up the piece: at most 19 s of work here, where chunk by chunk it gave up
+  at most a chunk.
 
 Not taken: experts grouped by expert and computed once a layer (Strata's #1670), which changes the order of
 the sums and is not bit for bit; resuming a stopped piece from the layer it reached, which needs the undoing

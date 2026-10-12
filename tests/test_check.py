@@ -30,18 +30,19 @@ def test_whole_is_what_the_engine_decides(model):
 def test_the_experts_kept_are_about_what_a_start_measured():
     # ROADMAP: Q2_0 with the draft head, started as a machine of 16, 24 and 32 GB, gave its experts this much
     # (1.5, 10.1 and 18.7 GB before its dense tensors of two types stayed blocks). macOS was left 4.5 GB then and
-    # is left 8.5 now (#6), so the experts get 4.0 GB less: on a 16 GB machine less than the least there is
+    # is left 8.5 now (#6), and the working memory was 4 GB and is 5 (prompts read a layer at a time), so the
+    # experts get 5.0 GB less: on a 16 GB machine less than the least there is
     for gb, measured in ((16, 3.3e9), (24, 11.9e9), (32, 20.5e9)):
-        assert abs(plan(Q2, gb * GB).kept - (measured - 4.0e9)) < 0.4e9
+        assert abs(plan(Q2, gb * GB).kept - (measured - 5.0e9)) < 0.4e9
     assert plan(Q2, 16 * GB).kept < paged.LEAST <= plan(Q2, 24 * GB).kept
     assert Q2.spared == pytest.approx(1.74e9, rel=0.01)  # each of those starts gave the experts that much more
 
 
 def test_floats_kept_for_prompts_are_counted_though_the_engine_does_not_count_them():
-    tight = plan(IQ3S, 68 * GB)  # no Mac has 68 GB: the rule holds the file whole from 66.7 and it takes 69.8
-    assert tight.whole and tight.needs - 68 * GB == pytest.approx(1.8 * GB, abs=0.05 * GB)
+    tight = plan(IQ3S, 68 * GB)  # no Mac has 68 GB: the rule holds the file whole from 67.7 and it takes 70.7
+    assert tight.whole and tight.needs - 68 * GB == pytest.approx(2.7 * GB, abs=0.05 * GB)
     assert not plan(IQ3S, 64 * GB).whole and plan(IQ3S, 96 * GB).needs < 96 * GB
-    assert plan(Q2, 64 * GB).needs == pytest.approx(50.4 * GB, abs=0.05 * GB)
+    assert plan(Q2, 64 * GB).needs == pytest.approx(51.3 * GB, abs=0.05 * GB)
     assert "not run this way yet" in "\n".join(lines(IQ3S, 48 * GB))
     assert "not run this way yet" not in "\n".join(lines(Q2, 24 * GB))
 

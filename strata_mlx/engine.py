@@ -30,6 +30,7 @@ from mlx_lm.models import qwen4_exp
 from mlx_lm.models.base import create_attention_mask
 from mlx_lm.models.gated_delta import gated_delta_update
 
+from . import bylayer
 from .attention import AttnCache, install
 from .conversations import reach, victim
 from .drafting import FIRST_GUESSES, MAX_WINDOW, Lookup, Policy
@@ -144,10 +145,12 @@ class Engine:
     def __init__(self, model: qwen4_exp.Model, mtp: Mtp | None = None, drafts: int = MAX_WINDOW - 1,
                  lookup: bool = False, chunk: int = 2048, checkpoints: int = 8, turn_token: int = TURN_TOKEN,
                  fused: bool = True, fuse_upto: int = 6, as_sure: bool = True, guess_rows: bool = True,
-                 root: int = ROOT):
+                 root: int = ROOT, piece: int = bylayer.PIECE, ahead: bool = True):
         """`drafts`: the most guesses the head makes for a pass. With `as_sure` it makes as many of them as it
         is sure enough of (drafting.py); without, always that many. With `guess_rows` a guess is worked out
-        over the rows of the output layer that have been in sight, not over all of them (rows.py)."""
+        over the rows of the output layer that have been in sight, not over all of them (rows.py). Where
+        experts are read from the SSD, a prompt of more than a chunk is read a layer at a time in pieces of
+        `piece` tokens (bylayer.py; 0 for never), with `ahead` the next layer's experts read during this one."""
         self.model, self.m, self.mtp = model, model.model, mtp
         install(self.m.layers)
         install_routers(self.m.layers)
@@ -159,6 +162,7 @@ class Engine:
         # kept through `reset`: what one conversation listed serves the next
         self.rows = GuessRows(model.lm_head, vocab) if self.drafts and guess_rows and vocab >= 100_000 else None
         self.chunk, self.max_checkpoints, self.turn_token, self.root = chunk, checkpoints, turn_token, root
+        self.piece, self.ahead = piece, ahead
         self.clock = 0  # counts the uses of checkpoints
         self.one_shot = False  # the conversation held is of a request that said no other continues it
         self.vocab = self.m.args.vocab_size
@@ -629,14 +633,17 @@ class Engine:
         mx.eval(out)
         return out.tolist()
 
-    def read(self, prompt: list, on_chunk=None, keep: bool = True, pin: int = 0) -> int:
+    def read(self, prompt: list, on_chunk=None, keep: bool = True, pin: int = 0, on_step=None) -> int:
         """Read prompt[len(self.tokens):] into the state; returns the first token of the answer. `keep` and `pin`
-        say which checkpoints it leaves (`_cuts`)."""
+        say which checkpoints it leaves (`_cuts`). `on_chunk(tokens, of)` hears how far it is; `on_step()` is
+        called more often where a prompt is read a layer at a time, and what either raises stops the read."""
         start, n = len(self.tokens), len(prompt)
         self.next_token, self.guesses, self.guess_sure = None, [], ()
         cuts = self._cuts(prompt, start, keep, pin)
         if pin == start and self.checkpoints and self.checkpoints[-1].at == start:
             self._checkpoint(pinned=True)  # the prefix was read by an earlier request: it is the one named now
+        if self.paged and self.piece and self.fused is not None and n - start > self.chunk:
+            return bylayer.read(self, prompt, cuts, on_chunk, on_step)
         a = start
         for b in sorted({*cuts, *range(start + self.chunk, n, self.chunk), n}):
             if b <= a:
