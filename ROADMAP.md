@@ -15,6 +15,44 @@
 - Guesses copied from earlier in the conversation, used where they settle more tokens per millisecond
   (`drafting.py`).
 - A conversation read once: checkpoints at message boundaries, a follow-up reads only what is new.
+- Conversations kept while others are decoded (`conversations.py`; both parts are Strata's, written anew). The
+  engine held one conversation and kept its eight newest checkpoints, so a request that shared little with it
+  (a client's title request, another chat) cut it back to what they shared, and its next turn was read again
+  from there.
+  Now, as Strata does by default: a prompt read from its start is checkpointed where its first message ends
+  when that is 2,048 tokens in (the system prompt a client's next chat starts with), that first checkpoint
+  stays and the others leave by least recent use, the one before a prompt's last token first; `ckpt=0` on a
+  request says no other continues it and `pin=N` that its first N tokens are a prefix to keep. And, opt-in as
+  in Strata, `--conversation-cache-mib` (with `-slots`, 4, and `-min-tokens`): a conversation a prompt leaves
+  before its last turn began is parked whole, the oldest leaving when the budget or the slots run out; a prompt
+  that continues a parked conversation takes it back, and one that only starts like it goes on from a copy of
+  that start. Arrays change hands, nothing is computed: parking and taking back are 0.3 ms.
+  Q2_0 on the M4 Max through the line protocol, a 2,760-token system prompt, chat A with a document (9,991
+  tokens), a client's 34-token title request, a second chat B with the same system prompt; seconds to the first
+  token of the answer, and how much of the prompt was not read:
+
+      request                      without parking            --conversation-cache-mib 4096
+      A, second turn               19.7 s (0)                 0.26 s (10,038 of 10,057)
+      B, a new chat                0.21 s (2,760 of 2,784)    0.31 s (2,760)
+      A, third turn                15.3 s (2,760)             0.25 s (10,104 of 10,123)
+      B, second turn               0.41 s (2,760)             0.19 s (2,831 of 2,847)
+
+  The answers: in float32 the same prompts get the same answers with and without parking, token for token (nine
+  requests of two chats in turns). In float16 they need not: three of those nine parted. Where they parted was
+  not looked at; that float32 agrees says it is rounding, a turn that goes on from the state its conversation
+  stopped in against one that reads the conversation again, as with a window and a single token. That is so of
+  any follow-up, parked or not. What keeping the root is worth was
+  not measured by itself: in this run the system prompt's end was one of the first prompt's last two message
+  starts, which the engine checkpointed before too; it is in a chat of several turns, or after eight newer
+  checkpoints, that it was lost. A parked conversation is its caches, 30 KB a token, and 110 MiB for each
+  checkpoint and for the state it stopped in: 10,038 tokens were 732 MiB with three checkpoints; of more than
+  three it keeps the root, a pinned one and the last two, so a chat of 10,194 tokens was still 738 MiB after
+  five turns. The budget comes out of the machine's memory before the
+  experts' share is worked out, and `--check --conversation-cache-mib` counts it.
+  Not done: a parked conversation and the copy of its start that another chat goes on from hold that start's
+  caches twice (83 MB for 2,760 tokens); Strata's floor of free memory below which nothing is parked
+  (`--conversation-cache-min-free-mib`), which wants the same reading of free memory as issue 6; parked
+  conversations on the SSD, so that they outlast a restart (the disk here has 14 GB free).
 - Prompts read in chunks, the output layer for the last token only.
 - Strata's line protocol (`serve.py`, `./strata-mlx`): its server, web app and OpenAI / Anthropic APIs run on this
   engine unchanged.

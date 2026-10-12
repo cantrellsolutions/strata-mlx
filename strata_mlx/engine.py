@@ -31,6 +31,7 @@ from mlx_lm.models.base import create_attention_mask
 from mlx_lm.models.gated_delta import gated_delta_update
 
 from .attention import AttnCache, install
+from .conversations import reach, victim
 from .drafting import FIRST_GUESSES, MAX_WINDOW, Lookup, Policy
 from .fused import FusedResidual, PlainResidual, install_routers
 from .mtp import Mtp
@@ -39,6 +40,7 @@ from .sampler import LIST, Sampling, history_counts, penalize, pick, uniform
 
 TURN_TOKEN = 248045  # <|im_start|>
 PERIODIC = 16384
+ROOT = 2048  # a prompt read from its start is checkpointed where its first message ends, if that is this far in
 SESSION_FORMAT = "strata-mlx session 1"
 
 
@@ -79,6 +81,49 @@ class _Checkpoint:
     gdn: dict
     ple_conv: mx.array | None
     context: mx.array
+    used: int = 0  # when a request last made it, landed on it or went on through it (conversations.victim)
+    pinned: bool = False  # the end of a prefix a request named (`pin`): never dropped while it is the one named
+    tail: bool = False  # the one before a prompt's last token: of use to that request asked again, the first to go
+
+
+def _cut(cache, at: int):
+    """A cache of the first `at` cells of this one. Its arrays are the other's until it is added to."""
+    new = type(cache)()
+    if at and cache.keys is not None:
+        keys, values, index = cache.state
+        new.state = keys[..., :at, :], values[..., :at, :], index[:, :at]
+    return new
+
+
+@dataclass
+class Conversation:
+    """A conversation's whole state, out of the engine (conversations.py)."""
+
+    tokens: list
+    gdn: dict
+    ple_conv: mx.array | None
+    context: mx.array
+    attn: dict
+    mtp_cache: object
+    checkpoints: list
+
+    @property
+    def pinned(self) -> bool:
+        return any(c.pinned for c in self.checkpoints)
+
+    @property
+    def bytes(self) -> int:
+        caches = [*self.attn.values(), *([self.mtp_cache] if self.mtp_cache is not None else [])]
+        kv = sum(a.nbytes for c in caches for a in (c.keys, c.values, c.indexer.keys) if a is not None)
+        small = sum(a.nbytes for pair in self.gdn.values() for a in pair)
+        return kv + small * (1 + len(self.checkpoints)) + 4 * len(self.tokens)
+
+    def prefix(self, cp: _Checkpoint) -> "Conversation":
+        """The conversation as it was at one of its checkpoints, this one left as it is."""
+        return Conversation(self.tokens[: cp.at], dict(cp.gdn), cp.ple_conv, cp.context,
+                            {i: _cut(c, cp.at) for i, c in self.attn.items()},
+                            _cut(self.mtp_cache, cp.at) if self.mtp_cache is not None else None,
+                            [c for c in self.checkpoints if c.at <= cp.at])
 
 
 @dataclass
@@ -98,7 +143,8 @@ class Engine:
 
     def __init__(self, model: qwen4_exp.Model, mtp: Mtp | None = None, drafts: int = MAX_WINDOW - 1,
                  lookup: bool = False, chunk: int = 2048, checkpoints: int = 8, turn_token: int = TURN_TOKEN,
-                 fused: bool = True, fuse_upto: int = 6, as_sure: bool = True, guess_rows: bool = True):
+                 fused: bool = True, fuse_upto: int = 6, as_sure: bool = True, guess_rows: bool = True,
+                 root: int = ROOT):
         """`drafts`: the most guesses the head makes for a pass. With `as_sure` it makes as many of them as it
         is sure enough of (drafting.py); without, always that many. With `guess_rows` a guess is worked out
         over the rows of the output layer that have been in sight, not over all of them (rows.py)."""
@@ -112,7 +158,9 @@ class Engine:
         vocab = self.m.args.vocab_size
         # kept through `reset`: what one conversation listed serves the next
         self.rows = GuessRows(model.lm_head, vocab) if self.drafts and guess_rows and vocab >= 100_000 else None
-        self.chunk, self.max_checkpoints, self.turn_token = chunk, checkpoints, turn_token
+        self.chunk, self.max_checkpoints, self.turn_token, self.root = chunk, checkpoints, turn_token, root
+        self.clock = 0  # counts the uses of checkpoints
+        self.one_shot = False  # the conversation held is of a request that said no other continues it
         self.vocab = self.m.args.vocab_size
         self.eos = self.m.args.eos_token_id
         self.gdn_layers = [i for i, l in enumerate(self.m.layers) if l.layer_type == "linear_attention"]
@@ -331,11 +379,20 @@ class Engine:
 
     # ---- going back
 
-    def _checkpoint(self):
+    def _checkpoint(self, pinned: bool = False, tail: bool = False):
+        self.clock += 1
+        if pinned:
+            for cp in self.checkpoints:
+                cp.pinned = False  # one prefix is pinned at a time: a new one takes the place
         if self.checkpoints and self.checkpoints[-1].at == len(self.tokens):
+            cp = self.checkpoints[-1]
+            cp.used, cp.pinned, cp.tail = self.clock, cp.pinned or pinned, cp.tail and tail
             return
-        self.checkpoints.append(_Checkpoint(len(self.tokens), dict(self.gdn), self.ple_conv, self.context))
-        del self.checkpoints[: -self.max_checkpoints]
+        self.checkpoints.append(_Checkpoint(len(self.tokens), dict(self.gdn), self.ple_conv, self.context,
+                                            self.clock, pinned, tail))
+        while len(self.checkpoints) > self.max_checkpoints:
+            cps = self.checkpoints
+            del cps[victim([c.used for c in cps], self.max_checkpoints, [c.tail for c in cps], [c.pinned for c in cps])]
 
     def _restore(self, cp: _Checkpoint):
         back = len(self.tokens) - cp.at
@@ -436,24 +493,53 @@ class Engine:
     def resume(self, prompt: list) -> int:
         """Bring the state to the longest prefix of `prompt` it can reach; returns how many tokens that is."""
         self.next_token, self.guesses, self.guess_sure = None, [], ()
-        same = 0
-        while same < min(len(prompt) - 1, len(self.tokens)) and prompt[same] == self.tokens[same]:
-            same += 1
+        same, cp = reach(self.tokens, self.checkpoints, prompt)
+        self.clock += 1
+        for c in self.checkpoints:
+            if c.at <= same:
+                c.used = self.clock  # the request goes on through them
         if same == len(self.tokens):
             return same
-        cp = max((c for c in self.checkpoints if c.at <= same), key=lambda c: c.at, default=None)
         if cp is None:
             self.reset()
             return 0
         self._restore(cp)
         return cp.at
 
-    def _cuts(self, prompt: list, start: int) -> list:
-        """Where to checkpoint while reading prompt[start:]: token counts at which a follow-up may part from it."""
+    def detach(self) -> Conversation:
+        """The conversation held, taken out of the engine, which then holds none."""
+        conv = Conversation(self.tokens, self.gdn, self.ple_conv, self.context, self.attn, self.mtp_cache,
+                            self.checkpoints)
+        self.reset()
+        return conv
+
+    def attach(self, conv: Conversation):
+        """Hold a conversation that `detach` or `Conversation.prefix` gave, in place of the one held."""
+        self.reset()
+        self.tokens, self.gdn, self.ple_conv, self.context = conv.tokens, conv.gdn, conv.ple_conv, conv.context
+        self.attn, self.mtp_cache, self.checkpoints = conv.attn, conv.mtp_cache, conv.checkpoints
+        if self.lookup:
+            self.lookup.extend(self.tokens)
+
+    def _cuts(self, prompt: list, start: int, keep: bool = True, pin: int = 0) -> dict:
+        """Where to checkpoint while reading prompt[start:], and as what (`_checkpoint`'s arguments): token counts
+        at which a later prompt may part from this one. Where the last two messages begin, every PERIODIC
+        tokens and before the last token; of a prompt read from its start, where its first message ends (the
+        system prompt, which the client's next chat begins with); and where the request says a prefix ends
+        (`pin`). A request that no other continues (`keep` false) leaves only the last two of those."""
         n = len(prompt)
-        turns = [i for i in range(start + 1, n) if prompt[i] == self.turn_token][-2:]
-        periodic = list(range((start // PERIODIC + 1) * PERIODIC, n, PERIODIC))
-        return sorted({*turns, *periodic, n - 1} - {start, 0})
+        cuts = {}
+        if keep:
+            turns = [i for i in range(start + 1, n) if prompt[i] == self.turn_token][-2:]
+            cuts = dict.fromkeys([*turns, *range((start // PERIODIC + 1) * PERIODIC, n, PERIODIC)], {})
+            cuts.setdefault(n - 1, {"tail": True})
+        if start == 0:
+            first = next((i for i in range(1, n) if prompt[i] == self.turn_token), 0)
+            if first >= self.root:
+                cuts.setdefault(first, {})
+        if start < pin < n:
+            cuts[pin] = {"pinned": True}
+        return {at: kind for at, kind in sorted(cuts.items()) if at not in (start, 0)}
 
     # ---- the draft head
 
@@ -543,11 +629,14 @@ class Engine:
         mx.eval(out)
         return out.tolist()
 
-    def read(self, prompt: list, on_chunk=None) -> int:
-        """Read prompt[len(self.tokens):] into the state; returns the first token of the answer."""
+    def read(self, prompt: list, on_chunk=None, keep: bool = True, pin: int = 0) -> int:
+        """Read prompt[len(self.tokens):] into the state; returns the first token of the answer. `keep` and `pin`
+        say which checkpoints it leaves (`_cuts`)."""
         start, n = len(self.tokens), len(prompt)
         self.next_token, self.guesses, self.guess_sure = None, [], ()
-        cuts = self._cuts(prompt, start)
+        cuts = self._cuts(prompt, start, keep, pin)
+        if pin == start and self.checkpoints and self.checkpoints[-1].at == start:
+            self._checkpoint(pinned=True)  # the prefix was read by an earlier request: it is the one named now
         a = start
         for b in sorted({*cuts, *range(start + self.chunk, n, self.chunk), n}):
             if b <= a:
@@ -568,7 +657,7 @@ class Engine:
                 self._cells(w.residual, mx.array([prompt[a + 1 : b + 1]]))
                 mx.eval(*_arrays([self.mtp_cache.keys, self.mtp_cache.values, self.mtp_cache.indexer.keys]))
             if b in cuts:
-                self._checkpoint()
+                self._checkpoint(**cuts[b])
             if on_chunk:
                 on_chunk(b, n)
             a = b

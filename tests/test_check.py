@@ -99,6 +99,13 @@ def test_the_report_is_of_this_mac_or_of_the_one_asked_about(capsys):
     assert out.startswith("This Mac has") and "Free on the disk" in out
 
 
+def test_parked_conversations_are_memory_the_model_does_not_have(capsys):
+    assert check.main(["--machine-memory", "64", "--conversation-cache-mib", "8192"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("A Mac with 64 GB of memory") and "8.0 GB of parked conversations" in out
+    assert lines(Q2, 56 * GB)[1] in out and lines(Q2, 64 * GB)[1] not in out
+
+
 def test_the_launcher_checks_instead_of_serving(monkeypatch, capsys):
     monkeypatch.setattr("sys.argv", ["strata-mlx", "--serve", "--check", "--machine-memory", "16", "--spec", "1"])
     assert serve.main() == 0

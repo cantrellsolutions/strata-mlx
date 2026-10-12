@@ -26,6 +26,13 @@ read from the SSD as tokens ask for them (paged.py). How much is worked out from
 Such a machine counts which experts its answers use, in `~/.cache/strata-mlx/expert-use-<model>.npy`
 (`--expert-profile <path>` for another place, `off` for none), and starts with the most used ones in memory.
 
+The engine holds one conversation, and a request that shares little with it cuts it back to what they share.
+`--conversation-cache-mib <MiB>` (with `--conversation-cache-slots`, 4, and `--conversation-cache-min-tokens`, 0)
+parks it instead, in that much memory, and takes it back when a prompt continues it (conversations.py); the
+memory is taken from what the experts would have. Off by default. Two keys of a `GEN` line say which checkpoints
+a request leaves: `ckpt=0`, that no later request continues it, and `pin=<tokens>`, that its first tokens are a
+prefix other requests will start with. These are Strata's, as are the lines the cache writes to the log.
+
 The draft head's guesses are worked out over the rows of the output layer that have been in sight (rows.py);
 `--guess-rows off` has them go over all rows.
 
@@ -41,6 +48,7 @@ import sys
 import threading
 import time
 
+from .conversations import Parked, resume
 from .engine import Engine, Stats
 from .paged import load_profile, machine_memory, save_profile
 from .sampler import Sampling
@@ -49,14 +57,16 @@ VERSION = "0.0.1"
 END_TOKENS = (248044, 248046)  # <|endoftext|>, <|im_end|>
 _FLOATS = ("temperature", "top_p", "min_p", "penalty_repeat", "penalty_freq", "penalty_present")
 _INTS = ("top_k", "penalty_last_n", "seed")
-_IGNORED = ("cvec", "ckpt", "pin", "pcie_frac", "spec_min_p")  # for the CUDA engine's expert cache and its options
+_CHECKPOINTS = ("ckpt", "pin")  # ckpt=0: no later request continues this one; pin=N: the first N tokens are a prefix
+_IGNORED = ("cvec", "pcie_frac", "spec_min_p")  # for the CUDA engine's expert cache and its options
 
 
 class Session:
     """One conversation slot: turns protocol lines into engine calls and writes the answers."""
 
-    def __init__(self, engine: Engine, write, max_context: int, stop: threading.Event | None = None):
-        self.engine, self.write, self.max_context = engine, write, max_context
+    def __init__(self, engine: Engine, write, max_context: int, stop: threading.Event | None = None,
+                 parked: Parked | None = None):
+        self.engine, self.write, self.max_context, self.parked = engine, write, max_context, parked
         self.stop = stop or threading.Event()
 
     def handle(self, line: str):
@@ -96,10 +106,12 @@ class Session:
     def gen(self, rest: str):
         try:
             fields = rest.split()
-            max_new, options = int(fields[0]), {}
+            max_new, options, marks = int(fields[0]), {}, {"ckpt": 1, "pin": 0}
             for f in fields[1:-1]:
                 key, _, value = f.partition("=")
-                if key in _FLOATS:
+                if key in _CHECKPOINTS:
+                    marks[key] = int(value)
+                elif key in _FLOATS:
                     options[key] = float(value)
                 elif key in _INTS:
                     options[key] = int(value)
@@ -119,7 +131,8 @@ class Session:
         e = self.engine
         e.sampling = Sampling(**options)
         t0 = time.perf_counter()
-        reused = e.resume(prompt)
+        keep, pin = marks["ckpt"] != 0, marks["pin"]
+        reused = resume(e, self.parked, prompt)
         self.write(f"RESUME {reused}")
         e.stats = Stats()
 
@@ -131,7 +144,8 @@ class Session:
 
         produced, finish = 0, "length"
         try:
-            token = e.read(prompt, on_chunk=progress)
+            token = e.read(prompt, on_chunk=progress, keep=keep, pin=pin)
+            e.one_shot = not keep
         except _Cancelled:
             # the prompt is read as far as the last chunk; what was read stays for the next request
             self._done(0, prompt, reused, (time.perf_counter() - t0) * 1e3, 0.0, "cancel")
@@ -183,7 +197,8 @@ def _options(argv: list) -> dict:
     """The arguments this engine knows; the CUDA engine's others (expert cache, K/V placement, ...) are skipped."""
     known = {"--native": None, "--mtp": None, "--spec": "4", "--max-context": "131072", "--dtype": "float16",
              "--prefill": "2048", "--suffix-draft": "auto", "--expert-memory": "auto", "--machine-memory": None,
-             "--expert-profile": "auto", "--guess-rows": "on"}
+             "--expert-profile": "auto", "--guess-rows": "on", "--conversation-cache-mib": "0",
+             "--conversation-cache-slots": "4", "--conversation-cache-min-tokens": "0"}
     out, skipped, i = dict(known), [], 0
     while i < len(argv):
         a = argv[i]
@@ -230,6 +245,10 @@ def main():
     t0 = time.perf_counter()
     dtype = getattr(mx, opts["--dtype"])
     machine = int(float(opts["--machine-memory"]) * 2**30) if opts["--machine-memory"] else machine_memory()
+    # parked conversations are memory the experts cannot have: the machine is that much smaller for them
+    parked = Parked(int(opts["--conversation-cache-mib"]) << 20, int(opts["--conversation-cache-slots"]),
+                    int(opts["--conversation-cache-min-tokens"]))
+    machine -= parked.budget
     wanted = opts["--expert-memory"]
     model, _ = load(opts["--native"], dtype, expert_memory=wanted if wanted == "auto" else float(wanted),
                     machine_memory=machine)
@@ -294,10 +313,12 @@ def main():
         commands.put("QUIT")
 
     threading.Thread(target=reader, daemon=True).start()
-    session = Session(engine, write, max_context, stop)
+    session = Session(engine, write, max_context, stop, parked)
     write(f"INFO engine={VERSION}-mlx backend=mlx mlx={mx.__version__} context={max_context} "
           f"floats={opts['--dtype']} drafts={engine.drafts} lookup={int(engine.lookup is not None)} "
           f"guess_rows={int(engine.rows is not None)}"
+          + (f" conversation_cache_mib={parked.budget >> 20} conversation_cache_slots={parked.slots}"
+             if parked.budget else "")
           + (f" expert_memory_gb={store.budget / 1e9:.1f}" if paged else ""))
     write(f"READY {max_context} stop")
     while True:

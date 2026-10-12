@@ -102,12 +102,13 @@ def lines(m: Model, machine: int) -> list:
     return out
 
 
-def report(models: list, machine: int, this_mac: bool = False) -> str:
+def report(models: list, machine: int, this_mac: bool = False, parked: int = 0) -> str:
     out = [f"{'This Mac has' if this_mac else 'A Mac with'} {machine / GB:g} GB of memory", ""]
     for m in models:
-        out += [*lines(m, machine), ""]
+        out += [*lines(m, machine - parked), ""]  # parked conversations are memory the model cannot have
     out += [f"Counted: {SYSTEM / GB:.1f} GB left to macOS and other programs, {WORKING / GB:.1f} GB of working memory, "
-            f"the draft head ({DRAFT_HEAD / GB:.1f} GB).",
+            f"the draft head ({DRAFT_HEAD / GB:.1f} GB)"
+            + (f", {parked / GB:.1f} GB of parked conversations (--conversation-cache-mib)." if parked else "."),
             f"Not counted: the conversation, {CACHES / 1e3:.0f} KB a token (1 GB for {GB / CACHES / 1e3:.0f},000 tokens).",
             f"On disk the draft head is {HEAD_ON_DISK / 1e9:.1f} GB more."]
     if this_mac:
@@ -126,7 +127,9 @@ def main(argv: list) -> int:
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--native", help="shard 1 of a GGUF on the disk; without it, the files that have been run")
     p.add_argument("--machine-memory", type=float, help="GB of memory of the Mac to work it out for; without it, this Mac")
+    p.add_argument("--conversation-cache-mib", type=int, default=0, help="the engine's budget for parked conversations")
     args, _ = p.parse_known_args(argv)  # the engine's other arguments may stand beside these
     machine = int(args.machine_memory * GB) if args.machine_memory else machine_memory()
-    print(report([of(args.native)] if args.native else list(KNOWN), machine, this_mac=not args.machine_memory))
+    print(report([of(args.native)] if args.native else list(KNOWN), machine, this_mac=not args.machine_memory,
+                 parked=args.conversation_cache_mib << 20))
     return 0

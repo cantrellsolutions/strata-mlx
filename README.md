@@ -18,7 +18,9 @@ host memory. A Mac with unified memory does not need that half of it. This engin
 - **Draft and verify.** The model's own draft head guesses the next tokens and one pass of the model checks
   them. The model decides every token that is written.
 - **Prompts.** Read in chunks, the experts a tile at a time under Apple's matrix product for shaders. A
-  conversation is read once: a follow-up reads only what is new, and a conversation can be saved and restored.
+  conversation is read once: a follow-up reads only what is new, a new chat starts after the system prompt it
+  shares with the last one, and a conversation can be saved and restored. With `--conversation-cache-mib` a
+  conversation that another request interrupts is parked in memory and taken back, not read again.
 - **Long conversations**, measured to 128K tokens of context.
 - **Less memory than the model.** Experts that do not fit are read from the SSD as tokens ask for them, and
   the dense tensors MLX would hold at twice their size stay the file's blocks, which leaves the experts more.
@@ -146,7 +148,9 @@ in `args`; Strata's `setup.py` does not run on macOS, so that config is written 
 
 Options: `--spec 1` (draft head off), `--dtype float32`, `--max-context N`, `--expert-memory GB` (how much of
 the experts to keep in memory; by default all of them if the machine holds the model), `--machine-memory GiB`
-(run as a machine of that size would), `--guess-rows off`, `--expert-profile off`.
+(run as a machine of that size would), `--guess-rows off`, `--expert-profile off`,
+`--conversation-cache-mib MiB` (park conversations that other requests interrupt, in that much memory; off by
+default, and the memory is taken from the experts' on a Mac that does not hold the model whole).
 
 The benchmarks in `bench/` tokenize with llama.cpp's `llama-tokenize`, and `bench/compare_servers.py` starts
 `llama-server` and LM Studio's `lms` if they are installed.
@@ -164,8 +168,9 @@ MIT, see [LICENSE](LICENSE). The projects named below have their own; the one fi
 ## Thanks to
 
 - [Strata](https://github.com/Niko1221/Strata) (MIT): the design this follows, the line protocol, the order
-  of its sampler and the idea of its lookup drafter, all written anew here for MLX; and its script that
-  fetches the draft head, included as it is.
+  of its sampler, the idea of its lookup drafter, which checkpoints of a conversation it keeps and how it
+  parks conversations, all written anew here for MLX; and its script that fetches the draft head, included
+  as it is.
 - [llama.cpp and ggml](https://github.com/ggml-org/llama.cpp) (MIT): the GGUF format and the block types,
   whose unpacking the kernels here follow; the codebook tables come from its `gguf` package at run time.
 - [MLX and mlx-lm](https://github.com/ml-explore/mlx-lm) (MIT), and the port of this model to mlx-lm in
