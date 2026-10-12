@@ -130,9 +130,14 @@ def test_stop_while_the_prompt_is_read(session):
     session.handle(f"GEN 200 {ids(PROMPT)}")
     assert [l.split()[0] for l in seen] == ["RESUME", "PP", "DONE"]
     assert seen[-1].split()[1] == "0" and seen[-1].split()[5] == "cancel"
+    # it says how much of the prompt it read, not the prompt's length: what the next request finds read
+    read = int(seen[-1].split()[14])
+    assert 0 < read == len(session.engine.tokens) < len(PROMPT) and read == int(seen[1].split()[1])
     session.stop.clear()
     session.write = session.lines.append
-    assert tokens_of(ask(session, f"GEN 4 {ids(PROMPT)}"))  # and the next request runs
+    lines = ask(session, f"GEN 4 {ids(PROMPT)}")
+    assert lines[0] == f"RESUME {read}" and tokens_of(lines)  # and the next request runs, from there
+    assert int(lines[-1].split()[14]) == len(PROMPT) - read
 
 
 def test_the_other_commands_answer_in_step(session):

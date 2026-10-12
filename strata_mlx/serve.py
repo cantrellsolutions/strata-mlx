@@ -148,7 +148,7 @@ class Session:
             e.one_shot = not keep
         except _Cancelled:
             # the prompt is read as far as the last chunk; what was read stays for the next request
-            self._done(0, prompt, reused, (time.perf_counter() - t0) * 1e3, 0.0, "cancel")
+            self._done(0, prompt, reused, (time.perf_counter() - t0) * 1e3, 0.0, "cancel", read=len(e.tokens) - reused)
             return
         t1 = time.perf_counter()
         budget = min(max_new, self.max_context - len(prompt))
@@ -167,10 +167,13 @@ class Session:
                 break
         self._done(produced, prompt, reused, (t1 - t0) * 1e3, (time.perf_counter() - t1) * 1e3, finish)
 
-    def _done(self, produced, prompt, reused, prompt_ms, decode_ms, finish):
+    def _done(self, produced, prompt, reused, prompt_ms, decode_ms, finish, read=None):
+        # `read`: the prompt tokens read by this request, which is not all the others when it was stopped while
+        # reading (Strata's #471: the server counts a stopped read as reused + read)
         s = self.engine.stats
+        read = len(prompt) - reused if read is None else max(0, read)
         self.write(f"DONE {produced} {len(prompt)} {prompt_ms:.1f} {decode_ms:.1f} {finish} {s.accepted} {s.drafted} "
-                   f"{reused} 0 {s.lookup_steps} 0 0 0.0 {len(prompt) - reused} 0")
+                   f"{reused} 0 {s.lookup_steps} 0 0 0.0 {read} 0")
 
 
 class _Cancelled(Exception):
