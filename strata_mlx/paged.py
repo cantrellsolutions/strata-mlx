@@ -40,7 +40,9 @@ SEPARATE_UPTO = 80  # pairs up to which each brings its own arrays to the kernel
 # What a machine's memory is set aside for before experts get the rest, in bytes: macOS and whatever else runs;
 # and what this process takes beyond its weights. Measured with Q2_0: 1.3 GB that is not arrays, 2.1 GB at the peak
 # of reading a 1,500-token prompt (a layer's tensors read whole, the activations), MLX's pool of 0.5.
-SYSTEM, WORKING = int(4.5e9), int(4.0e9)
+# #6: macOS had 4.5 GB until a 32 GB MacBook Air was heard from: with nothing else open it holds 6.1 GB itself, and
+# the machine swapped until the experts had 16 GB and not 20.5, which is what 8.5 GB gives them. One machine.
+SYSTEM, WORKING = int(8.5e9), int(4.0e9)
 DRAFT_HEAD = int(1.6e9)
 # The dense tensors as MLX's arrays take this many times their size in the file: several are held at 8 bits. So a
 # machine that holds the model whole has them. One that reads experts from the SSD keeps two of those types as

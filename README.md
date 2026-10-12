@@ -65,11 +65,13 @@ matrices only about as accurately as float16 ones, so `--dtype float32` and the 
 ([issue 5](https://github.com/yibie/strata-mlx/issues/5)).
 
 With part of the experts in memory and the rest on the SSD, limited on the same machine to stand for smaller
-ones (not run on a small machine), Q2_0 only: answers at 11-12 tok/s as a 16 GB machine, 18-27 as 24 GB, 23-38
-as 32 GB; a prompt of 1,180 tokens read at 107-145 tok/s, since a chunk of a prompt reads 26 to 30 GB of
-experts from the disk ([issue 4](https://github.com/yibie/strata-mlx/issues/4)). A real 32 GB Mac, a MacBook
-Air M5, swapped with the default and wrote answers at 6-19 tok/s; with `--expert-memory 14` to `16` it wrote
-them at 21-27 ([issue 6](https://github.com/yibie/strata-mlx/issues/6)).
+ones, Q2_0 only: answers at 11-12 tok/s with 3.3 GB of experts in memory, 18-27 with 11.9 GB, 23-38 with
+20.5 GB; a prompt of 1,180 tokens read at 107-145 tok/s, since a chunk of a prompt reads 26 to 30 GB of
+experts from the disk ([issue 4](https://github.com/yibie/strata-mlx/issues/4)). Those were what a 16, 24 and
+32 GB machine kept when the engine left macOS 4.2 GB. A real 32 GB Mac, a MacBook Air M5, swapped with 20.5 GB
+and wrote answers at 6-19 tok/s; with 16 GB it wrote them at 23-29
+([issue 6](https://github.com/yibie/strata-mlx/issues/6)). So the engine now leaves macOS 7.9 GB, which gives
+a 32 GB machine's experts 16 GB, and the three figures above have not been measured again with it.
 
 The full account, with what was tried and did not help, is in [ROADMAP.md](ROADMAP.md) (English, as it went)
 and [docs/OPTIMIZATION_RECORD.md](docs/OPTIMIZATION_RECORD.md) (Chinese, by topic).
@@ -89,23 +91,22 @@ By the same arithmetic the engine starts with:
 
 | Mac's memory | Q2_0 (66 GB on disk) | IQ3_S (84 GB on disk) |
 | :--- | :--- | :--- |
-| 16 GB | 9% of the experts in memory | too small |
-| 24 GB | 34% of the experts in memory | 18% of the experts in memory |
-| 32 GB | 59% of the experts in memory | 35% of the experts in memory |
-| 36 GB | 72% of the experts in memory | 44% of the experts in memory |
-| 48 GB | whole, 1.3 GB to spare | 69% of the experts in memory |
-| 64 GB | whole | whole, 2.1 GB short |
+| 16 GB | too small | too small |
+| 24 GB | 22% of the experts in memory | 10% of the experts in memory |
+| 32 GB | 48% of the experts in memory | 27% of the experts in memory |
+| 36 GB | 60% of the experts in memory | 36% of the experts in memory |
+| 48 GB | 98% of the experts in memory | 61% of the experts in memory |
+| 64 GB | whole | 95% of the experts in memory |
 | 96 GB and more | whole | whole |
 
 "Whole" is the path the speeds under [Measured](#measured) are for, on an M4 Max; other chips have not been
 run. Where only part of the experts is in memory the rest is read from the SSD as tokens ask for it, which is
-the slow path above (11-12, 18-27 and 23-38 tok/s as a 16, 24 and 32 GB machine, Q2_0, simulated on the M4 Max).
-IQ3_S has not been run that way at all. This table is arithmetic, not a test: the only Mac its author has run
-the engine on has 128 GB. It leaves 4.2 GB to macOS and other programs and does not count the conversation
-itself, about 1 GB for 36,000 tokens. The 64 GB row for IQ3_S is
-[issue 3](https://github.com/yibie/strata-mlx/issues/3). On the one small Mac it has been reported from, with
-32 GB, 4.2 GB was too little and the machine swapped: `--expert-memory 14` to `16` was about twice as fast as
-the default there ([issue 6](https://github.com/yibie/strata-mlx/issues/6)).
+the slow path above. IQ3_S has not been run that way at all. This table is arithmetic, not a test: the only
+Mac its author has run the engine on has 128 GB. It leaves 7.9 GB to macOS and other programs and does not count the conversation itself, about 1 GB for 36,000 tokens. That figure is
+from the one small Mac the engine has been reported from, a MacBook Air M5 with 32 GB: with 4.2 GB left to
+macOS it swapped, and with what the table now gives it it hardly did and was about twice as fast
+([issue 6](https://github.com/yibie/strata-mlx/issues/6)). Other sizes are not known: a 16 GB Mac may do with
+less than is left here, and `--expert-memory GB` sets the experts' share by hand.
 
 ## Running it
 

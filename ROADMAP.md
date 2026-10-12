@@ -57,7 +57,7 @@
 - `strata-mlx --check`: what a Mac of some memory would do with a file (held whole, read from the SSD in
   part, too small), by the rule the engine starts with and without loading anything; for a Mac that has no file
   yet the sizes of Q2_0 and IQ3_S are kept in `check.py`. By it Q2_0 is held whole from 46.7 GB of memory and
-  IQ3_S from 66.1. It counts the 3.3 GB of floats the IQ3_S file keeps for prompts, which the rule does not
+  IQ3_S from 66.1 (50.4 and 69.8 since macOS is left 8.5 GB, below). It counts the 3.3 GB of floats the IQ3_S file keeps for prompts, which the rule does not
   (ISSUES.md, issue 3).
 
 ## Now: what is left of Strata that is worth having on a Mac
@@ -435,6 +435,14 @@ over the line protocol with the draft head, the file dropped from the page cache
     128 GB       all, 34 GB         41 GB             64-83 (116 rewriting a file)   440
 
 (Since e36 below: 3.3, 11.9 and 20.5 GB of experts in memory and answers at 11-12, 18-27 and 23-38 tok/s.)
+
+**A real 32 GB Mac, and 8.5 GB left to macOS** (ISSUES.md, issue 6). The first small machine heard from, a
+MacBook Air M5, swapped with those 20.5 GB of experts (106 GB swapped out during a run, answers at 5.8-19.2
+tok/s) and was about twice as fast with 16 (23.4-26.8, and 24.3-28.8 with nothing else open). The arrays peaked
+at the experts plus 8.5 GB in every run, as the rule counts; macOS itself held 6.1 GB, not 4.5. Capping the
+budget on a 128 GB machine could not show this: nothing else is short of memory there. So macOS is left 8.5 GB
+now, and a machine of 24 or 32 GB keeps 7.6 or 16.2 GB of experts; a 16 GB one is left the least, 0.5 GB, on
+no 16 GB machine's evidence. The table above is of the budgets it names, not measured again.
 
 Tests hold it to the same tokens as the model with every expert in memory, at a budget of nothing, of five
 experts and of all, and with a window spread over several kernel calls. By budget, a token at a time and with

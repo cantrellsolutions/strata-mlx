@@ -73,17 +73,16 @@ only (`bench/compare_servers.py` reads it last, after four answers; a flag to ru
 
 **What is wrong.** Whether a Mac holds a file whole, and how much of its memory the experts get if it does not,
 is worked out in `strata_mlx/paged.py` (`all_fit`, `ExpertStore.fit`) from the experts, the dense weights, the
-draft head, 4.5 GB left to macOS and 4.0 GB of working memory. Since the Q6_K layers keep their weights as
+draft head, 8.5 GB left to macOS (4.5 until issue 6) and 4.0 GB of working memory. Since the Q6_K layers keep their weights as
 floats from the first prompt on (`dense.py`, so that the IQ3_S file's prompts are not read a tenth slower),
 the process holds more than that rule counts: 3.3 GB with the IQ3_S file, 0.2 GB with Q2_0. The rule was
 written before, and its working memory was measured with Q2_0.
 
-**Whom it concerns.** A Mac that holds the IQ3_S file by the rule and not with those floats: between 63.0 and
-66.1 GB of memory, which is the 64 GB Macs. There the engine holds the file whole and, by the rule's own sizes,
-is 2.1 GB short of what it means to leave to macOS. By what was measured on the 128 GB machine it is short by
-less: IQ3_S with the draft head holds 57.8 GB, 61.1 after its first prompt, and peaks 3.8 GB above that while a
-prompt is read. That is 64.9 GB of a 64 GB Mac's 68.7, which leaves macOS 3.8 GB where the rule means 4.5.
-And a Mac that reads IQ3_S experts from the SSD gives them 3.3 GB that the floats then take. Seen since, in the
+**Whom it concerns.** A Mac that reads IQ3_S experts from the SSD gives them 3.3 GB that the floats then take,
+so macOS is left that much less than the rule means. Since issue 6 that is every Mac under 66.7 GB, the 64 GB
+ones among them: they keep 95% of the experts in memory. (While the rule left macOS 4.5 GB, a 64 GB Mac held the
+file whole and was 2.1 GB short by the rule's own sizes. A Mac that holds it whole by the rule and not with the
+floats now has between 66.7 and 69.8 GB, and none has.) Seen since, in the
 one time that file was run that way (`bench/paged.py --machine-memory 24`, one conversation of 60 tokens, to
 see that it runs): the experts were given 10.5 GB, everything else was 7.0 GB when they were, and after the
 first prompt the process held 21.1 GB of arrays, 3.6 more than the two.
@@ -91,7 +90,8 @@ first prompt the process held 21.1 GB of arrays, 3.6 more than the two.
 `./strata-mlx --check` counts the floats and says where a Mac is short (`strata_mlx/check.py`), so what it
 reports and what the engine does differ in this one case, on purpose.
 
-**Not known.** What a 64 GB Mac does with that: nothing here has run on one.
+**Not known.** What a 64 GB Mac does with that: nothing here has run on one. With 8.5 GB meant for macOS it
+is left 5.2.
 
 **The next step.** Keep the floats only where they fit, and count them in the rule where they are kept: a
 Mac short of them makes them anew for each piece of a prompt, as before (prompts a tenth slower, 320 against
@@ -113,6 +113,9 @@ cache) a prompt of 1,537 tokens is read at 160-182 tok/s, and one of 1,180 token
 | --- | ---: | ---: | ---: | ---: |
 | 16 GB | 3.3 GB | 27.7-30.3 GB | 67% | 165 |
 | 32 GB | 20.5 GB | 25.9-26.6 GB | 67% | 159-163 |
+
+(Those were the experts such machines kept then. Since issue 6 a 32 GB machine keeps 16 GB and a 16 GB one
+0.5 GB; this has not been measured again.)
 
 A chunk of a thousand tokens uses nearly every expert of a layer, so the layer's three tensors are read whole,
 in file order, and none of it is kept (`ExpertStore.whole`). The pass waits for each layer's read, 6.2 of
@@ -140,8 +143,8 @@ Before either, time `whole` over the 48 layers with nothing computing: it reads 
 [Issue 6 on GitHub](https://github.com/yibie/strata-mlx/issues/6)
 
 **What is seen.** On a MacBook Air M5 with 32 GB (macOS 27.0.1, MLX 0.32.3, commit `1d75ad4`, Q2_0 with the
-draft head, about 2 GB of other programs open) the engine by default keeps 20.5 GB of experts in memory, and the
-machine swaps. With fewer experts in memory it is about twice as fast. Measured by @guoggg
+draft head, about 2 GB of other programs open) the engine by default kept 20.5 GB of experts in memory, and the
+machine swapped. With fewer experts in memory it was about twice as fast. Measured by @guoggg
 ([comment on issue 3](https://github.com/yibie/strata-mlx/issues/3#issuecomment-6110466402)) with
 `bench/paged.py`, four prompts by two rounds of 200 tokens, and `--read` of a 1,180-token prompt:
 
@@ -150,25 +153,33 @@ machine swaps. With fewer experts in memory it is about twice as fast. Measured 
 | 14 GB (`--budget 14`) | 20.9-24.8 (23.6) | 13.6 | 152, 155 | 22.4 GB | not recorded | not recorded |
 | 16 GB | 23.4-26.8 (25.3) | 13.8 | 95, 119 | 24.5 GB | 2.8 GB | 1.7 GB |
 | 18 GB | 12.0-24.4 (15.4) | 9.2 | 89, 110 | 26.5 GB | 5.1 GB | 39 GB |
-| 20.5 GB (the default) | 5.8-19.2 (11.9) | 7.1 | 49, 136 | 29.1 GB | 6.9 GB | 106 GB |
+| 20.5 GB (the default then) | 5.8-19.2 (11.9) | 7.1 | 49, 136 | 29.1 GB | 6.9 GB | 106 GB |
 
 Each row is one run; the prompt read is the reporter's own text, not the one used here.
 
+The 16 GB row again with every other program closed
+([comment](https://github.com/yibie/strata-mlx/issues/6#issuecomment-6115147674)): answers at 24.3-28.8
+(27.1), one token a pass 14.9, the prompt at 108 and 157, arrays at the peak 24.5 GB, 0.39 GB swapped out during
+the run. Before it `vm_stat` gave 23.65 GB free and macOS with its background items 6.1 GB (wired, active and
+compressed), 3.6 GB more inactive.
+
 **What it says.** The rule in `strata_mlx/paged.py` counts the process rightly: in all four rows the arrays
-peak at the experts' budget plus 8.4 to 8.6 GB. What is too little is what it leaves to macOS and other
+peak at the experts' budget plus 8.4 to 8.6 GB. What was too little is what it left to macOS and other
 programs, `SYSTEM`, 4.5 GB: with the default the machine swapped 106 GB out during the run, and with about 8 GB
-left it hardly swapped.
+left it hardly swapped. Of those 8 GB about 6 are macOS itself and 2 were the other programs.
 
 **Why it was not seen here.** The speeds given for 16, 24 and 32 GB machines are from the 128 GB M4 Max with
 the experts' budget limited. Nothing else is short of memory there, so it never swaps. The README's 23-38 tok/s
 "as 32 GB" is such a figure; the real machine's default gave 5.8-19.2.
 
-**Not known.** How much of the 8 GB is macOS and how much the 2 GB of other programs; whether a 16, 24 or
-36 GB Mac needs the same amount or the same share; and what an M5 with more memory does. One machine, one run
-a row.
+**What was done.** `SYSTEM` is 8.5 GB, which gives a 32 GB machine's experts 16.2 GB: the row that was
+fastest. By the same rule a 16 GB Mac is left the least, 0.5 GB of Q2_0's experts (it kept 9% of them; `--check`
+calls that too small), a 48 GB Mac keeps
+98% of Q2_0's experts where it held the file whole, and a 64 GB Mac 95% of IQ3_S's.
 
-**For now.** On a 32 GB Mac, `--expert-memory 14` to `16`. `SYSTEM` is not changed: 8 GB would turn a 48 GB
-Mac's Q2_0 from whole to part, on one machine's evidence.
+**Not known.** Whether a 16, 24, 36 or 48 GB Mac needs the same amount, or less, or the same share: this is one
+machine, one run a row. A 16 GB Mac may well do with less than 8.5 GB and is cut to the least here on no
+evidence of its own; `--expert-memory` sets the experts' share by hand. The speeds given for 16, 24 and 32 GB machines were
+measured with 3.3, 11.9 and 20.5 GB of experts and not again since.
 
-**The next step.** A row at 16 GB with nothing else open on the 32 GB machine, and any run on a real 16, 24 or
-48 GB Mac. Then set `SYSTEM` from those.
+**The next step.** Any run on a real 16, 24 or 48 GB Mac, and the 32 GB machine with the new default.
