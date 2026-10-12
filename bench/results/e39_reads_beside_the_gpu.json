@@ -1,0 +1,129 @@
+[
+ {
+  "row": "products, round 1",
+  "read_alone_gb_s": [
+   5.63,
+   5.43
+  ],
+  "read_beside_gb_s": 5.48,
+  "read_kept": 0.99,
+  "step_alone_ms": [
+   39.3,
+   40.6
+  ],
+  "step_beside_ms": 43.1,
+  "step_longest_ms": 55.3,
+  "gpu_kept": 0.93
+ },
+ {
+  "row": "products, round 2",
+  "read_alone_gb_s": [
+   5.37,
+   5.73
+  ],
+  "read_beside_gb_s": 5.52,
+  "read_kept": 0.99,
+  "step_alone_ms": [
+   39.1,
+   40.1
+  ],
+  "step_beside_ms": 41.2,
+  "step_longest_ms": 56.7,
+  "gpu_kept": 0.96
+ },
+ {
+  "row": "gathers, round 1",
+  "read_alone_gb_s": [
+   5.99,
+   6.07
+  ],
+  "read_beside_gb_s": 6.06,
+  "read_kept": 1.0,
+  "step_alone_ms": [
+   31.7,
+   31.7
+  ],
+  "step_beside_ms": 32.1,
+  "step_longest_ms": 56.5,
+  "gpu_kept": 0.99
+ },
+ {
+  "row": "gathers, round 2",
+  "read_alone_gb_s": [
+   5.88,
+   6.19
+  ],
+  "read_beside_gb_s": 5.97,
+  "read_kept": 0.99,
+  "step_alone_ms": [
+   31.9,
+   32.2
+  ],
+  "step_beside_ms": 32.4,
+  "step_longest_ms": 57.9,
+  "gpu_kept": 0.99
+ },
+ {
+  "row": "2 threads, 1 MiB",
+  "read_beside_gb_s": 4.8,
+  "step_alone_ms": 41.4,
+  "step_beside_ms": 42.9,
+  "gpu_kept": 0.97
+ },
+ {
+  "row": "4 threads, 1 MiB",
+  "read_beside_gb_s": 6.24,
+  "step_alone_ms": 45.1,
+  "step_beside_ms": 44.8,
+  "gpu_kept": 1.01
+ },
+ {
+  "row": "8 threads, 1 MiB",
+  "read_beside_gb_s": 6.26,
+  "step_alone_ms": 46.7,
+  "step_beside_ms": 45.9,
+  "gpu_kept": 1.02
+ },
+ {
+  "row": "16 threads, 1 MiB",
+  "read_beside_gb_s": 6.2,
+  "step_alone_ms": 47.7,
+  "step_beside_ms": 47.0,
+  "gpu_kept": 1.02
+ },
+ {
+  "row": "8 threads, 4 MiB",
+  "read_beside_gb_s": 6.28,
+  "step_alone_ms": 48.9,
+  "step_beside_ms": 47.5,
+  "gpu_kept": 1.03
+ },
+ {
+  "row": "8 threads, 16 MiB",
+  "read_beside_gb_s": 6.3,
+  "step_alone_ms": 50.1,
+  "step_beside_ms": 47.9,
+  "gpu_kept": 1.05
+ },
+ {
+  "row": "4 threads, 4 MiB",
+  "read_beside_gb_s": 6.12,
+  "step_alone_ms": 49.8,
+  "step_beside_ms": 47.5,
+  "gpu_kept": 1.05
+ },
+ {
+  "row": "mx.array (a copy)",
+  "arrays": 8,
+  "gpu_saw_what_was_read": 8,
+  "read_beside_gb_s": 6.13,
+  "step_beside_ms": 48.5
+ },
+ {
+  "row": "mx.asarray (the buffer)",
+  "arrays": 8,
+  "gpu_saw_what_was_read": 8,
+  "read_beside_gb_s": 5.49,
+  "step_beside_ms": 48.4
+ }
+]

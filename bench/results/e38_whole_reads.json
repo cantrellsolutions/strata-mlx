@@ -1,0 +1,198 @@
+[
+ {
+  "row": "as `whole` does: 1 MiB, bytearray, 8 threads",
+  "threads": 8,
+  "piece": 1048576,
+  "gb": 5.66,
+  "read_gb_s": 6.21,
+  "buffers_s": 0.048,
+  "read_s": 0.911,
+  "all_gb_s": 5.9,
+  "in_page_cache_gb": 0.0
+ },
+ {
+  "row": "pieces of 0.25 MiB",
+  "threads": 8,
+  "piece": 262144,
+  "gb": 5.66,
+  "read_gb_s": 5.37,
+  "buffers_s": 0.024,
+  "read_s": 1.054,
+  "all_gb_s": 5.24,
+  "in_page_cache_gb": 0.0
+ },
+ {
+  "row": "pieces of 2 MiB",
+  "threads": 8,
+  "piece": 2097152,
+  "gb": 5.66,
+  "read_gb_s": 6.31,
+  "buffers_s": 0.025,
+  "read_s": 0.897,
+  "all_gb_s": 6.14,
+  "in_page_cache_gb": 0.0
+ },
+ {
+  "row": "pieces of 4 MiB",
+  "threads": 8,
+  "piece": 4194304,
+  "gb": 5.66,
+  "read_gb_s": 6.5,
+  "buffers_s": 0.023,
+  "read_s": 0.871,
+  "all_gb_s": 6.34,
+  "in_page_cache_gb": 0.0
+ },
+ {
+  "row": "pieces of 16 MiB",
+  "threads": 8,
+  "piece": 16777216,
+  "gb": 5.66,
+  "read_gb_s": 6.28,
+  "buffers_s": 0.023,
+  "read_s": 0.902,
+  "all_gb_s": 6.12,
+  "in_page_cache_gb": 0.0
+ },
+ {
+  "row": "pieces of 1 MiB into pages of their own",
+  "threads": 8,
+  "piece": 1048576,
+  "kind": "mmap",
+  "gb": 5.66,
+  "read_gb_s": 6.07,
+  "buffers_s": 0.0,
+  "read_s": 0.933,
+  "all_gb_s": 5.91,
+  "in_page_cache_gb": 0.0
+ },
+ {
+  "row": "pieces of 4 MiB into pages of their own",
+  "threads": 8,
+  "piece": 4194304,
+  "kind": "mmap",
+  "gb": 5.66,
+  "read_gb_s": 6.38,
+  "buffers_s": 0.0,
+  "read_s": 0.887,
+  "all_gb_s": 6.22,
+  "in_page_cache_gb": 0.0
+ },
+ {
+  "row": "pieces of 16 MiB into pages of their own",
+  "threads": 8,
+  "piece": 16777216,
+  "kind": "mmap",
+  "gb": 5.66,
+  "read_gb_s": 6.44,
+  "buffers_s": 0.0,
+  "read_s": 0.879,
+  "all_gb_s": 6.28,
+  "in_page_cache_gb": 0.0
+ },
+ {
+  "row": "1 MiB, 4 threads",
+  "threads": 4,
+  "piece": 1048576,
+  "gb": 5.66,
+  "read_gb_s": 6.44,
+  "buffers_s": 0.023,
+  "read_s": 0.879,
+  "all_gb_s": 6.27,
+  "in_page_cache_gb": 0.0
+ },
+ {
+  "row": "1 MiB, 16 threads",
+  "threads": 16,
+  "piece": 1048576,
+  "gb": 5.66,
+  "read_gb_s": 6.26,
+  "buffers_s": 0.023,
+  "read_s": 0.905,
+  "all_gb_s": 6.1,
+  "in_page_cache_gb": 0.0
+ },
+ {
+  "row": "1 MiB, 32 threads",
+  "threads": 32,
+  "piece": 1048576,
+  "gb": 5.66,
+  "read_gb_s": 6.13,
+  "buffers_s": 0.023,
+  "read_s": 0.924,
+  "all_gb_s": 5.97,
+  "in_page_cache_gb": 0.0
+ },
+ {
+  "row": "1 MiB, the three tensors together",
+  "threads": 8,
+  "piece": 1048576,
+  "together": true,
+  "gb": 5.66,
+  "read_gb_s": 6.24,
+  "buffers_s": 0.022,
+  "read_s": 0.907,
+  "all_gb_s": 6.09,
+  "in_page_cache_gb": 0.0
+ },
+ {
+  "row": "1 MiB, three together, 16 threads",
+  "threads": 16,
+  "piece": 1048576,
+  "together": true,
+  "gb": 5.66,
+  "read_gb_s": 5.92,
+  "buffers_s": 0.022,
+  "read_s": 0.956,
+  "all_gb_s": 5.78,
+  "in_page_cache_gb": 0.0
+ },
+ {
+  "row": "1 MiB with pread (bytes, then copied)",
+  "threads": 8,
+  "piece": 1048576,
+  "how": "pread",
+  "gb": 5.66,
+  "read_gb_s": 6.48,
+  "buffers_s": 0.024,
+  "read_s": 0.874,
+  "all_gb_s": 6.3,
+  "in_page_cache_gb": 0.0
+ },
+ {
+  "row": "4 MiB with pread (bytes, then copied)",
+  "threads": 8,
+  "piece": 4194304,
+  "how": "pread",
+  "gb": 5.66,
+  "read_gb_s": 5.74,
+  "buffers_s": 0.024,
+  "read_s": 0.986,
+  "all_gb_s": 5.61,
+  "in_page_cache_gb": 4.23
+ },
+ {
+  "row": "parts of a layer, ms",
+  "bytearray": 3.0,
+  "read": 113.2,
+  "mx.array (a copy)": 13.5,
+  "mx.asarray (none)": 0.1
+ },
+ {
+  "row": "a buffer taken as it is",
+  "bytearray": {
+   "mb": 236,
+   "gpu_sees_what_was_read": true,
+   "active_memory_grew_mb": 236,
+   "array_made_before_sees_the_new_bytes": true,
+   "array_made_after_sees_the_new_bytes": true
+  },
+  "mmap": {
+   "mb": 236,
+   "gpu_sees_what_was_read": true,
+   "active_memory_grew_mb": 236,
+   "array_made_before_sees_the_new_bytes": true,
+   "array_made_after_sees_the_new_bytes": true
+  }
+ }
+]

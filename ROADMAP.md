@@ -496,8 +496,10 @@ What it took, and what is still wrong:
   way of running gives 22 tok/s, not 43. A machine that holds everything should not use it.
 - The loader left 7 GB behind for 5.6 GB of dense weights (what numpy frees stays with the process) and peaked
   26 GB above the draft head's 1.6: both now convert a few rows at a time, to the same weights bit for bit.
-- macOS puts any read of 2 MB or more through the page cache, F_NOCACHE or not: whole tensors are read in 1 MiB
-  pieces.
+- Whole tensors are read in 1 MiB pieces into a buffer that starts on a page. (This said that macOS puts any
+  read of 2 MB or more through the page cache, F_NOCACHE or not. e38 found what decides it is the buffer and not
+  the size: `preadv` into a page-aligned buffer leaves nothing in the cache at 16 MiB a piece, and `os.pread`,
+  which returns bytes of its own, left 4.23 of 5.66 GB there at 4 MiB.)
 - Tried and closed: reading straight into the buffer of an array that already exists (to spare making arrays).
   The bytes arrive, the GPU goes on seeing the old ones. A new array for every read costs nothing measurable.
 - A knob not yet turned for the prompt peak below: smaller chunks (`--prefill 512`) hold less at once and read
@@ -663,3 +665,95 @@ What was measured before building it:
 Settled: the target file is Q2_0, the one on disk (no space for the Coder or any other file), behind a memory
 budget that one build serves 16, 24 and 32 GB machines with; it is measured here by capping the budget, reading
 experts past the page cache. 24 and 32 GB machines are the easier case: the 6,000 and 12,000 rows.
+
+### A prompt read a layer at a time: designed, not built (e37 to e39)
+
+Where experts are read from the SSD a prompt is read in chunks of 2,048 tokens, each through all the layers,
+and a chunk reads each layer's experts and keeps none of them. So a prompt of several chunks reads the same
+experts once a chunk (e37, Q2_0, the file dropped from the page cache, each prompt read twice):
+
+| prompt | read from the disk | of it read before | as a 32 GB machine |
+| ---: | ---: | ---: | ---: |
+| 1,537 tokens | 23-24 GB | next to none | 8.0-8.2 s |
+| 4,096 | 48-50 GB | 22-23 GB | |
+| 8,192 | 99-100 GB | 70-71 GB | 37.6-45.3 s |
+| 16,384 | 198-201 GB | 168-171 GB | 101.7-139.7 s |
+
+The read itself is not what is slow. With no model loaded a layer's experts (0.71 GB) come at 5.9-6.5 GB/s
+whatever the size of piece (1 to 16 MiB), the number of threads (4 to 32) or the buffer, against 6.5 measured
+for this disk; zeroing the buffer is 3 ms a layer and the copy into an MLX array 13.5 (e38). And a read in a
+thread of its own beside the GPU's work keeps 99-100% of its speed while a step of that work takes 1-7% longer,
+less than this machine drifts by in a run; arrays made in the reading thread were right, 8 of 8 by copy and
+8 of 8 of the buffer as it is (e39, synthetic work: products of matrices, gathers). In the engine the same
+read comes at 4.0-4.8 GB/s; what the rest is made of was not found.
+
+The rule set before measuring: built if a prompt of 8,192 tokens as a 32 GB machine is read 1.5 times as fast
+by estimate, and a prompt of one chunk no slower. Three ways were estimated from e37's rows, none counting what
+the new way costs itself:
+
+| | 8,192 tokens | one chunk |
+| --- | ---: | ---: |
+| the next layer read ahead, the order as it is | 1.26-1.58 | 1.1-1.2 |
+| a layer at a time, the read still waited for | 1.43-1.60 | 0.78: left as it is |
+| a layer at a time and the next layer read ahead | 1.84-2.35 | 1.1 |
+
+Only the third is over the line with room, and it is what was designed, in two stages each to be measured.
+
+**Stage one: the layers outside, the chunks inside.** A prompt goes in pieces of 8,192 tokens; a piece goes
+through layer 1 chunk by chunk, then layer 2, and a layer's experts are read whole once and kept until its
+last chunk. What a chunk computes at a layer is not changed. A throwaway prototype of this (the branch
+`prototype/layer-major`, which drives the engine's parts in the other order and changes none of them) found:
+
+- The state is the same bit for bit, in float32 and in float16: the small model of the tests in four
+  combinations with a draft head and three checkpoints, and Q2_0 with a prompt of 8,192 tokens, all 188 arrays,
+  the first token, the guesses and 32 tokens of answer.
+- 8,192 tokens read 36.9 GB and not 106.9; in one run 28.5 s against 55.2 (float16) and 50.3 against 74.3
+  (float32), each once.
+- Checkpoints stay where they are: each layer's state is kept as it passes a checkpoint's place, and the
+  checkpoints are put together at the piece's end. With `ckpt=0`, `pin=N` and prompts of several pieces they
+  were the engine's, bit for bit.
+- A stop is seen after every step (a chunk through half a layer; the longest was 0.26 s, and 1.0-1.2 s when
+  the machine had slowed) where the engine sees it once a chunk, 13.4 s in that run. The piece under way is
+  undone and the pieces before it stay: until its end a piece has written only rows of the attention caches,
+  which are cut back in 0.01 ms. Read again after that, the state was that of a prompt never stopped, also where
+  the attention goes by pooled keys.
+- By size of piece, 16,384 tokens: one piece 75.2 s, 39.9 GB read and 4.02 GB above rest at the peak; pieces
+  of 8,192, 74.0 and 87.0 s, 76.5 GB, 3.74 GB; of 4,096, 80.6 s, 132.9 GB, 3.20 GB; the engine 113.5 s, 216.0 GB,
+  2.88 GB. A larger piece reads less and is no faster, holds more, and loses more to a stop.
+- From what length: at 2,560, 3,072 and 4,096 tokens, read in turns twice each, no pair had the new order
+  slower (11.5 and 13.6 s against 29.2 and 15.0; 21.2 and 34.6 against 22.4 and 33.6; 21.7 and 18.8 against
+  29.7 and 22.3), and it read 27-29 GB where the engine read 46-52.
+
+Decided: pieces of 8,192 tokens that end where a periodic checkpoint falls; used when more than one chunk is
+to be read and experts come from the SSD, and nothing else changes; a line of progress after each layer, its
+count of tokens in proportion to the layers done; the draft head's cells after the last layer; what travels
+between layers kept as it is, in the model's dtype.
+
+**Stage two: the next layer's experts read during this one.** In a piece of 8,192 tokens a layer takes
+0.29-0.34 s without its read and the read of a whole layer 0.13 s, so every one of the 48 fits behind the layer
+before it; and the piece uses 368-430 of a layer's 512 experts, so the whole layer is what to read and no router
+has to be waited for. The disk is then 6.5-7.6 s of a piece's 24, and hiding it is 1.2-1.4 times by estimate.
+Decided: a thread reads the next layer whole and makes its arrays, by copy as now, and evaluates nothing; the
+main thread takes them when it comes to that layer; a stop waits for the read under way. Experts already in
+memory are read again like the rest: reading only what is lacking (18 of 34 GB as a 32 GB machine) saves no
+time on this disk and would from about 2.4 GB/s down, which waits for a machine with such a disk.
+
+When it is built:
+
+- Stage one is measured before stage two is begun. Under 1.3 times for 8,192 tokens as a 32 GB machine, it
+  stops there.
+- The whole is measured by the rule above: under 1.5 times it is not the default, and is recorded as measured
+  and not built.
+- The memory rule's working memory grows by what is measured at the peak, out of the experts' share (0.5-1 GB
+  expected from the prototype's 0.9-1.2, some of which is the prototype's own; stage two holds two layers'
+  experts, 0.7 GB more).
+- A prompt of 32K tokens is read once this way for its peak: none past 16K has been.
+- Whether a piece of two chunks also uses most of each layer's experts is looked at first: the 368-430 are
+  from a piece of four.
+- Then the 32 GB MacBook Air of issue 6 is asked for both ways of reading. All of the above is one M4 Max
+  with a 6.5 GB/s disk, a small machine simulated: no pressure on memory, and a 256 GB model's disk gives a
+  quarter to a half of that.
+
+Not taken: experts grouped by expert and computed once a layer (Strata's #1670), which changes the order of
+the sums and is not bit for bit; resuming a stopped piece from the layer it reached, which needs the undoing
+anyway.

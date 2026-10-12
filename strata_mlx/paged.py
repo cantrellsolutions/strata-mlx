@@ -110,8 +110,8 @@ class ExpertStore:
     def whole(self, tensors: tuple) -> list:
         """A layer's tensors, all experts, read in file order and not kept.
 
-        In pieces of 1 MiB that start on a page: measured on macOS, a read of 2 MB or more goes through the page
-        cache whatever F_NOCACHE says (240 MB read in 4 MB pieces left 189 MB there), one of 1 MiB does not.
+        In pieces of 1 MiB, into a buffer that starts on a page: read so, nothing is left in the page cache
+        (e38: nor at 16 MiB a piece; it is `os.pread`'s bytes of its own that go through the cache).
         """
         t0 = time.perf_counter()
         out = []

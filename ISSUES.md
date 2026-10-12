@@ -127,16 +127,19 @@ again: with 59% of the experts in memory the prompt still reads 26 GB.
 cache is answered from it when the pages are there: the same script gives 255-277 tok/s with the file in the
 cache and 149-162 with it dropped. Both records are corrected.
 
-**The next step.** Two things, neither of which needs a guess:
+**What was found since** (e37 to e39; `ROADMAP.md`, "A prompt read a layer at a time").
 
-1. Read the next layer's tensors while the GPU computes this one: the whole layer is read anyway. At best the
-   longer of the two instead of their sum, 1.5 times. Two layers' tensors are then in memory at once, 0.7 GB
-   more at the peak, which a 16 GB machine's working memory must have.
-2. With a large share of the experts in memory, read only the runs that are not: as a 32 GB machine two
-   fifths of the bytes.
+- A prompt of several chunks reads each layer's experts once a chunk: 8,192 tokens read 99-100 GB, 70 of them
+  for a second time or more, and take 37.6-45.3 s as a 32 GB machine.
+- `whole` is not slow: alone it reads at 5.9-6.5 GB/s, which is the disk. In the engine it is 4.0-4.8, for a
+  reason not found.
+- Reading the next layer ahead with the order left as it is, the first step this section named, is 1.26-1.58
+  times by estimate for 8,192 tokens: a chunk reads only 10 to 15 of its layers whole.
 
-Before either, time `whole` over the 48 layers with nothing computing: it reads at about 4.5 GB/s here where
-`bench/ssd_reads.py` measured 6.5 GB/s for this disk.
+**The next step.** Designed and not built: a prompt of more than one chunk goes a layer at a time in pieces of
+8,192 tokens, each layer's experts read once, and then the next layer's are read while this one is computed. A
+prototype of the first part gives the engine's state bit for bit and reads 36.9 GB where the engine reads
+106.9. Reading only the experts memory lacks is left until a machine with a slow disk is heard from.
 
 ## 6. On a real 32 GB Mac the default leaves macOS too little memory, and it swaps
 
