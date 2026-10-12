@@ -217,6 +217,11 @@ def main():
     if skipped:
         print("strata-mlx: arguments of the CUDA engine that do nothing here:", " ".join(skipped), file=sys.stderr)
 
+    if opts["--dtype"] == "float32":
+        # #5: on chips with Neural Accelerators (M5) MLX multiplies float32 matrices at reduced precision unless
+        # told not to, before its first computation; float32 is asked for to get the exact model's tokens
+        os.environ.setdefault("MLX_ENABLE_TF32", "0")
+
     import mlx.core as mx
 
     from .load import load

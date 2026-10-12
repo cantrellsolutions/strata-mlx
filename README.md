@@ -59,7 +59,10 @@ are from a later session than the other engines'. Ollama 0.35.1 loads neither fi
 
 In 16-bit floats, the default, about one token in 250 is not the one the exact model would pick, at places
 where two candidates are nearly tied; that is so with and without the draft head. `--dtype float32` writes
-the exact model's tokens (checked on eight answers) and is slower.
+the exact model's tokens (checked on eight answers) and is slower. On an M5, MLX by default multiplies float32
+matrices only about as accurately as float16 ones, so `--dtype float32` and the tests turn that off
+(`MLX_ENABLE_TF32=0`); the tests pass on an M5 with it, and the model has not been run in float32 there
+([issue 5](https://github.com/yibie/strata-mlx/issues/5)).
 
 With part of the experts in memory and the rest on the SSD, limited on the same machine to stand for smaller
 ones (not run on a small machine), Q2_0 only: answers at 11-12 tok/s as a 16 GB machine, 18-27 as 24 GB, 23-38
