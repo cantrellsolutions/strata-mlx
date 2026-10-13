@@ -16,6 +16,9 @@ where experts are read from the SSD: there the Q3_K and IQ4_XS ones, which MLX c
 blocks too (dense.py), and the memory that spares is the experts'.
 """
 
+import os
+import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import mlx.core as mx
@@ -32,6 +35,9 @@ from .paged import machine_memory as paged_machine_memory
 from .gguf import KVALUES_IQ4NL, Tensor, pack, q6k_parts, shards, to_affine, to_float
 
 _EXACT_FLOAT = ("F32", "F16", "BF16", "Q6_K")
+# the n-gram table's rows (PleTable): from how many in one call their pages are read ahead, by how many threads
+PAGE, AHEAD_FROM, AHEAD_THREADS = 16384, 256, 32
+AHEAD_SAMPLE, AHEAD_SLOW = 64, 20e-6  # rows looked at first, and the seconds a row above which they are not cached
 
 
 class PleTable(nn.Module):
@@ -43,11 +49,41 @@ class PleTable(nn.Module):
             raise ValueError(f"the n-gram table is {t.type}; only IQ4_NL is read")
         self.dim = t.shape[-1]
         self._rows = t.data.reshape(t.shape[0], -1)
+        self._file = (t.path, t.offset) if t.path else None
+        self._fd = self._pool = None
 
     def __call__(self, gid: mx.array) -> mx.array:
         return self.read(np.array(gid))
 
+    def _ahead(self, rows: np.ndarray):
+        """Bring the pages these rows lie in into the page cache, many at a time. Taken from the mapped file a
+        row that is not in the cache is a page fault, one after another: a chunk of 2,048 tokens reads some
+        thirty thousand rows from all over 28.8 GB, and with the table cold that was 13 s of an 8,192-token
+        prompt's 47 where the machine cannot keep the table in its cache."""
+        # Not where the table is in the cache already, as on a machine with memory to spare: asking for thirty
+        # thousand pages costs 0.2 s there and the lookup 0.01. A few of the rows say which it is: from the
+        # cache they come in microseconds, from the disk in a tenth of a millisecond each.
+        some = rows[:: max(1, len(rows) // AHEAD_SAMPLE)][:AHEAD_SAMPLE]
+        t0 = time.perf_counter()
+        self._rows[some]
+        if time.perf_counter() - t0 < len(some) * AHEAD_SLOW:
+            return
+        if self._fd is None:
+            self._fd, self._pool = os.open(self._file[0], os.O_RDONLY), ThreadPoolExecutor(AHEAD_THREADS)
+        at = self._file[1] + rows.astype(np.int64) * self._rows.shape[1]
+        pages = np.unique(np.concatenate([at // PAGE, (at + self._rows.shape[1] - 1) // PAGE])) * PAGE
+        fd = self._fd
+
+        def touch(some):
+            for where in some:
+                os.pread(fd, 1, where)
+
+        some = pages.tolist()
+        list(self._pool.map(touch, [some[i::AHEAD_THREADS] for i in range(AHEAD_THREADS)]))
+
     def read(self, gid: np.ndarray) -> mx.array:
+        if self._file is not None and gid.size >= AHEAD_FROM:
+            self._ahead(gid.reshape(-1))
         b = self._rows[gid.reshape(-1)].reshape(-1, 18)
         d = b[:, :2].copy().view("<f2").astype(np.float32)
         nib = np.concatenate([b[:, 2:] & 15, b[:, 2:] >> 4], axis=1)

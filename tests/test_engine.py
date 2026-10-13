@@ -541,3 +541,32 @@ def test_a_long_prompt_over_dense_blocks_reads_as_token_by_token(dense_model):
     prompt = [(7 * i + 3) % TEXT["vocab_size"] for i in range(90)]
     assert Engine(dense_model).read(prompt) == Engine(dense_model, chunk=1).read(prompt)
     assert Engine(dense_model).read(prompt) == Engine(_with_dense(False)).read(prompt)
+
+
+def test_the_ngram_tables_rows_read_ahead_are_the_rows(tmp_path, monkeypatch):
+    import os
+
+    from strata_mlx import load
+
+    rng = np.random.default_rng(5)
+    rows = rng.integers(0, 256, (5000, 90), dtype=np.uint8)  # IQ4_NL: five blocks of 18 bytes a row of 160
+    rows.reshape(-1, 18)[:, :2] = rng.uniform(0.0005, 0.002, (rows.size // 18, 1)).astype("<f2").view(np.uint8)
+    path = tmp_path / "table.bin"
+    path.write_bytes(b"\0" * 11 + rows.tobytes())  # it does not start where the file does, nor on a page
+    held = np.memmap(path, dtype=np.uint8, mode="r", offset=11)
+    gid = rng.integers(0, 5000, (1, 40, 12))
+    plain = load.PleTable(Tensor("t", (5000, 160), "IQ4_NL", rows.reshape(-1)))  # not in a file: nothing to read ahead
+    want = plain.read(gid)
+    assert plain._fd is None
+    table = load.PleTable(Tensor("t", (5000, 160), "IQ4_NL", held, str(path), 11))
+    monkeypatch.setattr(load, "AHEAD_FROM", 16)
+    assert mx.array_equal(table.read(gid), want).item() and table._fd is None  # in the cache: not asked for
+    monkeypatch.setattr(load, "AHEAD_SLOW", -1.0)  # as if every row came from the disk
+    seen = []
+    pread = os.pread
+    monkeypatch.setattr(os, "pread", lambda fd, n, at: seen.append(at) or pread(fd, n, at))
+    assert mx.array_equal(table.read(gid), want).item()
+    first = 11 + gid.reshape(-1) * 90
+    assert set(seen) == {int(p) * load.PAGE for p in np.unique(np.concatenate([first // load.PAGE, (first + 89) // load.PAGE]))}
+    seen.clear()
+    assert mx.array_equal(table.read(gid[:, :1]), want[:, :1]).item() and not seen  # a few rows: the lookup itself

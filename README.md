@@ -78,9 +78,9 @@ a 32 GB machine's experts 16 GB, and the three figures above have not been measu
 
 A prompt of more than 2,048 tokens is read a layer at a time there, each layer's experts once and the next
 layer's while this one is computed, to the same state bit for bit: as a 32 GB machine 8,192 tokens in 19 s
-where chunk by chunk took 32, and 32,768 in 117 s for 193, with the model's n-gram table in the page cache;
-with that dropped too, which is nearer a real 32 GB machine, 36 s where it took 47. A shorter prompt is read
-as before
+where chunk by chunk took 32, and 32,768 in 117 s for 193, with the model's n-gram table in the page cache.
+With that dropped too, which is nearer a real 32 GB machine, 26 s where chunk by chunk takes 35, and took 47
+before the table's rows were read ahead. A shorter prompt is read as before
 ([ROADMAP.md](ROADMAP.md), "A prompt read a layer at a time"). It holds 1 GB more while it reads, which
 the experts give up: a 32 GB machine's are 15 GB where they were 16.
 

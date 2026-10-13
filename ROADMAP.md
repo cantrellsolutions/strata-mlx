@@ -821,9 +821,17 @@ seconds, the median of four and their range:
   the experts.
 - With the table cold the reads ahead buy less (38.0 to 36.2 s): the page faults and the reads ahead ask the
   same disk.
-- The rows a piece needs are known from its tokens before anything is computed. Reading them ahead, in
-  parallel and not a fault at a time, is the next thing to try, for every way of reading and for answers'
-  first tokens too. Not built, not measured.
+- Done since (`load.PleTable._ahead`): a lookup of 256 rows or more first reads the pages they lie in, by 32
+  threads, where a sample of 64 of the rows says they are not in the cache (from the cache they come in
+  microseconds, and asking for thirty thousand pages that are there costs 0.2 s where the lookup costs 0.01).
+  A chunk's rows, 2,048 tokens of 16 at random over the table: 6.3-6.4 s by page faults, 0.22 s so; 0.01 s
+  either way when cached. The same two prompts, both shards dropped, two rounds: chunk by chunk 35.4 s
+  (33.7-40.4), a layer at a time 28.6 (23.0-32.8), read ahead 25.6 (24.2-29.2), 1.38 times; the machine slowed
+  in the second round, whose pairs were 36.3-40.4, 32.4-32.7 and 26.3-29.3. So a cold table costs next to
+  nothing now, in any way of reading, and against chunk by chunk before this (46.9 s) a prompt read a layer at
+  a time with reads ahead is 1.8 times as fast. By the rule, files dropped, the whole is still 1.3 to 1.4 and
+  not 1.5. An answer's tokens look up too few rows to be read ahead; what a cold table costs them was not
+  measured.
 - These runs also halved, start after start, the counts in this machine's own expert profile
   (`~/.cache/strata-mlx/expert-use-*.npy`): every start of the engine as a small machine keeps half of what
   was counted before. The benchmark now gives the engine a profile of its own.

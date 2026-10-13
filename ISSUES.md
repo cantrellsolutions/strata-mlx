@@ -146,10 +146,11 @@ is read as before, 6.3 s for 1,537 tokens, and still waits for the disk half of 
 
 Those figures are with the n-gram table (28.8 GB, the model's other shard, read by page faults) in the page
 cache, which a 32 GB machine cannot hold. With both shards dropped, through the server: 8,192 tokens in 36.2 s
-where chunk by chunk took 46.9, 1.30 times; the table read cold is 13-14 s of either.
+where chunk by chunk took 46.9, 1.30 times; the table read cold was 13-14 s of either. Its rows' pages are
+now read ahead by threads where they are not cached (0.22 s for a chunk's rows where page faults took 6.3):
+the same prompts, both shards dropped, 25.6 s a layer at a time with reads ahead and 35.4 chunk by chunk.
 
-**Still open.** The n-gram table's rows are read a page fault at a time: a piece's rows are known from its
-tokens and could be read ahead. One chunk, and so every short prompt, waits for the disk as it did. With a large share of the
+**Still open.** One chunk, and so every short prompt, waits for the experts' reads as it did. With a large share of the
 experts in memory only what is lacking need be read, as a 32 GB machine 18 of 34 GB a piece: not built, and it
 matters where the disk is slower than this one. None of this has run on a small machine.
 
