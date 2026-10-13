@@ -45,6 +45,10 @@ def main():
     args = p.parse_args()
     if (args.budget is None) == (args.machine_memory is None):
         p.error("one of --budget and --machine-memory")
+    if args.available:  # counted before the model's files are read: their pages are file cache for a while
+        from strata_mlx.paged import available_memory
+
+        free, cached = available_memory()
     model, _ = load(args.model, expert_memory=args.budget or 0.0, dense_blocks=None if args.dense == "blocks" else ())
     store = model.expert_store
     mtp = load_mtp(args.mtp, model.args.text)
@@ -55,12 +59,9 @@ def main():
         engines["draft head"] = Engine(model, mtp, 3, lookup=True)
     if args.machine_memory:
         ruled = store.fit(int(args.machine_memory * 2**30))
-        if args.available:  # on the machine itself: no more than it has free or in its file cache now (#6)
-            from strata_mlx.paged import available_memory
-
-            free, cached = available_memory()
+        if args.available:  # on the machine itself: no more than it had free or in its file cache (#6)
             store.fit(int(args.machine_memory * 2**30), free + cached)
-            print(f"{free / 1e9:.1f} GB free and {cached / 1e9:.1f} GB of file cache now; by the rule alone the experts "
+            print(f"{free / 1e9:.1f} GB free and {cached / 1e9:.1f} GB of file cache before loading; by the rule alone the experts "
                   f"would get {ruled / 1e9:.2f} GB", flush=True)
         args.budget = round(store.budget / 1e9, 2)
     for e in engines.values():

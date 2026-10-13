@@ -261,6 +261,8 @@ def main():
                     int(opts["--conversation-cache-min-tokens"]))
     machine -= parked.budget
     wanted = opts["--expert-memory"]
+    # `available` (#6): what this machine has free or in its file cache, before the model's own files are read
+    at_start = available_memory() if wanted == "available" and not opts["--machine-memory"] else None
     model, _ = load(opts["--native"], dtype, expert_memory="auto" if wanted in ("auto", "available") else float(wanted),
                     machine_memory=machine)
     store = model.expert_store
@@ -283,13 +285,12 @@ def main():
     engine.identity = model_identity(opts["--native"], opts["--dtype"])
     if paged and wanted in ("auto", "available"):
         # now that everything else is in memory: what is left is the experts'. `available`: and no more than
-        # what this machine has free or in its file cache now (#6), which says nothing of a machine it stands for
-        now = available_memory() if wanted == "available" and not opts["--machine-memory"] else None
+        # what this machine had free or in its file cache, which says nothing of a machine it stands for
         ruled = store.fit(machine)
-        if now is not None:
-            store.fit(machine, sum(now))
-            print(f"strata-mlx: {now[0] / 1e9:.1f} GB free and {now[1] / 1e9:.1f} GB of file cache at the start; the experts "
-                  f"get {store.budget / 1e9:.1f} GB (by the rule alone {ruled / 1e9:.1f})", file=sys.stderr)
+        if at_start is not None:
+            store.fit(machine, sum(at_start))
+            print(f"strata-mlx: {at_start[0] / 1e9:.1f} GB free and {at_start[1] / 1e9:.1f} GB of file cache at the start; "
+                  f"the experts get {store.budget / 1e9:.1f} GB (by the rule alone {ruled / 1e9:.1f})", file=sys.stderr)
         elif wanted == "available":
             print("strata-mlx: --expert-memory available: " + ("not as another machine (--machine-memory)"
                   if opts["--machine-memory"] else "the counts could not be read") + "; the rule alone", file=sys.stderr)

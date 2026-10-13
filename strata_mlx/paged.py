@@ -108,13 +108,16 @@ class ExpertStore:
     def fit(self, machine: int, available: int | None = None) -> int:
         """Set the budget to what a machine of that much memory has left, everything else being loaded now.
 
-        With `available`, bytes of memory that are free or hold a file's pages now, the budget is no more than
-        that less the working memory: the rule leaves macOS and other programs a constant, and a machine on
-        which they hold more than that swaps (#6: 11.5 GB free at the start where another run had 24.5, and
-        16.8 GB swapped out with the same 16.5 GB of experts)."""
-        self.budget = machine - SYSTEM - WORKING - (mx.get_active_memory() - self.held)
+        With `available`, the bytes of memory that were free or held a file's pages before anything was
+        loaded, the budget is no more than that less what is loaded and the working memory: the rule leaves
+        macOS and other programs a constant, and a machine on which they hold more than that swaps (#6: 11.5 GB
+        free at the start where another run had 24.5, and 16.8 GB swapped out with the same 16.5 GB of experts).
+        Counted before loading, not now: loading reads the model's files, and their pages, 9 GB of them on
+        that machine, are file cache for the next twenty seconds."""
+        loaded = mx.get_active_memory() - self.held
+        self.budget = machine - SYSTEM - WORKING - loaded
         if available is not None:
-            self.budget = min(self.budget, available - WORKING)
+            self.budget = min(self.budget, available - loaded - WORKING)
         self.budget = max(LEAST, self.budget)
         return self.budget
 

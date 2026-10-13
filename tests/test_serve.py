@@ -190,10 +190,11 @@ def test_what_is_left_of_a_machines_memory_goes_to_the_experts():
     store = paged.ExpertStore(0)
     held = mx.get_active_memory()
     assert store.fit(32 * gib) == 32 * gib - paged.SYSTEM - paged.WORKING - held
-    # and no more than what the machine has free or in its file cache now, less the working memory (#6)
+    # and no more than what the machine had free or in its file cache before anything was loaded, less what is
+    # loaded and the working memory (#6)
     ruled = store.budget
     assert store.fit(32 * gib, available=64 * gib) == ruled
-    assert store.fit(32 * gib, available=13 * gib) == 13 * gib - paged.WORKING < ruled
+    assert store.fit(32 * gib, available=13 * gib) == 13 * gib - held - paged.WORKING < ruled
     assert store.fit(32 * gib, available=2 * gib) == paged.LEAST
     free, cached = paged.available_memory()  # what `vm_stat` calls "Pages free" and "File-backed pages"
     assert 0 < free < paged.machine_memory() and 0 <= cached < paged.machine_memory()
