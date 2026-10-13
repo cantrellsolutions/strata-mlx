@@ -85,6 +85,18 @@ every time ([issue 6](https://github.com/yibie/strata-mlx/issues/6)). A shorter 
 ([ROADMAP.md](ROADMAP.md), "A prompt read a layer at a time"). It holds 1 GB more while it reads, which
 the experts give up: a 32 GB machine's are 15 GB where they were 16.
 
+**Reported from another Mac, not measured here.** A Mac Studio with an M1 Ultra and 64 GB, the IQ3_XXS file,
+tokens a second end to end (the prompt and the answer together):
+
+| engine | tok/s |
+| :--- | ---: |
+| **strata-mlx** | **33.5-36.3** |
+| llama.cpp with tarruda's optimizations | 32.2 |
+| llama.cpp as released | 20.7 |
+
+That is its owner's report as it was given: which prompts, how long, and with which settings is not known, and
+the IQ3_XXS file has not been run by this engine's author.
+
 The full account, with what was tried and did not help, is in [ROADMAP.md](ROADMAP.md) (English, as it went)
 and [docs/OPTIMIZATION_RECORD.md](docs/OPTIMIZATION_RECORD.md) (Chinese, by topic).
 
