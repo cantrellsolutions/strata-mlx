@@ -836,6 +836,15 @@ seconds, the median of four and their range:
   (`~/.cache/strata-mlx/expert-use-*.npy`): every start of the engine as a small machine keeps half of what
   was counted before. The benchmark now gives the engine a profile of its own.
 
+**Answers, before all of this and after** (the code of `258726f` in a worktree against this one, in turns):
+- With the whole model in memory, where none of it runs (`bench/spec_decode.py`, four prompts of 256 tokens,
+  in the order now, before, before, now, 75 s between): one token a pass 48.0 and 47.2 tok/s now, 48.1 and
+  47.9 before; with the draft head 97.6 and 86.9 now, 98.6 and 88.7 before. No difference.
+- As a 32 GB machine (`bench/paged.py --machine-memory 32`, draft head, eight answers of 200 tokens a run, in
+  turns twice): 30.7 and 27.9 tok/s now, with 15.5 GB of experts; 29.5 and 32.1 before, with 16.5. The 1 GB
+  the working memory took is seen in what an answer's token reads, 21-23 experts where it read 17-20 (code,
+  reasoning); in tokens a second the runs do not tell the two apart.
+
 Not done, not known:
 
 - All of it is one M4 Max with a 6.5 GB/s disk and a small machine simulated: no pressure on memory. The
