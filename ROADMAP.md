@@ -483,6 +483,16 @@ now, and a machine of 24 or 32 GB keeps 7.6 or 16.2 GB of experts (6.6 and 15.2 
 grew by 1 GB for prompts read a layer at a time, below); a 16 GB one is left the least, 0.5 GB, on no 16 GB
 machine's evidence. The table above is of the budgets it names, not measured again.
 
+That machine's two runs of the new default say what a constant cannot: 0.89 GB swapped with nothing else open,
+16.8 GB with apps open, which began with 11.5 GB free where the other had 24.5. `--expert-memory available`
+bounds the experts by what was free or in the file cache before anything was loaded, less what is loaded and
+the working memory. An option, not the default. On that machine with apps open, twice: 14.0 and 15.1 GB of
+experts, 1.70 and 0.41 GB swapped, answers at 21.6 and 24.8 tok/s (18.3 with the fixed 16.5). Its samples
+every 2 s showed the first version counting wrongly: it counted after loading, and loading had just put 9 GB
+of the model's own files into the file cache (given up again within 20 s, with no swap). Counted before
+loading, the first of those runs, which began with 0.9 GB free and 15.4 of file cache, gives the experts
+5.8 GB and not 14.0; an app was quit soon after that run's start, so it does not say which is right.
+
 Tests hold it to the same tokens as the model with every expert in memory, at a budget of nothing, of five
 experts and of all, and with a window spread over several kernel calls. By budget, a token at a time and with
 the draft head (`bench/paged.py`): 2 GB 7.5 and 10 tok/s, 210 misses a token; 4 GB 7-8 and 12, 148; 8 GB 12 and
@@ -847,8 +857,13 @@ seconds, the median of four and their range:
 
 Not done, not known:
 
-- All of it is one M4 Max with a 6.5 GB/s disk and a small machine simulated: no pressure on memory. The
-  32 GB MacBook Air of issue 6 has not been asked. A 256 GB model's disk gives a quarter to a half of this
+- **On a real 32 GB machine** (issue 6's MacBook Air M5, `ac0523f`, `bench/prompt_by_layer.py` as it comes:
+  8,192 tokens, three prompts, two rounds, both shards dropped; the reporter's run): chunk by chunk 45.7 s
+  (42.8-56.9), a layer at a time 34.5 (33.0-38.3), 1.32 times, with reads ahead 31.5 (30.8-32.5), 1.45 times;
+  the same answer every time. 8.1 GB was swapped out over the six starts, with no pattern by way of reading,
+  so whether the gigabyte more of working memory costs anything there is not known.
+- Everything else here is one M4 Max with a 6.5 GB/s disk and a small machine simulated: no pressure on
+  memory. A 256 GB model's disk gives a quarter to a half of this
   one's: there a layer's read (0.13 s here) is longer than a short piece's layer (0.12 s at 2,560 tokens,
   0.33 at 8,192), and reading only what memory lacks of a layer, 18 of 34 GB as a 32 GB machine, would count.
   It is not built.

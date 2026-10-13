@@ -152,7 +152,11 @@ the same prompts, both shards dropped, 25.6 s a layer at a time with reads ahead
 
 **Still open.** One chunk, and so every short prompt, waits for the experts' reads as it did. With a large share of the
 experts in memory only what is lacking need be read, as a 32 GB machine 18 of 34 GB a piece: not built, and it
-matters where the disk is slower than this one. None of this has run on a small machine.
+matters where the disk is slower than this one.
+
+**On the 32 GB MacBook Air M5 of issue 6** (its reporter's run of `bench/prompt_by_layer.py`, both shards
+dropped): 8,192 tokens in 45.7 s chunk by chunk, 34.5 a layer at a time, 31.5 with reads ahead, 1.45 times,
+the same answer every time.
 
 ## 6. On a real 32 GB Mac the default leaves macOS too little memory, and it swaps
 
@@ -207,9 +211,22 @@ with 11.51 GB free where the other had 24.47, and the arrays went to 25.0 GB all
 what other programs hold.
 
 `--expert-memory available` (and `bench/paged.py --machine-memory N --available` on a machine of N) bounds
-the experts by what is free or holds a file's pages when the engine starts, less the working memory
-(`paged.available_memory`, `ExpertStore.fit`). By the two runs' `vm_stat`: 27.9 GB available before loading
-with apps closed, which leaves the rule's figure as it is, and 19.8 GB with apps open (11.51 free, 8.3 of
-file cache), which gives the experts about 8 GB where they had 16.5. It is not the default: whether file
-cache is all memory macOS gives up without swapping is what a run on that machine has to say, and it does
-nothing for a machine that holds the model whole.
+the experts by what was free or held a file's pages before anything was loaded, less what is loaded and the
+working memory (`paged.available_memory`, `ExpertStore.fit`). An option, not the default.
+
+The reporter ran it with apps open, twice, in its first form, which counted after loading:
+
+| | first run | second run | the fixed default |
+| :--- | ---: | ---: | ---: |
+| before the start: free / file cache | 0.90 / 15.44 GB | 23.75 / 3.73 GB | 11.51 / 8.31 GB |
+| experts | 14.01 GB | 15.14 GB | 16.51 GB |
+| draft head, tok/s (mean) | 21.6 | 24.8 | 18.3 |
+| swapped out | 1.70 GB | 0.41 GB | 16.8 GB |
+
+His samples every 2 s found what was wrong with that form: loading reads the model's files, and about 9 GB
+of them were file cache when the count was taken, so a machine with 0.9 GB free was given 14 GB of experts.
+(They were given up again within 20 s and swap did not move: pages that hold a file do go without swapping.)
+The count is taken before loading now. By it those three runs give the experts 5.8 GB, the rule's 15.5, and
+9.3. In the first run an app was quit soon after the start, so nothing yet says how a machine whose apps hold
+a lot, and go on holding it, does with either figure. It does nothing for a machine that holds the model
+whole.
