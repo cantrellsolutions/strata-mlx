@@ -156,7 +156,8 @@ ids; tokenizing, chat templates and the HTTP APIs are the server's part. Strata'
 in `args`; Strata's `setup.py` does not run on macOS, so that config is written by hand.
 
 Options: `--spec 1` (draft head off), `--dtype float32`, `--max-context N`, `--expert-memory GB` (how much of
-the experts to keep in memory; by default all of them if the machine holds the model), `--machine-memory GiB`
+the experts to keep in memory; by default all of them if the machine holds the model; `available` for no more
+than the machine has free or in its file cache when the engine starts, where other programs hold a lot), `--machine-memory GiB`
 (run as a machine of that size would), `--guess-rows off`, `--expert-profile off`,
 `--conversation-cache-mib MiB` (park conversations that other requests interrupt, in that much memory; off by
 default, and the memory is taken from the experts' on a Mac that does not hold the model whole),

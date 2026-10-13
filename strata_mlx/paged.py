@@ -20,6 +20,7 @@ each expert is its own array.
 
 import fcntl
 import os
+import subprocess
 import time
 from collections import OrderedDict
 from concurrent.futures import ThreadPoolExecutor
@@ -60,6 +61,18 @@ def machine_memory() -> int:
     return os.sysconf("SC_PHYS_PAGES") * os.sysconf("SC_PAGE_SIZE")
 
 
+def available_memory() -> tuple | None:
+    """(free, file-backed) bytes of this machine's memory now, as `vm_stat` counts "Pages free" and
+    "File-backed pages": what nothing holds, and what holds a file's pages, which macOS lets go of before it
+    swaps. None where the counts cannot be read."""
+    try:
+        counts = [int(subprocess.run(["/usr/sbin/sysctl", "-n", name], capture_output=True, text=True, check=True).stdout)
+                  for name in ("hw.pagesize", "vm.page_free_count", "vm.page_pageable_external_count")]
+    except (OSError, ValueError, subprocess.CalledProcessError):
+        return None
+    return counts[1] * counts[0], counts[2] * counts[0]
+
+
 def sizes(files: list) -> tuple:
     """(experts, dense tensors) of a model's shards, in bytes as the files have them. The dense tensors are
     those of the first shard: the n-gram table, in the second, stays on the disk."""
@@ -92,9 +105,17 @@ class ExpertStore:
         self.reader, self.coming = ThreadPoolExecutor(1), None  # (layer, the read under way)
         self.reset_stats()
 
-    def fit(self, machine: int) -> int:
-        """Set the budget to what a machine of that much memory has left, everything else being loaded now."""
-        self.budget = max(LEAST, machine - SYSTEM - WORKING - (mx.get_active_memory() - self.held))
+    def fit(self, machine: int, available: int | None = None) -> int:
+        """Set the budget to what a machine of that much memory has left, everything else being loaded now.
+
+        With `available`, bytes of memory that are free or hold a file's pages now, the budget is no more than
+        that less the working memory: the rule leaves macOS and other programs a constant, and a machine on
+        which they hold more than that swaps (#6: 11.5 GB free at the start where another run had 24.5, and
+        16.8 GB swapped out with the same 16.5 GB of experts)."""
+        self.budget = machine - SYSTEM - WORKING - (mx.get_active_memory() - self.held)
+        if available is not None:
+            self.budget = min(self.budget, available - WORKING)
+        self.budget = max(LEAST, self.budget)
         return self.budget
 
     def reset_stats(self):

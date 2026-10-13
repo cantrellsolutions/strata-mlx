@@ -52,7 +52,7 @@ import time
 from . import bylayer
 from .conversations import Parked, resume
 from .engine import Engine, Stats
-from .paged import load_profile, machine_memory, save_profile
+from .paged import available_memory, load_profile, machine_memory, save_profile
 from .sampler import Sampling
 
 VERSION = "0.0.1"
@@ -261,7 +261,7 @@ def main():
                     int(opts["--conversation-cache-min-tokens"]))
     machine -= parked.budget
     wanted = opts["--expert-memory"]
-    model, _ = load(opts["--native"], dtype, expert_memory=wanted if wanted == "auto" else float(wanted),
+    model, _ = load(opts["--native"], dtype, expert_memory="auto" if wanted in ("auto", "available") else float(wanted),
                     machine_memory=machine)
     store = model.expert_store
     paged = store is not None
@@ -281,8 +281,18 @@ def main():
                     piece=bylayer.PIECE if opts["--prompt-by-layer"] != "off" else 0,
                     ahead=opts["--read-ahead"] != "off")
     engine.identity = model_identity(opts["--native"], opts["--dtype"])
-    if paged and wanted == "auto":
-        store.fit(machine)  # now that everything else is in memory: what is left is the experts'
+    if paged and wanted in ("auto", "available"):
+        # now that everything else is in memory: what is left is the experts'. `available`: and no more than
+        # what this machine has free or in its file cache now (#6), which says nothing of a machine it stands for
+        now = available_memory() if wanted == "available" and not opts["--machine-memory"] else None
+        ruled = store.fit(machine)
+        if now is not None:
+            store.fit(machine, sum(now))
+            print(f"strata-mlx: {now[0] / 1e9:.1f} GB free and {now[1] / 1e9:.1f} GB of file cache at the start; the experts "
+                  f"get {store.budget / 1e9:.1f} GB (by the rule alone {ruled / 1e9:.1f})", file=sys.stderr)
+        elif wanted == "available":
+            print("strata-mlx: --expert-memory available: " + ("not as another machine (--machine-memory)"
+                  if opts["--machine-memory"] else "the counts could not be read") + "; the rule alone", file=sys.stderr)
 
     max_context = int(opts["--max-context"])
     # compile the kernels of every window size and of the sampler now, not during the first request

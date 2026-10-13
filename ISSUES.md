@@ -200,3 +200,16 @@ evidence of its own; `--expert-memory` sets the experts' share by hand. The spee
 measured with 3.3, 11.9 and 20.5 GB of experts and not again since.
 
 **The next step.** Any run on a real 16, 24 or 48 GB Mac, and the 32 GB machine with the new default.
+
+**Since** (the reporter's two runs of the new default, `2f9d1ab`). With nothing else open it is the 16 GB row:
+24.8-28.7 tok/s, 0.89 GB swapped. With apps open it swapped 16.8 GB and wrote at 10.8-24.7: that run began
+with 11.51 GB free where the other had 24.47, and the arrays went to 25.0 GB all the same. No constant knows
+what other programs hold.
+
+`--expert-memory available` (and `bench/paged.py --machine-memory N --available` on a machine of N) bounds
+the experts by what is free or holds a file's pages when the engine starts, less the working memory
+(`paged.available_memory`, `ExpertStore.fit`). By the two runs' `vm_stat`: 27.9 GB available before loading
+with apps closed, which leaves the rule's figure as it is, and 19.8 GB with apps open (11.51 free, 8.3 of
+file cache), which gives the experts about 8 GB where they had 16.5. It is not the default: whether file
+cache is all memory macOS gives up without swapping is what a run on that machine has to say, and it does
+nothing for a machine that holds the model whole.

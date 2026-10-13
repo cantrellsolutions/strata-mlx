@@ -34,6 +34,8 @@ def main():
     p.add_argument("--mtp", required=True)
     p.add_argument("--budget", type=float, help="GB of experts in memory")
     p.add_argument("--machine-memory", type=float, help="GiB of a machine: its experts get what the rest leaves")
+    p.add_argument("--available", action="store_true", help="with --machine-memory, on a machine of that size: bound "
+                   "the experts by what it has free or in its file cache now (the server's --expert-memory available)")
     p.add_argument("--dense", choices=["blocks", "arrays"], default="blocks")
     p.add_argument("--engines", nargs="+", choices=["one", "head"], default=["one", "head"])
     p.add_argument("--tokens", type=int, default=200)
@@ -52,7 +54,15 @@ def main():
     if "head" in args.engines:
         engines["draft head"] = Engine(model, mtp, 3, lookup=True)
     if args.machine_memory:
-        args.budget = round(store.fit(int(args.machine_memory * 2**30)) / 1e9, 2)
+        ruled = store.fit(int(args.machine_memory * 2**30))
+        if args.available:  # on the machine itself: no more than it has free or in its file cache now (#6)
+            from strata_mlx.paged import available_memory
+
+            free, cached = available_memory()
+            store.fit(int(args.machine_memory * 2**30), free + cached)
+            print(f"{free / 1e9:.1f} GB free and {cached / 1e9:.1f} GB of file cache now; by the rule alone the experts "
+                  f"would get {ruled / 1e9:.2f} GB", flush=True)
+        args.budget = round(store.budget / 1e9, 2)
     for e in engines.values():
         e.warm()
     in_memory(args.model, drop=True)
