@@ -79,6 +79,12 @@ floats from the first prompt on (`dense.py`, so that the IQ3_S file's prompts ar
 the process holds more than that rule counts: 3.3 GB with the IQ3_S file, 0.2 GB with Q2_0. The rule was
 written before, and its working memory was measured with Q2_0.
 
+**Seen on a 64 GB M5 Pro** ([issue 8](https://github.com/yibie/strata-mlx/issues/8)): an IQ3_XXS file that the
+rule holds whole there swapped 7.4 GB out in a run without parked conversations, and Q2_0, also held whole,
+1.7 GB in a later run at 8K and 32K tokens of context; IQ3_S, read in part, none. The counts are the whole
+system's and include the start, and its reporter draws no cause from them. Whether it is this section's floats
+is not known: `--check --native` for that file has been asked for.
+
 **Whom it concerns.** A Mac that reads IQ3_S experts from the SSD gives them 3.3 GB that the floats then take,
 so macOS is left that much less than the rule means. Since issue 6 that is every Mac under 67.7 GB, the 64 GB
 ones among them: they keep 93% of the experts in memory. (While the rule left macOS 4.5 GB, a 64 GB Mac held the
@@ -157,6 +163,15 @@ matters where the disk is slower than this one.
 **On the 32 GB MacBook Air M5 of issue 6** (its reporter's run of `bench/prompt_by_layer.py`, both shards
 dropped): 8,192 tokens in 45.7 s chunk by chunk, 34.5 a layer at a time, 31.5 with reads ahead, 1.45 times,
 the same answer every time.
+
+**On a 64 GB M5 Pro** ([issue 8](https://github.com/yibie/strata-mlx/issues/8), `8a5aeaa`), which by the rule
+keeps 93% of IQ3_S's experts in memory and reads the rest: the same script, 8,192 tokens, 37.85 s chunk by
+chunk, 24.9 a layer at a time, 19.1 with reads ahead, 1.98 times, the same tokens every way. And the prompt of
+one chunk, which nothing here has changed: 1,180 tokens at 61-67 tok/s through `bench/compare_servers.py`,
+some 18 s before an answer begins, on a machine that has 93% of the experts in memory. It reads each layer
+whole all the same. Reading only what memory lacks is what that machine wants most (pull request 7's fourth
+commit does it); how much it read was not measured there, so the cause is this section's and not its
+reporter's.
 
 ## 6. On a real 32 GB Mac the default leaves macOS too little memory, and it swaps
 

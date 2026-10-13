@@ -875,3 +875,28 @@ Not done, not known:
 Not taken: experts grouped by expert and computed once a layer (Strata's #1670), which changes the order of
 the sums and is not bit for bit; resuming a stopped piece from the layer it reached, which needs the undoing
 anyway.
+
+### On an M5 Pro with 64 GB: its owner's runs (issue 8)
+
+A Mac mini, 18 CPU and 20 GPU cores, macOS 27.0.1, `8a5aeaa`, the standard IQ3_S and Q2_0 files and an IQ3_XXS
+of the reporter's own; float16, the draft head, a context of 73,728, the expert profile off. Nothing here was
+measured by this engine's author.
+
+- **Parked conversations.** A conversation of 10,004 tokens, an unrelated request, then the conversation's next
+  turn, to its first token, the median of three: IQ3_S 23.4 s without and 0.68 s with 4,096 MiB; Q2_0 13.8 and
+  0.24; the IQ3_XXS 15.0 and 0.69. 8,192 MiB was no better. All 27 turns after an interruption kept the
+  conversation's facts. No new swapping in those runs for IQ3_S and Q2_0.
+- **A prompt a layer at a time**, IQ3_S (93% of its experts in memory by the rule), 8,192 tokens, three prompts
+  twice each way, both shards dropped: 37.85 s chunk by chunk, 24.9 a layer at a time, 19.1 with reads ahead,
+  1.98 times; the same eight tokens of answer every way. The second real machine, and the first on which the
+  rule set before any of this was built (1.5 times, files dropped) is met.
+- **What is slow there.** IQ3_S through `bench/compare_servers.py`: answers at 26-28 (prose), 40-42, 40-44 and
+  about 17 (edit) tok/s, and the 1,180-token prompt at 61-67 tok/s. A first request of 8,211 tokens took 30.2 s
+  to its first token and one of 32,786 took 132.1 (Q2_0, held whole: 10.4 and 65.1). A prompt of one chunk
+  reads every layer whole though memory holds 93% of it, and an answer's tokens wait for their router at every
+  layer (22 tok/s where 43, measured here with every expert resident): the machine that just does not hold a
+  file whole pays for the way of running as much as for the disk.
+- **Memory.** The IQ3_XXS, which the rule holds whole, swapped 7.4 GB out in a run without parked
+  conversations; Q2_0 1.7 GB in the 8K and 32K run. System-wide counts, the start included, no cause drawn.
+- 385 of 385 tests, with `MLX_ENABLE_TF32` unset and set. A short sum was answered wrongly by every file and
+  by their llama.cpp with thinking off: the model's, not an engine's.

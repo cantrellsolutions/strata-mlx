@@ -97,6 +97,21 @@ tokens a second end to end (the prompt and the answer together):
 That is its owner's report as it was given: which prompts, how long, and with which settings is not known, and
 the IQ3_XXS file has not been run by this engine's author.
 
+**On an M5 Pro with 64 GB**, its owner's runs ([issue 8](https://github.com/yibie/strata-mlx/issues/8)), where
+the IQ3_S file is read from the SSD in part (93% of its experts in memory by the rule) and Q2_0 is held whole:
+
+| | IQ3_S | Q2_0 |
+| :--- | ---: | ---: |
+| the turn after a conversation of 10,000 tokens was interrupted, to its first token | 23.4 s | 13.8 s |
+| the same with `--conversation-cache-mib 4096` | 0.68 s | 0.24 s |
+| a prompt of 8,192 tokens, chunk by chunk | 37.9 s | |
+| the same a layer at a time, with reads ahead | 19.1 s | |
+
+All 27 turns after an interruption kept the conversation's facts, and each prompt gave the same tokens whichever
+way it was read. It also shows what is still slow there: with IQ3_S a prompt of 1,180 tokens was read at 61-67
+tok/s and answers came at 17-44, since a prompt of one chunk still reads every layer whole from the disk, the
+93% that memory holds with the rest ([issue 4](https://github.com/yibie/strata-mlx/issues/4)).
+
 The full account, with what was tried and did not help, is in [ROADMAP.md](ROADMAP.md) (English, as it went)
 and [docs/OPTIMIZATION_RECORD.md](docs/OPTIMIZATION_RECORD.md) (Chinese, by topic).
 
@@ -125,7 +140,7 @@ By the same arithmetic the engine starts with:
 
 "Whole" is the path the speeds under [Measured](#measured) are for, on an M4 Max; other chips have not been
 run. Where only part of the experts is in memory the rest is read from the SSD as tokens ask for it, which is
-the slow path above. IQ3_S has not been run that way at all. This table is arithmetic, not a test: the only
+the slow path above. IQ3_S has been run that way on one machine, a 64 GB M5 Pro (above), and not by this engine's author. This table is arithmetic, not a test: the only
 Mac its author has run the engine on has 128 GB. It leaves 7.9 GB to macOS and other programs and does not count the conversation itself, about 1 GB for 36,000 tokens. That figure is
 from the one small Mac the engine has been reported from, a MacBook Air M5 with 32 GB: with 4.2 GB left to
 macOS it swapped, and with what the table now gives it it hardly did and was about twice as fast
