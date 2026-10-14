@@ -118,3 +118,21 @@ def test_the_routers_choice_is_argpartitions(tokens, ties):
             logits = mx.round(logits * 4) / 4
         want = mx.argpartition(-logits, 9, axis=-1)[..., :10]
         assert mx.array_equal(top_k(logits, 10), want).item()
+
+
+
+@pytest.mark.parametrize("tokens", [1, 3, 8, 16])
+def test_the_end_of_the_moe_block_is_mlxs_bits(tokens):
+    from strata_mlx.fused import moe_combine
+
+    def plain(y, w, g, s):
+        return (y * w[..., None]).sum(axis=-2).astype(y.dtype) + mx.sigmoid(g) * s
+
+    mx.random.seed(tokens)
+    for _ in range(20):
+        y = (mx.random.normal((1, tokens, 10, 2560)) * 0.5).astype(mx.float16)
+        w = mx.softmax(mx.random.normal((1, tokens, 10)), axis=-1)
+        g = (2 * mx.random.normal((1, tokens, 1))).astype(mx.float16)
+        s = (0.5 * mx.random.normal((1, tokens, 2560))).astype(mx.float16)
+        got = moe_combine(y, w, g, s)
+        assert mx.array_equal(got, plain(y, w, g, s)).item() and mx.array_equal(got, mx.compile(plain)(y, w, g, s)).item()
