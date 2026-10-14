@@ -162,3 +162,18 @@ def test_a_delta_net_layers_input_in_one_kernel_is_mlxs_bits(tokens):
         got = gdn_prep(state, mixed, conv.weight, key_dim, 128)
         for want in (plain(state, mixed), mx.compile(plain)(state, mixed)):
             assert all(mx.array_equal(a, b).item() for a, b in zip(got, want))
+
+
+
+@pytest.mark.parametrize("tokens", [1, 4, 8, 16])
+def test_a_delta_net_layers_output_norm_in_one_kernel_is_mlxs_bits(tokens):
+    from strata_mlx.fused import gated_norm
+
+    norm = qwen4_exp.RMSNormGated(128, eps=1e-6)
+    mx.random.seed(tokens)
+    norm.weight = (1 + 0.2 * mx.random.normal((128,))).astype(mx.float16)
+    for _ in range(5):
+        x = mx.random.normal((1, tokens, 6, 128)).astype(mx.float16)
+        z = (2 * mx.random.normal((1, tokens, 6, 128))).astype(mx.float16)
+        got = gated_norm(norm, x, z)
+        assert mx.array_equal(got, norm(x, z)).item() and mx.array_equal(got, mx.compile(norm)(x, z)).item()

@@ -34,7 +34,7 @@ from . import bylayer
 from .attention import AttnCache, install
 from .conversations import reach, victim
 from .drafting import FIRST_GUESSES, MAX_WINDOW, Lookup, Policy
-from .fused import FusedResidual, PlainResidual, gdn_prep, install_routers
+from .fused import FusedResidual, PlainResidual, gated_norm, gdn_prep, install_routers
 from .mtp import Mtp
 from .rows import GuessRows
 from .sampler import LIST, Sampling, history_counts, penalize, pick, uniform
@@ -223,7 +223,8 @@ class Engine:
             q = (inv_scale**2) * mx.fast.rms_norm(q, None, 1e-6)
             k = inv_scale * mx.fast.rms_norm(k, None, 1e-6)
         out, after = gated_delta_update(q, k, v, a, b, la.A_log, la.dt_bias, recurrent, None)
-        y = la.out_proj(la.norm(out, z).reshape(B, S, -1))
+        normed = gated_norm(la.norm, out, z)  # one kernel for the two below (fused.py)
+        y = la.out_proj((la.norm(out, z) if normed is None else normed).reshape(B, S, -1))
         return y, (conv_input, q, k, v, a, b, after)
 
     # A pass is thousands of small kernels. Two things make them fewer. The hyper-connections are three kernels
