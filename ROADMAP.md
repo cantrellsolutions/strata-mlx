@@ -938,3 +938,20 @@ out as it started. What macOS and other programs hold grows with the machine, so
 memory, 8.5 GB at least (`paged.left_to_system`): the 32 GB Air of issue 6 is left what it was, the 48 GB machine
 12.9 GB (26.1 GiB of experts, 82%, near the 25.6 Strata chose), a 64 GB one 17.2 (IQ3_S 76%, where 93% did not swap
 on the M5 Pro of #8), and Q2_0 is held whole from 58 GB where it was from 51, IQ3_S from 80 where 66. Two machines.
+
+### Threads to a row of the experts' table kernel (e43, e44)
+
+A pass with drafts is a window of four to eight tokens, and the expert kernel took 11 ms of 48 layers for four
+tokens and 30 for eight. Two things measured, the real model's 48 expert layers chained:
+
+- MLX's own quantized gather product on the Q2_0 stacks as they are (a block's 16 code bytes are MLX's 2-bit
+  words; scale d, bias -d): 4.6 / 7.6 / 16.5 / 47.8 ms for 1 / 2 / 4 / 8 tokens against 4.3 / 5.6 / 11.1 / 30.6
+  for the table of sums. Not used.
+- The table kernel's threads to a row. It gave rows of 2,560 inputs 16 threads below 21 pairs and 4 from there,
+  the experts' down rows 4. Swept, then the new rule alternated with the old: 8 up to 40 pairs and 2 beyond, 2
+  for the down rows. 3% for a token, 7% for two, 8% for four, 11% for six, 17-27% from eight to 128.
+
+Through `spec_decode.py`, Q2_0, in the order new, old, old, new, the drafts as sure as the head is: prose 77.2 /
+76.4 and 74.0 / 68.2 tok/s, code 77.5 / 74.5 and 71.4 / 66.3, reasoning 100.4 / 92.6 and 89.9 / 84.3, editing
+99.9 / 84.3 and 77.6 / 80.8: the new rule ahead in seven of eight pairs, about 6% on the mean. The machine slowed
+through the run (other programs, heat), so the pairs and not the figures are what compare.
