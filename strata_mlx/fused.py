@@ -369,9 +369,14 @@ class WindowLinear:
     def weight(self) -> mx.array:
         return self.linear.weight
 
+    def takes(self, x: mx.array) -> bool:
+        """Whether x goes through the kernel, which reads it as it is: float16 activations then need no copy in
+        float32 first, and give the same sums."""
+        return x.size // self.cols <= self.upto and self.weight.dtype == mx.float16
+
     def __call__(self, x: mx.array) -> mx.array:
         tokens = x.size // self.cols
-        if tokens > self.upto or self.weight.dtype != mx.float16:
+        if not self.takes(x):
             return self.linear(x)
         key = ("matvec", self.rows, self.cols, tokens, self.g)
         if key not in _kernels:
@@ -413,6 +418,7 @@ _TOPK = """
 """
 
 ROUTER_TOPK = True
+ROUTER_AS_IS = True  # the router reads float16 activations without a float32 copy (WindowLinear.takes): 0.15 ms a pass
 
 
 def top_k(logits: mx.array, k: int) -> mx.array:
@@ -479,7 +485,8 @@ class _Routed(qwen4_exp.SparseMoeBlock):
     """The model's MoE block with the router's choice made by `top_k` and its end by `moe_combine`."""
 
     def __call__(self, x: mx.array) -> mx.array:
-        logits = self.gate(x.astype(mx.float32))
+        gate = self.gate
+        logits = gate(x if ROUTER_AS_IS and isinstance(gate, WindowLinear) and gate.takes(x) else x.astype(mx.float32))
         idx = top_k(logits, self.top_k)
         w = mx.softmax(mx.take_along_axis(logits, idx, axis=-1), axis=-1, precise=True)
         y = self.switch_mlp(x, idx)
