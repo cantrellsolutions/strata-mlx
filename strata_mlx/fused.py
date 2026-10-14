@@ -23,7 +23,19 @@ What makes such a kernel fast or slow, measured on an M4 Max (bench/experiments/
 
 A chain of 97 connections, microseconds each, for 1 / 2 / 4 / 8 tokens: these kernels 37 / 39 / 55 / 103,
 MLX's own operations 62 / 66 / 72 / 77. In a pass that is 0.3, 1.6, 1.7 ms less for 1, 2, 4 tokens, 6 and 5 ms
-for 3 and 5 (odd windows were slow in MLX's products), 2.4 ms more for 8: the engine uses these up to six.
+for 3 and 5 (odd windows were slow in MLX's products), 2.4 ms more for 8.
+
+From six tokens on, down and up are kernels of another shape (`_DOWN_PART`, `_DOWN_SUM`, `_UP_WIDE`). Above,
+every simdgroup of `down` reads its slice of the normed inputs from memory once for each row it multiplies, and
+every row of `up` the low-rank activations: with the window, those reads grow and the weights do not. Here a
+threadgroup reads them once into threadgroup memory and then goes over many rows: `down` in two kernels, one
+for the products of a slice of inputs with a block of rows, one for the sum of each row's slices; `up` with a
+few columns to a threadgroup. On an M5 Ultra, 97 connections chained, microseconds each for 4 / 6 / 8 / 10 / 12
+tokens: the kernels above 39 / 52 / 66 / 80 / 93, these 42 / 47 / 51 / 60 / 66, MLX's own operations
+67 / 72 / 74 / 83 / 78. The sums are taken in the same order as above, so the two shapes give the same bits
+and a token the same bits alone or in a window. The engine uses the fused kernels up to a window of the draft
+head (drafting.MAX_WINDOW, 8): a prompt of 9 to 16 tokens through them would first compile a kernel set for its
+length, 0.4-0.6 s.
 
 Each token's sums are taken in the same order whatever the window, in float32 whatever the type of the weights.
 """
@@ -148,6 +160,122 @@ def _kernel_set(rank: int, wide: int, d: int, hc: int, eps: float, tokens: int):
     return _kernels[key]
 
 
+# down, a block of RB rows by a slice of SLICE inputs: the slice of every token's normed input in threadgroup
+# memory, read once for all the rows; SG simdgroups take a row at a time, each lane PER weights, as `_DOWN`'s
+# simdgroup for that slice did
+_DOWN_PART = """
+    uint tid = thread_position_in_threadgroup.x;
+    uint tg = threadgroup_position_in_grid.x;
+    uint g = tg % G;
+    uint b = tg / G;
+    uint sg = tid / 32, lane = tid % 32;
+    threadgroup float xs[T * SLICE];
+    for (uint k = tid; k < T * SLICE; k += 32 * SG) {
+        xs[k] = normed[(k / SLICE) * HD + g * SLICE + k % SLICE];
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    for (uint r = b * RB + sg; r < min((b + 1) * RB, NR); r += SG) {
+        auto row = (r < R ? down + r * HD : inject_w + (r - R) * HD) + g * SLICE + lane * PER;
+        half w[PER];
+        for (uint i = 0; i < PER; ++i) { w[i] = row[i]; }
+        for (uint t = 0; t < T; ++t) {
+            float acc = 0.0f;
+            for (uint i = 0; i < PER; ++i) { acc += float(w[i]) * xs[t * SLICE + lane * PER + i]; }
+            acc = simd_sum(acc);
+            if (lane == 0) { part[(t * NR + r) * G + g] = acc; }
+        }
+    }
+"""
+
+# a row's slices added in `_DOWN`'s order, then its gate
+_DOWN_SUM = """
+    uint k = thread_position_in_grid.x;
+    if (k >= T * NR) { return; }
+    uint t = k / NR, j = k % NR;
+    float total = 0.0f;
+    for (uint g = 0; g < G; ++g) { total += part[(t * NR + j) * G + g]; }
+    total /= float(HC);
+    float gate = 1.0f / (1.0f + metal::exp(-total));
+    if (j < R) {
+        low[t * R + j] = total * gate;
+    } else {
+        inject[t * HC + (j - R)] = static_cast<OutT>(2.0f * gate);
+    }
+"""
+
+# up, CC columns to a threadgroup and the low-rank activations in its memory; a row's L partial sums are added
+# through threadgroup memory in the order `_UP`'s shuffles add them (lane 0, 1, ...)
+_UP_WIDE = """
+    uint tid = thread_position_in_threadgroup.x;
+    uint cc = tid / (HC * L);
+    uint lane = tid % (HC * L);
+    uint c = threadgroup_position_in_grid.x * CC + cc;
+    uint s = lane / L;
+    uint part = lane % L;
+    uint at = s * D + c;
+    uint row_of = cc * HC + s;
+    threadgroup float lows[T * R];
+    threadgroup float shared[CC * HC * T];
+    threadgroup float accs[CC * HC * T * L];
+    for (uint k = tid; k < T * R; k += CC * HC * L) { lows[k] = low[k]; }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    auto row = up + at * R + part * (R / L);
+    half w[R / L];
+    for (uint r = 0; r < R / L; ++r) { w[r] = row[r]; }
+    for (uint t = 0; t < T; ++t) {
+        float acc = 0.0f;
+        for (uint r = 0; r < R / L; ++r) { acc += float(w[r]) * lows[t * R + part * (R / L) + r]; }
+        accs[(row_of * T + t) * L + part] = acc;
+    }
+    simdgroup_barrier(mem_flags::mem_threadgroup);  // a row's L lanes are in one simdgroup
+    for (uint t = part; t < T; t += L) {
+        float gate = accs[(row_of * T + t) * L];
+        for (uint k = 1; k < L; ++k) { gate += accs[(row_of * T + t) * L + k]; }
+        shared[row_of * T + t] = normed[t * HD + at] / (1.0f + metal::exp(-gate));
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (lane == 0) {
+        for (uint t = 0; t < T; ++t) {
+            float mix = 0.0f;
+            for (uint k = 0; k < HC; ++k) { mix += shared[(cc * HC + k) * T + t]; }
+            mixed[t * D + c] = static_cast<OutT>(mix / float(HC));
+        }
+    }
+"""
+
+WIDE_FROM, WIDE_UPTO = 6, 16  # the windows that take the wide kernels
+THREADGROUP_MEMORY = 32768
+SG, RB = 8, 32  # down: simdgroups to a threadgroup, rows to a block
+
+
+def _wide_kernel_set(rank: int, wide: int, d: int, hc: int, tokens: int, n_inject: int):
+    """The wide kernels for this window, or None where its arrays would not fit a threadgroup's memory."""
+    key = ("wide", rank, wide, d, hc, tokens, n_inject)
+    if key not in _kernels:
+        g, lanes = _split(wide // 32, 32), _split(rank, 32)
+        per = wide // (32 * g)
+        cc = next((cc for cc in (4, 2, 1) if d % cc == 0 and cc * hc * lanes <= 1024
+                   and 4 * tokens * (rank + cc * hc * (1 + lanes)) <= THREADGROUP_MEMORY), None)
+        if cc is None or 4 * tokens * 32 * per > THREADGROUP_MEMORY or per > 32 or rank // lanes > 32:
+            _kernels[key] = None
+            return None
+        nr = rank + n_inject
+        header = (f"constant uint R = {rank};\nconstant uint HD = {wide};\nconstant uint D = {d};\n"
+                  f"constant uint HC = {hc};\nconstant uint T = {tokens};\nconstant uint G = {g};\n"
+                  f"constant uint PER = {per};\nconstant uint SLICE = {32 * per};\nconstant uint NR = {nr};\n"
+                  f"constant uint SG = {SG};\nconstant uint RB = {RB};\nconstant uint L = {lanes};\n"
+                  f"constant uint CC = {cc};\n")
+        _kernels[key] = (
+            mx.fast.metal_kernel(name=f"hc_down_part_{tokens}", input_names=["normed", "down", "inject_w"],
+                                 output_names=["part"], source=_DOWN_PART, header=header),
+            mx.fast.metal_kernel(name=f"hc_down_sum_{tokens}", input_names=["part"],
+                                 output_names=["low", "inject"], source=_DOWN_SUM, header=header),
+            mx.fast.metal_kernel(name=f"hc_up_wide_{tokens}", input_names=["normed", "up", "low"],
+                                 output_names=["mixed"], source=_UP_WIDE, header=header),
+            (g, lanes, nr, cc))
+    return _kernels[key]
+
+
 class FusedResidual:
     """A `GatedResidual` of the model, with the write that precedes it."""
 
@@ -170,12 +298,27 @@ class FusedResidual:
             inputs=[before.reshape(T, -1), out.reshape(T, d), inject_in.reshape(T, self.hc), self.norm],
             template=[("OutT", dtype)], grid=(32 * ng * self.hc * T, 1, 1), threadgroup=(32 * ng, 1, 1),
             output_shapes=[(T, self.wide), (T, self.wide)], output_dtypes=[dtype, mx.float32])
-        low, inject = down(
-            inputs=[normed, self.down, self.inject_w if n_inject else self.down], template=[("OutT", dtype)],
-            grid=(32 * g * (self.rank + n_inject), 1, 1), threadgroup=(32 * g, 1, 1),
-            output_shapes=[(T, self.rank), (T, self.hc)], output_dtypes=[mx.float32, dtype])
-        (mixed,) = up(inputs=[normed, self.up, low], template=[("OutT", dtype)], grid=(self.hc * lanes * d, 1, 1),
-                      threadgroup=(self.hc * lanes, 1, 1), output_shapes=[(T, d)], output_dtypes=[dtype])
+        inject_w = self.inject_w if n_inject else self.down
+        wide = (_wide_kernel_set(self.rank, self.wide, d, self.hc, T, n_inject)
+                if WIDE_FROM <= T <= WIDE_UPTO and self.down.dtype == mx.float16 and self.up.dtype == mx.float16
+                else None)
+        if wide is None:
+            low, inject = down(
+                inputs=[normed, self.down, inject_w], template=[("OutT", dtype)],
+                grid=(32 * g * (self.rank + n_inject), 1, 1), threadgroup=(32 * g, 1, 1),
+                output_shapes=[(T, self.rank), (T, self.hc)], output_dtypes=[mx.float32, dtype])
+            (mixed,) = up(inputs=[normed, self.up, low], template=[("OutT", dtype)], grid=(self.hc * lanes * d, 1, 1),
+                          threadgroup=(self.hc * lanes, 1, 1), output_shapes=[(T, d)], output_dtypes=[dtype])
+        else:
+            down_part, down_sum, up_wide, (g, lanes, nr, cc) = wide
+            (part,) = down_part(inputs=[normed, self.down, inject_w], grid=(32 * SG * g * -(-nr // RB), 1, 1),
+                                threadgroup=(32 * SG, 1, 1), output_shapes=[(T * nr * g,)], output_dtypes=[mx.float32])
+            low, inject = down_sum(inputs=[part], template=[("OutT", dtype)], grid=(-(-T * nr // 64) * 64, 1, 1),
+                                   threadgroup=(64, 1, 1), output_shapes=[(T, self.rank), (T, self.hc)],
+                                   output_dtypes=[mx.float32, dtype])
+            (mixed,) = up_wide(inputs=[normed, self.up, low], template=[("OutT", dtype)],
+                               grid=(self.hc * lanes * d, 1, 1), threadgroup=(cc * self.hc * lanes, 1, 1),
+                               output_shapes=[(T, d)], output_dtypes=[dtype])
         return mixed[None], residual[None], (inject[None] if n_inject else inject_in)
 
 
@@ -250,7 +393,7 @@ def install_routers(layers) -> None:
 
 
 class PlainResidual:
-    """The same call in the model's own operations: what a prompt uses, and a window of more than six tokens."""
+    """The same call in the model's own operations: what a prompt uses, longer than a window."""
 
     def __init__(self, gr):
         self.gr = gr

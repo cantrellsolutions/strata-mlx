@@ -69,6 +69,24 @@ def test_a_token_gets_the_same_bits_alone_and_in_a_window(dtype):
 
 
 
+@pytest.mark.parametrize("tokens", [6, 8, 11, 16])
+@pytest.mark.parametrize("combine", [True, False])
+def test_the_wide_kernels_give_the_bits_of_the_narrow_ones(monkeypatch, tokens, combine):
+    from strata_mlx import fused
+
+    mx.random.seed(tokens)
+    gr = qwen4_exp.GatedResidual(ARGS, use_combine=combine)
+    gr.hc_norm.weight = 1 + 0.2 * mx.random.normal(gr.hc_norm.weight.shape)
+    gr.set_dtype(mx.float16)
+    before = mx.random.normal((1, tokens, 4 * 96)).astype(mx.float16)
+    out = mx.random.normal((1, tokens, 96)).astype(mx.float16)
+    inject_in = (2 * mx.random.uniform(shape=(1, tokens, 4))).astype(mx.float16)
+    assert fused._wide_kernel_set(24, 4 * 96, 96, 4, tokens, 4 if combine else 0) is not None
+    wide = FusedResidual(gr)(before, out, inject_in)
+    monkeypatch.setattr(fused, "WIDE_FROM", 99)
+    narrow = FusedResidual(gr)(before, out, inject_in)
+    assert all(mx.array_equal(a, b).item() for a, b in zip(wide, narrow))
+
 @pytest.mark.parametrize("tokens", [1, 3, 8, 20])
 def test_a_router_product_in_float32_from_float16_weights(tokens):
     import mlx.nn as nn

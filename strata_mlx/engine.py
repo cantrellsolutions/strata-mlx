@@ -144,7 +144,7 @@ class Engine:
 
     def __init__(self, model: qwen4_exp.Model, mtp: Mtp | None = None, drafts: int = MAX_WINDOW - 1,
                  lookup: bool = False, chunk: int = 2048, checkpoints: int = 8, turn_token: int = TURN_TOKEN,
-                 fused: bool = True, fuse_upto: int = 6, as_sure: bool = True, guess_rows: bool = True,
+                 fused: bool = True, fuse_upto: int = MAX_WINDOW, as_sure: bool = True, guess_rows: bool = True,
                  root: int = ROOT, piece: int = bylayer.PIECE, ahead: bool = True):
         """`drafts`: the most guesses the head makes for a pass. With `as_sure` it makes as many of them as it
         is sure enough of (drafting.py); without, always that many. With `guess_rows` a guess is worked out
