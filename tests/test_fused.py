@@ -177,3 +177,21 @@ def test_a_delta_net_layers_output_norm_in_one_kernel_is_mlxs_bits(tokens):
         z = (2 * mx.random.normal((1, tokens, 6, 128))).astype(mx.float16)
         got = gated_norm(norm, x, z)
         assert mx.array_equal(got, norm(x, z)).item() and mx.array_equal(got, mx.compile(norm)(x, z)).item()
+
+
+@pytest.mark.parametrize("tokens", [1, 4, 8, 16])
+@pytest.mark.parametrize("head_dim, rot", [(256, 64), (128, 128)])
+def test_q_and_k_norm_and_rope_in_one_kernel_are_mlxs_bits(tokens, head_dim, rot):
+    from strata_mlx.attention import qk_rope
+
+    norm = qwen4_exp.RMSNorm(head_dim, eps=1e-6)
+    mx.random.seed(tokens + head_dim)
+    norm.weight = (1 + 0.2 * mx.random.normal((head_dim,))).astype(mx.float16)
+    rope = qwen4_exp.RotaryEmbedding(rot, 10000.0)
+    for offset in (0, 37, 5000):
+        proj = mx.random.normal((1, tokens, 4 * 2 * head_dim)).astype(mx.float16)  # four heads, each with its gate
+        q, _ = mx.split(proj.reshape(1, tokens, 4, -1), 2, axis=-1)
+        cos, sin = rope(qwen4_exp._positions(offset, tokens))
+        want = qwen4_exp._rope_partial(norm(q).transpose(0, 2, 1, 3), cos[:, None], sin[:, None])
+        got = qk_rope(proj, norm, cos[0].astype(mx.float16), sin[0].astype(mx.float16), 4, head_dim, 2 * head_dim)
+        assert mx.array_equal(got, want).item()

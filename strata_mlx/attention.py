@@ -165,6 +165,66 @@ def _gathered(q: mx.array, k: mx.array, v: mx.array, cells: mx.array, real: mx.a
     return out[0] if len(out) == 1 else mx.concatenate(out, axis=1)
 
 
+# q or k of a window: the rms norm of each head with its weight, then rope on the first dims, as MLX's rms_norm and
+# the model's _rope_partial work them out (each product and sum of rope rounded to half, as MLX's operations
+# outside a compiled function are), in one kernel and heads first. In MLX's operations they are a norm, a negation,
+# two joins, two products and a sum, each waiting on the one before. On an M5 Ultra, side by side in one process,
+# a pass of 1 / 4 / 8 tokens with Q2_0 is 0.28 / 0.18 / 0.36 ms shorter.
+_QK_ROPE = """
+    #pragma clang fp contract(off)
+    uint lid = thread_position_in_threadgroup.x;
+    uint h = threadgroup_position_in_grid.x;
+    uint t = threadgroup_position_in_grid.y;
+    uint sg = lid / 32, lane = lid % 32;
+    threadgroup float sums[32];
+    threadgroup T normed[D];
+    const device T* x = inp + (t * H + h) * STRIDE;
+    float xs[4];
+    float acc = 0.0f;
+    for (uint i = 0; i < 4; ++i) { xs[i] = x[lid * 4 + i]; acc += xs[i] * xs[i]; }
+    acc = simd_sum(acc);
+    if (sg == 0) { sums[lane] = 0; }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    if (lane == 0) { sums[sg] = acc; }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    float inv = metal::precise::rsqrt(simd_sum(sums[lane]) / D + EPS);
+    for (uint i = 0; i < 4; ++i) { normed[lid * 4 + i] = w[lid * 4 + i] * static_cast<T>(xs[i] * inv); }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    device T* o = out + (h * threadgroups_per_grid.y + t) * D;  // S, read here: one kernel for every window
+    for (uint i = 0; i < 4; ++i) {
+        uint j = lid * 4 + i;
+        T v = normed[j];
+        if (j < ROT) {
+            T c = cosv[t * ROT + j], s = sinv[t * ROT + j];
+            T other = j < ROT / 2 ? -normed[j + ROT / 2] : normed[j - ROT / 2];
+            T a = v * c;
+            T b = other * s;
+            v = a + b;
+        }
+        o[j] = v;
+    }
+"""
+QK_ROPE_UPTO = 16  # tokens
+_kernels = {}
+
+
+def qk_rope(x: mx.array, norm, cos: mx.array, sin: mx.array, heads: int, head_dim: int, stride: int) -> mx.array:
+    """x (1, S, heads * stride), each head's head_dim values first; cos, sin (S, rot) float16 -> (1, heads, S,
+    head_dim)."""
+    S = x.shape[1]
+    rot = cos.shape[-1]
+    key = (heads, head_dim, stride, rot, norm.eps)
+    if key not in _kernels:
+        header = (f"constant uint H = {heads};\nconstant uint D = {head_dim};\nconstant uint STRIDE = {stride};\n"
+                  f"constant uint ROT = {rot};\nconstant float EPS = {norm.eps!r};\n")
+        _kernels[key] = mx.fast.metal_kernel(name="qk_rope", input_names=["inp", "w", "cosv", "sinv"],
+                                             output_names=["out"], source=_QK_ROPE, header=header)
+    (out,) = _kernels[key](inputs=[x, norm.weight, cos, sin], template=[("T", x.dtype)],
+                           grid=(head_dim // 4 * heads, S, 1), threadgroup=(head_dim // 4, 1, 1),
+                           output_shapes=[(1, heads, S, head_dim)], output_dtypes=[x.dtype])
+    return out
+
+
 class Attention(qwen4_exp.Attention):
     def __call__(self, x, rope, mask, cache, idx_cache) -> mx.array:
         B, S, _ = x.shape
@@ -173,12 +233,21 @@ class Attention(qwen4_exp.Attention):
         offset = cache.offset
         chosen = choose(self.indexer, x, rope, idx_cache, offset)
 
-        q, gate = mx.split(self.q_proj(x).reshape(1, S, self.n_heads, -1), 2, axis=-1)
-        q = self.q_norm(q).transpose(0, 2, 1, 3)
-        k = self.k_norm(self.k_proj(x).reshape(1, S, self.n_kv_heads, -1)).transpose(0, 2, 1, 3)
-        v = self.v_proj(x).reshape(1, S, self.n_kv_heads, -1).transpose(0, 2, 1, 3)
+        proj = self.q_proj(x)
         cos, sin = rope(qwen4_exp._positions(offset, S))
-        q, k = qwen4_exp._rope_partial(q, cos[:, None], sin[:, None]), qwen4_exp._rope_partial(k, cos[:, None], sin[:, None])
+        if (S <= QK_ROPE_UPTO and self.head_dim % 128 == 0 and proj.dtype == mx.float16
+                and self.q_norm.weight.dtype == mx.float16 and self.k_norm.weight.dtype == mx.float16):
+            c, s = cos[0].astype(mx.float16), sin[0].astype(mx.float16)  # as _rope_partial casts them
+            q = qk_rope(proj, self.q_norm, c, s, self.n_heads, self.head_dim, 2 * self.head_dim)
+            gate = proj.reshape(1, S, self.n_heads, -1)[..., self.head_dim :]
+            k = qk_rope(self.k_proj(x), self.k_norm, c, s, self.n_kv_heads, self.head_dim, self.head_dim)
+        else:
+            q, gate = mx.split(proj.reshape(1, S, self.n_heads, -1), 2, axis=-1)
+            q = self.q_norm(q).transpose(0, 2, 1, 3)
+            k = self.k_norm(self.k_proj(x).reshape(1, S, self.n_kv_heads, -1)).transpose(0, 2, 1, 3)
+            q = qwen4_exp._rope_partial(q, cos[:, None], sin[:, None])
+            k = qwen4_exp._rope_partial(k, cos[:, None], sin[:, None])
+        v = self.v_proj(x).reshape(1, S, self.n_kv_heads, -1).transpose(0, 2, 1, 3)
         k, v = cache.update_and_fetch(k, v)
 
         kv_len, ratio = k.shape[2], self.indexer.compress_ratio
