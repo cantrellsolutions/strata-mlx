@@ -210,3 +210,20 @@ def test_what_fits_in_tiles():
     assert tileable("Q2_0", 640, 2560) and tileable("IQ3_S", 640, 2560) and tileable("IQ4_NL", 2560, 640)
     assert not tileable("IQ3_S", 2560, 640)  # its blocks are 256 weights: a row of 640 does not end on one
     assert not tileable("Q2_0", 2, 2560)  # rows by the 64
+
+
+@pytest.mark.parametrize("pairs", [1, 10, 30])
+@pytest.mark.parametrize("rows, cols", [(256, 640), (96, 128), (40, 2048)])
+def test_the_glu_table_built_in_down_gives_the_bits_of_its_own_kernel(pairs, rows, cols):
+    from strata_mlx.blocks import lookup_down_glu, lookup_matvec, lookup_table_glu
+
+    rng = np.random.default_rng(pairs + rows)
+    blocks = rng.integers(0, 256, (EXPERTS * rows * cols // 64, 18), dtype=np.uint8)
+    blocks[:, :2] = rng.uniform(-0.05, 0.05, (len(blocks), 1)).astype("<f2").view(np.uint8)
+    down = BlockSwitchLinear(mx.array(blocks.reshape(-1)), "Q2_0", (EXPERTS, rows, cols))
+    idx = mx.array(rng.integers(0, EXPERTS, pairs).astype(np.uint32))
+    gate = mx.array(rng.standard_normal((pairs, cols)).astype(np.float16))
+    up = mx.array(rng.standard_normal((pairs, cols)).astype(np.float16))
+    got = lookup_down_glu(down, idx, gate, up)
+    assert got is not None and got.dtype == mx.float16
+    assert mx.array_equal(got, lookup_matvec(down, idx, lookup_table_glu(gate, up), 1)).item()

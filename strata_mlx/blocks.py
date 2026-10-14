@@ -649,12 +649,80 @@ def lookup_matvec(lin, idx: mx.array, table: mx.array, share: int) -> mx.array:
     return out
 
 
+# down with the table of silu(gate) * up built in each threadgroup's memory (a threadgroup is one pair's), not by
+# a kernel of its own: the same table, the same bits, one kernel fewer for the layer to wait on. On an M5 Ultra,
+# a pass of 1 / 4 / 8 / 10 tokens with Q2_0, 0.13 / 0.15 / 0.47 / 0.71 ms less (four runs alternated).
+GLU_IN_DOWN = True
+_DOWN_GLU = """
+    uint part = thread_position_in_grid.x % P;
+    uint r = thread_position_in_grid.x / P;
+    uint pair = thread_position_in_grid.y;
+    uint tid = thread_position_in_threadgroup.x;
+    threadgroup OutT tab[(COLS / 2) * 16];
+    for (uint g = tid; g < COLS / 2; g += TG) {
+        float ga = float(gate[pair * COLS + 2 * g]), gb = float(gate[pair * COLS + 2 * g + 1]);
+        float a = ga / (1.0f + metal::exp(-ga)) * float(up[pair * COLS + 2 * g]);
+        float b = gb / (1.0f + metal::exp(-gb)) * float(up[pair * COLS + 2 * g + 1]);
+        for (uint c = 0; c < 16; ++c) {
+            tab[g * 16 + c] = static_cast<OutT>((float(c & 3) - 1.0f) * a + (float(c >> 2) - 1.0f) * b);
+        }
+    }
+    threadgroup_barrier(mem_flags::mem_threadgroup);
+    const device uchar* row = blocks + (uint(idx[pair]) * ROWS + r) * ROW_BYTES;
+    float sum = 0.0f;
+    for (uint n = part; n < RUNS; n += P) {
+        const device uchar* b = row + (n / 2) * 18;
+        const device uchar* q = b + 2 + 8 * (n % 2);
+        const threadgroup OutT* t = tab + 256 * n;
+        float s = 0.0f;
+        for (uint i = 0; i < 8; ++i) {
+            uint c = q[i];
+            s += float(t[32 * i + (c & 15)]) + float(t[32 * i + 16 + (c >> 4)]);
+        }
+        sum += half_at(b) * s;
+    }
+    float total = sum;
+    for (ushort k = 1; k < P; ++k) {
+        total += simd_shuffle_xor(sum, k);
+    }
+    if (part == 0) {
+        out[pair * ROWS + r] = static_cast<OutT>(total);
+    }
+"""
+
+
+def lookup_down_glu(lin, idx: mx.array, gate: mx.array, up: mx.array) -> mx.array | None:
+    """`lookup_matvec(lin, idx, lookup_table_glu(gate, up), 1)` in one kernel, or None where the table would not
+    fit a threadgroup's memory or the rows not divide into threadgroups."""
+    pairs = idx.shape[0]
+    per_row = _threads_per_row(lin.input_dims // 32)
+    if pairs > 20:
+        per_row = min(per_row, 4)
+    width = per_row * lin.output_dims
+    tg = next((t for t in (256, 128, 64, 32) if width % t == 0), None)
+    if tg is None or lin.input_dims * 16 > 32768:  # (input / 2) * 16 float16 sums
+        return None
+    key = ("lookup_glu", lin.output_dims, lin.input_dims, per_row, tg)
+    if key not in _kernels:
+        _kernels[key] = mx.fast.metal_kernel(
+            name="q2_lookup_glu", input_names=["blocks", "idx", "gate", "up"], output_names=["out"],
+            source=_DOWN_GLU, header=_header("Q2_0", lin.output_dims, lin.input_dims, P=per_row, SHARE=1)
+            + f"constant uint TG = {tg};\n")
+    (out,) = _kernels[key](inputs=[lin.blocks, idx, gate, up], template=[("OutT", gate.dtype)],
+                           grid=(width, pairs, 1), threadgroup=(tg, 1, 1),
+                           output_shapes=[(pairs, lin.output_dims)], output_dtypes=[gate.dtype])
+    return out
+
+
 def _lookup_glu(x: mx.array, indices: mx.array, up, gate, down) -> mx.array:
     k = indices.shape[-1]
     idx = indices.reshape(-1).astype(mx.uint32)
     table = lookup_table(x.reshape(-1, x.shape[-1]))  # one for gate and up: they read the same input
-    inner = lookup_table_glu(lookup_matvec(gate, idx, table, k), lookup_matvec(up, idx, table, k))
-    return lookup_matvec(down, idx, inner, 1).reshape(*indices.shape, down.output_dims)
+    g, u = lookup_matvec(gate, idx, table, k), lookup_matvec(up, idx, table, k)
+    out = lookup_down_glu(down, idx, g, u) if GLU_IN_DOWN else None
+    if out is None:
+        out = lookup_matvec(down, idx, lookup_table_glu(g, u), 1)
+    return out.reshape(*indices.shape, down.output_dims)
 
 
 def switch_glu(x: mx.array, indices: mx.array, up, gate, down) -> mx.array:
