@@ -104,3 +104,17 @@ def test_a_router_product_in_float32_from_float16_weights(tokens):
         assert mx.array_equal(alone, got).item()
     linear.set_dtype(mx.float32)  # the exact way: MLX's own product
     assert mx.array_equal(router(x), linear(x)).item()
+
+
+@pytest.mark.parametrize("tokens", [1, 3, 8, 40])
+@pytest.mark.parametrize("ties", [False, True])
+def test_the_routers_choice_is_argpartitions(tokens, ties):
+    from strata_mlx.fused import top_k
+
+    mx.random.seed(tokens + 10 * ties)
+    for _ in range(20):
+        logits = mx.random.normal((1, tokens, 512))
+        if ties:
+            logits = mx.round(logits * 4) / 4
+        want = mx.argpartition(-logits, 9, axis=-1)[..., :10]
+        assert mx.array_equal(top_k(logits, 10), want).item()
