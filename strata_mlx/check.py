@@ -33,7 +33,7 @@ from pathlib import Path
 
 from .dense import kept_floats, spared
 from .gguf import shards
-from .paged import DENSE_AS_ARRAYS, DRAFT_HEAD, LEAST, SYSTEM, WORKING, all_fit, machine_memory, sizes
+from .paged import DENSE_AS_ARRAYS, DRAFT_HEAD, LEAST, WORKING, all_fit, left_to_system, machine_for, machine_memory, sizes
 
 GB = 2**30
 HEAD_ON_DISK = 4.9e9  # the draft head's 31 tensors, as tools/mtp_fetch.py leaves them
@@ -76,10 +76,11 @@ class Plan:
 
 
 def plan(m: Model, machine: int) -> Plan:
-    fixed = int(SYSTEM + WORKING + DENSE_AS_ARRAYS * m.dense + DRAFT_HEAD)
+    fixed = int(WORKING + DENSE_AS_ARRAYS * m.dense + DRAFT_HEAD)  # besides what macOS is left
     paged = fixed - m.spared
     return Plan(all_fit(machine, m.experts, m.dense), all_fit(machine, m.experts, m.dense, m.floats),
-                fixed + m.experts + m.floats, machine - paged, paged + LEAST)
+                machine_for(fixed + m.experts + m.floats), machine - left_to_system(machine) - paged,
+                machine_for(paged + LEAST))
 
 
 def lines(m: Model, machine: int) -> list:
@@ -107,7 +108,7 @@ def report(models: list, machine: int, this_mac: bool = False, parked: int = 0) 
     out = [f"{'This Mac has' if this_mac else 'A Mac with'} {machine / GB:g} GB of memory", ""]
     for m in models:
         out += [*lines(m, machine - parked), ""]  # parked conversations are memory the model cannot have
-    out += [f"Counted: {SYSTEM / GB:.1f} GB left to macOS and other programs, {WORKING / GB:.1f} GB of working memory, "
+    out += [f"Counted: {left_to_system(machine) / GB:.1f} GB left to macOS and other programs (a quarter, 8.5 GB at least), {WORKING / GB:.1f} GB of working memory, "
             f"the draft head ({DRAFT_HEAD / GB:.1f} GB)"
             + (f", {parked / GB:.1f} GB of parked conversations (--conversation-cache-mib)." if parked else "."),
             f"Not counted: the conversation, {CACHES / 1e3:.0f} KB a token (1 GB for {GB / CACHES / 1e3:.0f},000 tokens).",

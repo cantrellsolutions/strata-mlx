@@ -232,7 +232,14 @@ machine, one run a row. A 16 GB Mac may well do with less than 8.5 GB and is cut
 evidence of its own; `--expert-memory` sets the experts' share by hand. The speeds given for 16, 24 and 32 GB machines were
 measured with 3.3, 11.9 and 20.5 GB of experts and not again since.
 
-**The next step.** Any run on a real 16, 24 or 48 GB Mac, and the 32 GB machine with the new default.
+**A 48 GB Mac** (an M4 Pro, Q2_0, [reported on X](https://x.com/yuanhao/status/2110334086426337592), `9f37174`):
+with the 30.1 GB of experts 8.5 GB left it, 4.98 GiB swapped out as it started and the run was stopped; capped
+at 24 GB it swapped nothing new, and Strata's Metal engine, which chose 25.6 GB there, did not either. So macOS
+and the rest are left a quarter of the memory now, 8.5 GB at least: the same for 32 GB, 12.9 GB for 48 (26.1 GiB
+of Q2_0's experts, 82%), 17.2 for 64 (IQ3_S 76% where 93%). Two machines; the 64 GB one, which did not swap with
+93% of IQ3_S, may now be given less than it could take.
+
+**The next step.** Any run on a real 16, 24 or 64 GB Mac with the quarter, and the 48 GB machine with it.
 
 **Since** (the reporter's two runs of the new default, `2f9d1ab`). With nothing else open it is the 16 GB row:
 24.8-28.7 tok/s, 0.89 GB swapped. With apps open it swapped 16.8 GB and wrote at 10.8-24.7: that run began

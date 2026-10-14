@@ -928,3 +928,13 @@ Four commits, taken as they were, each passing on its own (385, 393, 394, 414 te
 
 It also corrected what this file and ISSUES.md said of one chunk: it does not read every layer whole, only
 those where it uses 384 or more of the 512 experts.
+
+### A quarter of the memory left to macOS
+
+A 48 GB M4 Pro ran Q2_0 against Strata's own Metal engine ([on X](https://x.com/yuanhao/status/2110334086426337592),
+`9f37174`, three prompts of 128 tokens, once each, MTP off there and on here): 25.6-30.3 tok/s there, 23.6-34.1
+here with the experts capped at 24 GB. Uncapped, the 30.1 GB that 8.5 GB left to macOS gave them swapped 4.98 GiB
+out as it started. What macOS and other programs hold grows with the machine, so they are left a quarter of its
+memory, 8.5 GB at least (`paged.left_to_system`): the 32 GB Air of issue 6 is left what it was, the 48 GB machine
+12.9 GB (26.1 GiB of experts, 82%, near the 25.6 Strata chose), a 64 GB one 17.2 (IQ3_S 76%, where 93% did not swap
+on the M5 Pro of #8), and Q2_0 is held whole from 58 GB where it was from 51, IQ3_S from 80 where 66. Two machines.

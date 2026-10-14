@@ -48,7 +48,11 @@ SEPARATE_UPTO = 80  # pairs up to which each brings its own arrays to the kernel
 # residuals, and two layers' experts where one was, the one computed and the one read ahead. Measured (e40) at
 # the peak above rest, against chunk by chunk: 3.90 GB and 2.82-3.03 for 8,192 tokens, 5.00 and 3.72 for 32,768.
 # So the working memory is 5 GB where it was 4.
-SYSTEM, WORKING = int(8.5e9), int(5.0e9)
+# A 48 GB M4 Pro was heard from next (Q2_0): with the 30.1 GB of experts 8.5 GB left it, it swapped 5 GB out as it
+# started; capped at 24 it did not, and Strata's own Metal engine took 25.6 there. What macOS and the rest hold
+# grows with the machine, so they are left a quarter of its memory, and 8.5 GB at least: the 32 GB Air's 8.5 is
+# its quarter, and the 48 GB machine's 12.9 leaves the experts 26.1 GiB where 30.1. Two machines.
+SYSTEM, SHARE, WORKING = int(8.5e9), 0.25, int(5.0e9)
 DRAFT_HEAD = int(1.6e9)
 # The dense tensors as MLX's arrays take this many times their size in the file: several are held at 8 bits. So a
 # machine that holds the model whole has them. One that reads experts from the SSD keeps two of those types as
@@ -56,6 +60,16 @@ DRAFT_HEAD = int(1.6e9)
 # itself to what is loaded (`fit`), and `check.py` counts it.
 DENSE_AS_ARRAYS = 1.6
 LEAST = int(0.5e9)  # of experts in memory, however little is left for them
+
+
+def left_to_system(machine: int) -> int:
+    """What a machine of that much memory leaves macOS and other programs, in bytes."""
+    return max(SYSTEM, int(SHARE * machine))
+
+
+def machine_for(rest: int) -> int:
+    """The memory of the smallest machine that has `rest` bytes besides what it leaves macOS."""
+    return max(rest + SYSTEM, int(rest / (1 - SHARE)) + 1)
 
 
 def machine_memory() -> int:
@@ -85,7 +99,7 @@ def sizes(files: list) -> tuple:
 def all_fit(machine: int, experts: int, dense: int, floats: int = 0) -> bool:
     """Whether a machine of that much memory holds the whole model, sizes as in the file; with `floats`, and the
     weights of its Q6_K layers as floats beside it, kept for prompts (dense.ScaledLinear, #3)."""
-    return machine - SYSTEM - WORKING >= experts + DENSE_AS_ARRAYS * dense + DRAFT_HEAD + floats
+    return machine - left_to_system(machine) - WORKING >= experts + DENSE_AS_ARRAYS * dense + DRAFT_HEAD + floats
 
 
 class ExpertStore:
@@ -120,7 +134,7 @@ class ExpertStore:
         Counted before loading, not now: loading reads the model's files, and their pages, 9 GB of them on
         that machine, are file cache for the next twenty seconds."""
         loaded = mx.get_active_memory() - self.held
-        self.budget = machine - SYSTEM - WORKING - loaded
+        self.budget = machine - left_to_system(machine) - WORKING - loaded
         if available is not None:
             self.budget = min(self.budget, available - loaded - WORKING)
         self.budget = max(LEAST, self.budget)

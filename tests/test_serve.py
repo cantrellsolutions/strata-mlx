@@ -245,7 +245,7 @@ def test_what_is_left_of_a_machines_memory_goes_to_the_experts():
     assert not paged.all_fit(64 * gib, q2_experts, q2_dense, 20 * gib)  # and the floats kept for prompts
     store = paged.ExpertStore(0)
     held = mx.get_active_memory()
-    assert store.fit(32 * gib) == 32 * gib - paged.SYSTEM - paged.WORKING - held
+    assert store.fit(32 * gib) == 32 * gib - paged.left_to_system(32 * gib) - paged.WORKING - held
     # and no more than what the machine had free or in its file cache before anything was loaded, less what is
     # loaded and the working memory (#6)
     ruled = store.budget

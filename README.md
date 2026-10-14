@@ -98,7 +98,7 @@ That is its owner's report as it was given: which prompts, how long, and with wh
 the IQ3_XXS file has not been run by this engine's author.
 
 **On an M5 Pro with 64 GB**, its owner's runs ([issue 8](https://github.com/yibie/strata-mlx/issues/8)), where
-the IQ3_S file is read from the SSD in part (93% of its experts in memory by the rule) and Q2_0 is held whole:
+the IQ3_S file is read from the SSD in part (93% of its experts in memory by the rule then; 76% now, below) and Q2_0 is held whole:
 
 | | IQ3_S | Q2_0 |
 | :--- | ---: | ---: |
@@ -110,7 +110,7 @@ the IQ3_S file is read from the SSD in part (93% of its experts in memory by the
 All 27 turns after an interruption kept the conversation's facts, and each prompt gave the same tokens whichever
 way it was read. It also shows what is still slow there: with IQ3_S a prompt of 1,180 tokens was read at 61-67
 tok/s and answers came at 17-44: a chunk read a layer whole from the disk wherever it used 384 or more of its
-512 experts, 30-31 layers of 48 for a prompt of code, the 93% that memory holds with the rest. Since
+512 experts, 30-31 layers of 48 for a prompt of code, the 93% that memory then held with the rest. Since
 [pull request 7](https://github.com/yibie/strata-mlx/pull/7) it reads only what memory lacks: as a 64 GB machine
 with IQ3_S, that prompt's 32 GB read became 1.4 and its 7.2-8.0 s became 3.3-3.9 (on an M5 Ultra, its author's
 measurement; [issue 4](https://github.com/yibie/strata-mlx/issues/4)).
@@ -149,20 +149,24 @@ By the same arithmetic the engine starts with:
 | :--- | :--- | :--- |
 | 16 GB | too small | too small |
 | 24 GB | 19% of the experts in memory | 8% of the experts in memory |
-| 32 GB | 45% of the experts in memory | 25% of the experts in memory |
-| 36 GB | 57% of the experts in memory | 34% of the experts in memory |
-| 48 GB | 95% of the experts in memory | 59% of the experts in memory |
-| 64 GB | whole | 93% of the experts in memory |
+| 32 GB | 44% of the experts in memory | 25% of the experts in memory |
+| 36 GB | 54% of the experts in memory | 31% of the experts in memory |
+| 48 GB | 82% of the experts in memory | 51% of the experts in memory |
+| 64 GB | whole | 76% of the experts in memory |
 | 96 GB and more | whole | whole |
 
 "Whole" is the path the speeds under [Measured](#measured) are for, on an M4 Max; other chips have not been
 run. Where only part of the experts is in memory the rest is read from the SSD as tokens ask for it, which is
 the slow path above. IQ3_S has been run that way on one machine, a 64 GB M5 Pro (above), and not by this engine's author. This table is arithmetic, not a test: the only
-Mac its author has run the engine on has 128 GB. It leaves 7.9 GB to macOS and other programs and does not count the conversation itself, about 1 GB for 36,000 tokens. That figure is
-from the one small Mac the engine has been reported from, a MacBook Air M5 with 32 GB: with 4.2 GB left to
-macOS it swapped, and with what the table now gives it it hardly did and was about twice as fast
-([issue 6](https://github.com/yibie/strata-mlx/issues/6)). Other sizes are not known: a 16 GB Mac may do with
-less than is left here, and `--expert-memory GB` sets the experts' share by hand.
+Mac its author has run the engine on has 128 GB. It leaves a quarter of the memory to macOS and other programs,
+8.5 GB at least, and does not count the conversation itself, about 1 GB for 36,000 tokens. That is from two
+machines that swapped with less: a MacBook Air M5 with 32 GB, which with 4.2 GB left to macOS swapped and with
+8.5 hardly did and was about twice as fast ([issue 6](https://github.com/yibie/strata-mlx/issues/6)); and an
+M4 Pro with 48 GB, which with 30.1 GB of Q2_0's experts swapped 5 GB out as it started and with 24 did not
+(Strata's own Metal engine took 25.6 there; [@yuanhao](https://x.com/yuanhao/status/2110334086426337592)).
+Other sizes are not known: a 16 GB Mac may do with less than is left here, and a 64 GB one, which by the old
+rule kept 93% of IQ3_S's experts and did not swap, may be given less than it could take. `--expert-memory GB`
+sets the experts' share by hand, and `--expert-memory available` holds it to what was free when it started.
 
 ## Running it
 

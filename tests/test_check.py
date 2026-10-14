@@ -15,7 +15,7 @@ Q2, IQ3S = KNOWN
 @pytest.mark.parametrize("model, gb, what", [
     (Q2, 8, "too small"), (Q2, 16, "too small"), (Q2, 32, "in part"), (Q2, 48, "in part"),
     (Q2, 64, "held whole in memory:"), (Q2, 128, "held whole in memory:"), (IQ3S, 16, "too small"),
-    (IQ3S, 48, "in part"), (IQ3S, 64, "in part"), (IQ3S, 68, "held whole in memory, without"),
+    (IQ3S, 48, "in part"), (IQ3S, 64, "in part"), (IQ3S, 81, "held whole in memory, without"),
     (IQ3S, 96, "held whole in memory:")])
 def test_what_a_mac_of_some_memory_does_with_each_file(model, gb, what):
     assert what in lines(model, gb * GB)[1]
@@ -30,24 +30,26 @@ def test_whole_is_what_the_engine_decides(model):
 def test_the_experts_kept_are_about_what_a_start_measured():
     # ROADMAP: Q2_0 with the draft head, started as a machine of 16, 24 and 32 GB, gave its experts this much
     # (1.5, 10.1 and 18.7 GB before its dense tensors of two types stayed blocks). macOS was left 4.5 GB then and
-    # is left 8.5 now (#6), and the working memory was 4 GB and is 5 (prompts read a layer at a time), so the
-    # experts get 5.0 GB less: on a 16 GB machine less than the least there is
+    # is left 8.5 now (#6) or a quarter of the memory where that is more, and the working memory was 4 GB and is 5
+    # (prompts read a layer at a time), so the experts get 5.0 GB less and that quarter's excess: on a 16 GB machine
+    # less than the least there is
     for gb, measured in ((16, 3.3e9), (24, 11.9e9), (32, 20.5e9)):
-        assert abs(plan(Q2, gb * GB).kept - (measured - 5.0e9)) < 0.4e9
+        excess = paged.left_to_system(gb * GB) - paged.SYSTEM
+        assert abs(plan(Q2, gb * GB).kept - (measured - 5.0e9 - excess)) < 0.4e9
     assert plan(Q2, 16 * GB).kept < paged.LEAST <= plan(Q2, 24 * GB).kept
     assert Q2.spared == pytest.approx(1.74e9, rel=0.01)  # each of those starts gave the experts that much more
 
 
 def test_floats_for_prompts_are_kept_only_where_they_fit():
-    tight = plan(IQ3S, 68 * GB)  # no Mac has 68 GB: the rule holds the file whole from 67.7, with its floats 70.7
-    assert tight.whole and not tight.floats and tight.needs - 68 * GB == pytest.approx(2.7 * GB, abs=0.05 * GB)
-    assert "a tenth slower" in "\n".join(lines(IQ3S, 68 * GB))
+    tight = plan(IQ3S, 81 * GB)  # no Mac has 81 GB: the rule holds the file whole from 80, with its floats 83.7
+    assert tight.whole and not tight.floats and tight.needs - 81 * GB == pytest.approx(2.7 * GB, abs=0.05 * GB)
+    assert "a tenth slower" in "\n".join(lines(IQ3S, 81 * GB))
     for model in KNOWN:
         for gb in range(8, 130):
             p = plan(model, gb * GB)
             assert p.floats == (p.needs <= gb * GB) and (p.whole or not p.floats)
     assert not plan(IQ3S, 64 * GB).whole and plan(IQ3S, 96 * GB).needs < 96 * GB
-    assert plan(Q2, 64 * GB).needs == pytest.approx(51.3 * GB, abs=0.05 * GB)
+    assert plan(Q2, 64 * GB).needs == pytest.approx(57.9 * GB, abs=0.05 * GB)
     assert "not run this way yet" in "\n".join(lines(IQ3S, 48 * GB))
     assert "not run this way yet" not in "\n".join(lines(Q2, 24 * GB))
 
