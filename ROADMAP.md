@@ -893,10 +893,38 @@ measured by this engine's author.
 - **What is slow there.** IQ3_S through `bench/compare_servers.py`: answers at 26-28 (prose), 40-42, 40-44 and
   about 17 (edit) tok/s, and the 1,180-token prompt at 61-67 tok/s. A first request of 8,211 tokens took 30.2 s
   to its first token and one of 32,786 took 132.1 (Q2_0, held whole: 10.4 and 65.1). A prompt of one chunk
-  reads every layer whole though memory holds 93% of it, and an answer's tokens wait for their router at every
+  read a layer whole wherever a chunk used 384 or more of its experts (30-31 layers of 48 for code), though
+  memory held 93% of it; pull request 7 reads only what memory lacks since, below. And an answer's tokens wait for their router at every
   layer (22 tok/s where 43, measured here with every expert resident): the machine that just does not hold a
   file whole pays for the way of running as much as for the disk.
 - **Memory.** The IQ3_XXS, which the rule holds whole, swapped 7.4 GB out in a run without parked
   conversations; Q2_0 1.7 GB in the 8K and 32K run. System-wide counts, the start included, no cause drawn.
 - 385 of 385 tests, with `MLX_ENABLE_TF32` unset and set. A short sum was answered wrongly by every file and
   by their llama.cpp with thinking off: the model's, not an engine's.
+
+### Pull request 7 (vendyluo, measured on an M5 Ultra with 96 GB)
+
+Four commits, taken as they were, each passing on its own (385, 393, 394, 414 tests):
+
+- **Issue 5:** the benchmarks that ask for float32 turn MLX's reduced precision off as the server does.
+- **Issue 1, a short prompt after a rest.** Unwired, the GPU lets go of the model's arrays after about two
+  seconds of nothing and pieces then compute at half speed or less; after about four it sleeps and the first
+  work waits 250-320 ms. Wired and left alone is the slowest of all: the first work waits 250-380 ms, as if the
+  arrays were made resident again. So for `--keep-awake` seconds (600) the GPU is given an addition a second
+  and the arrays are wired; when the window ends they are let go of, and wired again once the model has run
+  for the next request, 10-30 ms after its DONE (`serve.KeepAwake`). Here, Q2_0 through the server with 8 s
+  between requests, in the order main, it, it, main: prompts of 27-49 tokens 148-215 ms where 618-835, 340
+  tokens 692-751 where 832-934, 1,180 tokens 1,829-1,874 where 2,113-2,630; answers no slower. Idle, the
+  addition cost the GPU a median of 12 mW there (powermetrics, ten minutes); a laptop's battery not measured.
+  Not done: `--wired auto`, wiring only with room to spare, which a 64 GB machine wired near its
+  recommended working set would want.
+- **Issue 3:** the floats kept for prompts are counted, and kept only where the model and they fit.
+- **Issue 4:** a layer read whole takes from memory what memory holds and reads the rest, into arrays made
+  beforehand on the thread that runs MLX; a read ahead calls nothing of MLX on its own. As a 64 GB machine with
+  IQ3_S (48.4 of 50.3 GB of experts in memory), files dropped, the 1,180-token prompt read 1.4 GB where it read
+  32.1-33.3, in 3.3-3.9 s where 7.2-8.0. As a 32 GB machine with Q2_0, 8,192 tokens: 20.8 GB where 36.0, about
+  the same time on that 14 GB/s disk. The tests hold half of every layer in memory and find the state and the
+  answer the same bit for bit, each way of reading.
+
+It also corrected what this file and ISSUES.md said of one chunk: it does not read every layer whole, only
+those where it uses 384 or more of the 512 experts.

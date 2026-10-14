@@ -109,8 +109,25 @@ the IQ3_S file is read from the SSD in part (93% of its experts in memory by the
 
 All 27 turns after an interruption kept the conversation's facts, and each prompt gave the same tokens whichever
 way it was read. It also shows what is still slow there: with IQ3_S a prompt of 1,180 tokens was read at 61-67
-tok/s and answers came at 17-44, since a prompt of one chunk still reads every layer whole from the disk, the
-93% that memory holds with the rest ([issue 4](https://github.com/yibie/strata-mlx/issues/4)).
+tok/s and answers came at 17-44: a chunk read a layer whole from the disk wherever it used 384 or more of its
+512 experts, 30-31 layers of 48 for a prompt of code, the 93% that memory holds with the rest. Since
+[pull request 7](https://github.com/yibie/strata-mlx/pull/7) it reads only what memory lacks: as a 64 GB machine
+with IQ3_S, that prompt's 32 GB read became 1.4 and its 7.2-8.0 s became 3.3-3.9 (on an M5 Ultra, its author's
+measurement; [issue 4](https://github.com/yibie/strata-mlx/issues/4)).
+
+**A short prompt after a rest** ([issue 1](https://github.com/yibie/strata-mlx/issues/1), pull request 7). For
+`--keep-awake` seconds after a request (600 by default) the engine gives the GPU a small addition a second and,
+where it holds the model whole, keeps the model's arrays wired; it takes both. Q2_0 through the server, 8 s
+between requests, time to read the prompt, on this M4 Max:
+
+| prompt | before | after |
+| :--- | ---: | ---: |
+| 27-49 tokens | 618-835 ms | 148-215 ms |
+| 340 tokens | 832-934 ms | 692-751 ms |
+| 1,180 tokens | 2,113-2,630 ms | 1,829-1,874 ms |
+
+Answers are as fast as before. Idle, the addition cost the GPU a median of 12 mW on an M5 Ultra; a laptop's
+battery has not been measured.
 
 The full account, with what was tried and did not help, is in [ROADMAP.md](ROADMAP.md) (English, as it went)
 and [docs/OPTIMIZATION_RECORD.md](docs/OPTIMIZATION_RECORD.md) (Chinese, by topic).
@@ -189,6 +206,8 @@ than the machine has free or in its file cache when the engine starts, where oth
 (run as a machine of that size would), `--guess-rows off`, `--expert-profile off`,
 `--conversation-cache-mib MiB` (park conversations that other requests interrupt, in that much memory; off by
 default, and the memory is taken from the experts' on a Mac that does not hold the model whole),
+`--keep-awake SECONDS` (how long after a request the GPU is kept awake and the arrays wired; 0 for never),
+`--wired off` (keep the GPU awake without wiring the arrays),
 `--prompt-by-layer off` (where experts are read from the SSD: read a long prompt chunk by chunk, as before),
 `--read-ahead off` (and do not read a layer's experts while the one before it is computed).
 
@@ -213,6 +232,9 @@ MIT, see [LICENSE](LICENSE). The projects named below have their own; the one fi
   as it is.
 - [llama.cpp and ggml](https://github.com/ggml-org/llama.cpp) (MIT): the GGUF format and the block types,
   whose unpacking the kernels here follow; the codebook tables come from its `gguf` package at run time.
+- [vendyluo](https://github.com/vendyluo), for pull request 7: why a short prompt after a rest was slow and
+  how to keep it fast, the floats kept for prompts counted, and a layer's experts read only where memory lacks
+  them; measured on an M5 Ultra.
 - [MLX and mlx-lm](https://github.com/ml-explore/mlx-lm) (MIT), and the port of this model to mlx-lm in
   [pull request 1788](https://github.com/ml-explore/mlx-lm/pull/1788), which this engine builds on and pins.
 - ISTA-DASLab for the GSQ-RCO files, and Qwen for the model. The model's weights have their own license and

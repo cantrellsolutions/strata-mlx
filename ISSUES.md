@@ -7,6 +7,12 @@ Problems that are known and not solved. What was tried and measured on the way t
 
 [Issue 1 on GitHub](https://github.com/yibie/strata-mlx/issues/1)
 
+**Fixed by pull request 7** (vendyluo). After a rest the GPU lets go of arrays that are not wired and, after
+about four seconds, sleeps; it takes the GPU kept awake and the arrays wired together (`serve.KeepAwake`,
+`--keep-awake`, `--wired`). On the M4 Max through the server, 8 s between requests: prompts of 27-49 tokens in
+148-215 ms where they took 618-835, 1,180 tokens in 1,829-1,874 where 2,113-2,630; answers as before. What
+follows is the issue as it was found.
+
 **What is seen.** A question of a few dozen tokens waits about half a second for the first token of its
 answer. In the comparison with llama.cpp and LM Studio (`bench/compare_servers.py`, M4 Max, tokens a second
 at which each engine reads the prompt):
@@ -70,6 +76,10 @@ only (`bench/compare_servers.py` reads it last, after four answers; a flag to ru
 ## 3. The memory rule does not count the floats kept for prompts
 
 [Issue 3 on GitHub](https://github.com/yibie/strata-mlx/issues/3)
+
+**Fixed by pull request 7** (vendyluo): the floats are counted, and kept only where the whole model and they
+fit (`load.py`, `check.py`); elsewhere they are made for each chunk, as before they were kept. What follows is
+the issue as it was found.
 
 **What is wrong.** Whether a Mac holds a file whole, and how much of its memory the experts get if it does not,
 is worked out in `strata_mlx/paged.py` (`all_fit`, `ExpertStore.fit`) from the experts, the dense weights, the
@@ -168,10 +178,14 @@ the same answer every time.
 keeps 93% of IQ3_S's experts in memory and reads the rest: the same script, 8,192 tokens, 37.85 s chunk by
 chunk, 24.9 a layer at a time, 19.1 with reads ahead, 1.98 times, the same tokens every way. And the prompt of
 one chunk, which nothing here has changed: 1,180 tokens at 61-67 tok/s through `bench/compare_servers.py`,
-some 18 s before an answer begins, on a machine that has 93% of the experts in memory. It reads each layer
-whole all the same. Reading only what memory lacks is what that machine wants most (pull request 7's fourth
-commit does it); how much it read was not measured there, so the cause is this section's and not its
-reporter's.
+some 18 s before an answer begins, on a machine that has 93% of the experts in memory. (Not "every layer
+whole", as this said at first: a chunk reads a layer whole where it uses 384 or more of its 512 experts, and
+expert by expert below that; for a prompt of code that is 30-31 layers of 48, for one of these docs 3-7.)
+
+**Since pull request 7** (vendyluo) a layer read whole takes from memory what memory holds and reads only the
+rest. As a 64 GB machine with IQ3_S, on an M5 Ultra, its author's measurement, files dropped: the 1,180-token
+prompt read 1.4 GB where it read 32.1-33.3, in 3.3-3.9 s where 7.2-8.0. As a 32 GB machine with Q2_0 it saves
+bytes more than time on that 14 GB/s disk (8,192 tokens: 20.8 GB where 36.0, medians 13.6 s against 14.7).
 
 ## 6. On a real 32 GB Mac the default leaves macOS too little memory, and it swaps
 
