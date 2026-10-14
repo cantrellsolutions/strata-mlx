@@ -97,7 +97,7 @@ tokens a second end to end (the prompt and the answer together):
 That is its owner's report as it was given: which prompts, how long, and with which settings is not known, and
 the IQ3_XXS file has not been run by this engine's author.
 
-**On an M5 Pro with 64 GB**, its owner's runs ([issue 8](https://github.com/yibie/strata-mlx/issues/8)), where
+**On an M5 Pro with 64 GB**, [@jccrypto007](https://x.com/jccrypto007)'s runs ([issue 8](https://github.com/yibie/strata-mlx/issues/8)), where
 the IQ3_S file is read from the SSD in part (93% of its experts in memory by the rule then; 76% now, below) and Q2_0 is held whole:
 
 | | IQ3_S | Q2_0 |
@@ -157,7 +157,7 @@ By the same arithmetic the engine starts with:
 
 "Whole" is the path the speeds under [Measured](#measured) are for, on an M4 Max; other chips have not been
 run. Where only part of the experts is in memory the rest is read from the SSD as tokens ask for it, which is
-the slow path above. IQ3_S has been run that way on one machine, a 64 GB M5 Pro (above), and not by this engine's author. This table is arithmetic, not a test: the only
+the slow path above. IQ3_S has been run that way on one machine, [@jccrypto007](https://x.com/jccrypto007)'s 64 GB M5 Pro (above), and not by this engine's author. This table is arithmetic, not a test: the only
 Mac its author has run the engine on has 128 GB. It leaves a quarter of the memory to macOS and other programs,
 8.5 GB at least, and does not count the conversation itself, about 1 GB for 36,000 tokens. That is from two
 machines that swapped with less: a MacBook Air M5 with 32 GB, which with 4.2 GB left to macOS swapped and with
@@ -236,6 +236,8 @@ MIT, see [LICENSE](LICENSE). The projects named below have their own; the one fi
   as it is.
 - [llama.cpp and ggml](https://github.com/ggml-org/llama.cpp) (MIT): the GGUF format and the block types,
   whose unpacking the kernels here follow; the codebook tables come from its `gguf` package at run time.
+- [@jccrypto007](https://x.com/jccrypto007), for the runs on a 64 GB M5 Pro in issue 8: parked conversations, prompts read a layer at a time
+  and IQ3_S read in part, on a real machine, and what swapped and when.
 - [vendyluo](https://github.com/vendyluo), for pull request 7: why a short prompt after a rest was slow and
   how to keep it fast, the floats kept for prompts counted, and a layer's experts read only where memory lacks
   them; measured on an M5 Ultra.

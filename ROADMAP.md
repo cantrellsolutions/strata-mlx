@@ -876,7 +876,7 @@ Not taken: experts grouped by expert and computed once a layer (Strata's #1670),
 the sums and is not bit for bit; resuming a stopped piece from the layer it reached, which needs the undoing
 anyway.
 
-### On an M5 Pro with 64 GB: its owner's runs (issue 8)
+### On an M5 Pro with 64 GB: @jccrypto007's runs (issue 8)
 
 A Mac mini, 18 CPU and 20 GPU cores, macOS 27.0.1, `8a5aeaa`, the standard IQ3_S and Q2_0 files and an IQ3_XXS
 of the reporter's own; float16, the draft head, a context of 73,728, the expert profile off. Nothing here was

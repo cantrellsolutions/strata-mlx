@@ -92,8 +92,11 @@ written before, and its working memory was measured with Q2_0.
 **Seen on a 64 GB M5 Pro** ([issue 8](https://github.com/yibie/strata-mlx/issues/8)): an IQ3_XXS file that the
 rule holds whole there swapped 7.4 GB out in a run without parked conversations, and Q2_0, also held whole,
 1.7 GB in a later run at 8K and 32K tokens of context; IQ3_S, read in part, none. The counts are the whole
-system's and include the start, and its reporter draws no cause from them. Whether it is this section's floats
-is not known: `--check --native` for that file has been asked for.
+system's and include the start, and its reporter draws no cause from them. Repeated: both runs without parked
+conversations swapped out during startup and the engine's warm-up (peaks of 8.2 and 7.4 GiB sampled), both with
+4 GB of them none, and nothing later in any run. `--check --native` had said 61.7 GiB needed and 2.3 to spare,
+so the file was held whole with little room. Since a quarter of the memory is left to macOS (section 6) a 64 GB
+Mac no longer holds it whole. Which allocation swapped is not known.
 
 **Whom it concerns.** A Mac that reads IQ3_S experts from the SSD gives them 3.3 GB that the floats then take,
 so macOS is left that much less than the rule means. Since issue 6 that is every Mac under 67.7 GB, the 64 GB
