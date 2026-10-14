@@ -21,6 +21,9 @@ from mlx_lm.models.base import create_attention_mask
 from mlx_lm.models.switch_layers import QuantizedSwitchLinear
 
 from .attention import AttnCache, install
+from .fused import FusedResidual
+
+FUSED_HC = True  # the head's hyper-connections through the trunk's kernels: on an M5 Ultra a step's guesses 2.95 ms, not 3.32
 
 # norms the checkpoint stores zero-centred: the reference scales by 1 + weight
 _ADD_ONE = ("q_layernorm.weight", "k_layernorm.weight", "q_norm.weight", "k_norm.weight", "hc_norm.weight",
@@ -40,6 +43,7 @@ class Mtp(nn.Module):
         self.layers = [qwen4_exp.DecoderLayer(args, _FULL_ATTENTION_LAYER)]
         install(self.layers)
         self.hyper_connection_mixer = qwen4_exp.GatedResidual(args, use_combine=False)
+        object.__setattr__(self, "_fused", None)  # kernels' holders, kept out of the module's parameters
 
     def make_cache(self):
         return AttnCache()
@@ -51,8 +55,23 @@ class Mtp(nn.Module):
         e = self.fc_embedding(self.pre_fc_norm_embedding(emb))
         r = self.fc_hidden(self.pre_fc_norm_hidden(h).reshape(1, S, self.hc, self.d)) + e[:, :, None, :]
         r = r.reshape(1, S, -1)
-        r = self.layers[0](r, rope, create_attention_mask(r, cache), None, cache, cache.indexer, None, None)
-        return self.hyper_connection_mixer(r), r
+        if not FUSED_HC or S > 16:
+            r = self.layers[0](r, rope, create_attention_mask(r, cache), None, cache, cache.indexer, None, None)
+            return self.hyper_connection_mixer(r), r
+        # the block as DecoderLayer runs it, its three hyper-connections through the trunk's kernels (fused.py),
+        # the residual carried as (before, out, inject). Not the same bits as MLX's operations: a guess only
+        # decides what the trunk is asked, never what it writes.
+        if self._fused is None:
+            layer = self.layers[0]
+            object.__setattr__(self, "_fused", tuple(FusedResidual(gr) for gr in (
+                layer.attn_hyper_connection, layer.mlp_hyper_connection, self.hyper_connection_mixer)))
+        layer, (attn_hc, mlp_hc, mixer) = self.layers[0], self._fused
+        x, before, inject = attn_hc(r, mx.zeros((1, S, self.d), r.dtype), mx.zeros((1, S, self.hc), r.dtype))
+        out = layer.self_attn(x, rope, create_attention_mask(x, cache), cache, cache.indexer)
+        x, before, inject = mlp_hc(before, out, inject)
+        out = layer.mlp(x)
+        mixed, r, _ = mixer(before, out, inject)
+        return mixed, r
 
 
 def _bf16(raw: np.ndarray) -> np.ndarray:
