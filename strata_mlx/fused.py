@@ -517,3 +517,81 @@ class PlainResidual:
         residual = before + (out[..., None, :] * inject_in[..., None]).reshape(*out.shape[:-1], -1)
         got = self.gr(residual)
         return (got, residual, inject_in) if self.gr.block_inject_weight is None else (got[0], residual, got[2])
+
+
+# ---- a delta-net layer's input
+#
+# Between the input projection and the delta rule the engine's MLX operations are kernels that wait one on the
+# other: the history joined to the window (two copies), the depthwise convolution, silu, and for q and k an rms
+# norm and a scale each. Here one kernel, 32 threads to a head of 128 channels, each operation written as MLX
+# writes it (the convolution's taps added in float32 in order, sigmoid worked out in float32 and rounded, the
+# norm's squares added four to a thread and then by simd_sum, as rms_single_row does), so the same bits; the
+# joined input is written too, for the commit of the history. On an M5 Ultra, side by side in one process, a pass
+# of 1 / 4 / 8 / 10 tokens with Q2_0 is 0.46 / 0.60 / 0.68 / 0.89 ms shorter.
+
+_PREP = """
+    #pragma clang fp contract(off)
+    uint lid = thread_position_in_threadgroup.x;
+    uint g = threadgroup_position_in_grid.x;       // a head of q, k or v
+    uint t = threadgroup_position_in_grid.y;       // a token of the window
+    uint c0 = g * 128 + lid * 4;
+    // the joined input: rows 0..H-1 the history, then the window
+    if (g < C / 128) {
+        for (uint i = 0; i < 4; ++i) {
+            joined[(H + t) * C + c0 + i] = mixed[t * C + c0 + i];
+            if (t == 0) { for (uint r = 0; r < H; ++r) { joined[r * C + c0 + i] = state[r * C + c0 + i]; } }
+        }
+    }
+    float xs[4];
+    float acc = 0.0f;
+    for (uint i = 0; i < 4; ++i) {
+        uint c = c0 + i;
+        float a = 0.0f;
+        for (uint j = 0; j < KS; ++j) {
+            uint row = t + j;
+            T v = row < H ? state[row * C + c] : mixed[(row - H) * C + c];
+            a += static_cast<float>(v) * w[c * KS + j];
+        }
+        T conv = static_cast<T>(a);
+        float y_ = 1 / (1 + metal::precise::exp(metal::abs(float(conv))));
+        T sig = static_cast<T>((conv < 0) ? y_ : 1 - y_);
+        T act = conv * sig;
+        xs[i] = act;
+        acc += xs[i] * xs[i];
+    }
+    if (c0 < 2 * KD) {   // q or k: rms over the head, then the scale
+        acc = simd_sum(acc);
+        float inv = metal::precise::rsqrt(acc / 128 + 1e-6f);
+        T scale = c0 < KD ? T(QSCALE) : T(KSCALE);
+        device T* dst = c0 < KD ? q + t * KD + c0 : k + t * KD + (c0 - KD);
+        for (uint i = 0; i < 4; ++i) { dst[i] = scale * (T(1) * static_cast<T>(xs[i] * inv)); }
+    } else {
+        for (uint i = 0; i < 4; ++i) { v[t * VD + (c0 - 2 * KD) + i] = static_cast<T>(xs[i]); }
+    }
+"""
+
+GDN_PREP_UPTO = 16  # tokens: checked against MLX's operations up to this
+
+
+def gdn_prep(state: mx.array, mixed: mx.array, weight: mx.array, key_dim: int, head_dim: int):
+    """state (1, H, C) the history, mixed (1, T, C) the projection, weight (C, taps, 1) the convolution's ->
+    (joined (1, H + T, C), q and k (1, T, key_dim) normed and scaled, v (1, T, C - 2 key_dim)), or None."""
+    _, H, C = state.shape
+    T = mixed.shape[1]
+    taps = weight.shape[1]
+    if (T > GDN_PREP_UPTO or mixed.shape[0] != 1 or head_dim != 128 or C % 128 or key_dim % 128
+            or mixed.dtype != mx.float16 or weight.dtype != mx.float16 or state.dtype != mx.float16):
+        return None
+    key = ("gdn_prep", H, C, taps, key_dim)
+    if key not in _kernels:
+        header = (f"constant uint H = {H};\nconstant uint C = {C};\nconstant uint KS = {taps};\n"
+                  f"constant uint KD = {key_dim};\nconstant uint VD = {C - 2 * key_dim};\n"
+                  f"constant float QSCALE = {(head_dim ** -0.5) ** 2!r};\nconstant float KSCALE = {head_dim ** -0.5!r};\n")
+        _kernels[key] = mx.fast.metal_kernel(name="gdn_prep", input_names=["state", "mixed", "w"],
+                                             output_names=["joined", "q", "k", "v"], source=_PREP, header=header)
+    joined, q, k, v = _kernels[key](
+        inputs=[state, mixed, weight], template=[("T", mixed.dtype)], grid=(32 * C // 128, T, 1),
+        threadgroup=(32, 1, 1),
+        output_shapes=[(1, H + T, C), (1, T, key_dim), (1, T, key_dim), (1, T, C - 2 * key_dim)],
+        output_dtypes=[mixed.dtype] * 4)
+    return joined, q, k, v

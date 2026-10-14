@@ -136,3 +136,29 @@ def test_the_end_of_the_moe_block_is_mlxs_bits(tokens):
         s = (0.5 * mx.random.normal((1, tokens, 2560))).astype(mx.float16)
         got = moe_combine(y, w, g, s)
         assert mx.array_equal(got, plain(y, w, g, s)).item() and mx.array_equal(got, mx.compile(plain)(y, w, g, s)).item()
+
+
+@pytest.mark.parametrize("tokens", [1, 4, 8, 16])
+def test_a_delta_net_layers_input_in_one_kernel_is_mlxs_bits(tokens):
+    import mlx.nn as nn
+
+    from strata_mlx.fused import gdn_prep
+
+    C, key_dim = 1536, 256  # two heads of q and of k, eight of v
+    conv = nn.Conv1d(C, C, kernel_size=4, groups=C, bias=False)
+    mx.random.seed(tokens)
+    conv.weight = (0.3 * mx.random.normal(conv.weight.shape)).astype(mx.float16)
+
+    def plain(state, mixed):
+        joined = mx.concatenate([state, mixed], axis=1)
+        q, k, v = mx.split(nn.silu(conv(joined)), [key_dim, 2 * key_dim], axis=-1)
+        q = (128**-0.5) ** 2 * mx.fast.rms_norm(q.reshape(1, tokens, -1, 128), None, 1e-6)
+        k = 128**-0.5 * mx.fast.rms_norm(k.reshape(1, tokens, -1, 128), None, 1e-6)
+        return joined, q.reshape(1, tokens, -1), k.reshape(1, tokens, -1), v
+
+    for _ in range(5):
+        state = mx.random.normal((1, 3, C)).astype(mx.float16)
+        mixed = (2 * mx.random.normal((1, tokens, C))).astype(mx.float16)
+        got = gdn_prep(state, mixed, conv.weight, key_dim, 128)
+        for want in (plain(state, mixed), mx.compile(plain)(state, mixed)):
+            assert all(mx.array_equal(a, b).item() for a, b in zip(got, want))

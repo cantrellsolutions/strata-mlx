@@ -34,7 +34,7 @@ from . import bylayer
 from .attention import AttnCache, install
 from .conversations import reach, victim
 from .drafting import FIRST_GUESSES, MAX_WINDOW, Lookup, Policy
-from .fused import FusedResidual, PlainResidual, install_routers
+from .fused import FusedResidual, PlainResidual, gdn_prep, install_routers
 from .mtp import Mtp
 from .rows import GuessRows
 from .sampler import LIST, Sampling, history_counts, penalize, pick, uniform
@@ -207,14 +207,21 @@ class Engine:
         mixed = la.in_proj_qkv(x)
         z = la.in_proj_z(x).reshape(B, S, la.n_v, la.dv)
         b, a = la.in_proj_b(x), la.in_proj_a(x)
-        conv_input = mx.concatenate([conv_state, mixed], axis=1)
-        q, k, v = mx.split(nn.silu(la.conv1d(conv_input)), [la.key_dim, 2 * la.key_dim], axis=-1)
-        q = q.reshape(B, S, la.n_k, la.dk)
-        k = k.reshape(B, S, la.n_k, la.dk)
-        v = v.reshape(B, S, la.n_v, la.dv)
-        inv_scale = la.dk**-0.5
-        q = (inv_scale**2) * mx.fast.rms_norm(q, None, 1e-6)
-        k = inv_scale * mx.fast.rms_norm(k, None, 1e-6)
+        prepared = gdn_prep(conv_state, mixed, la.conv1d.weight, la.key_dim, la.dk) if B == 1 else None
+        if prepared is not None:  # the same as below in one kernel (fused.py)
+            conv_input, q, k, v = prepared
+            q = q.reshape(B, S, la.n_k, la.dk)
+            k = k.reshape(B, S, la.n_k, la.dk)
+            v = v.reshape(B, S, la.n_v, la.dv)
+        else:
+            conv_input = mx.concatenate([conv_state, mixed], axis=1)
+            q, k, v = mx.split(nn.silu(la.conv1d(conv_input)), [la.key_dim, 2 * la.key_dim], axis=-1)
+            q = q.reshape(B, S, la.n_k, la.dk)
+            k = k.reshape(B, S, la.n_k, la.dk)
+            v = v.reshape(B, S, la.n_v, la.dv)
+            inv_scale = la.dk**-0.5
+            q = (inv_scale**2) * mx.fast.rms_norm(q, None, 1e-6)
+            k = inv_scale * mx.fast.rms_norm(k, None, 1e-6)
         out, after = gated_delta_update(q, k, v, a, b, la.A_log, la.dt_bias, recurrent, None)
         y = la.out_proj(la.norm(out, z).reshape(B, S, -1))
         return y, (conv_input, q, k, v, a, b, after)
