@@ -69,6 +69,24 @@ def test_a_token_gets_the_same_bits_alone_and_in_a_window(dtype):
 
 
 
+@pytest.mark.parametrize("tokens", [6, 8, 11, 16])
+@pytest.mark.parametrize("combine", [True, False])
+def test_the_wide_kernels_give_the_bits_of_the_narrow_ones(monkeypatch, tokens, combine):
+    from strata_mlx import fused
+
+    mx.random.seed(tokens)
+    gr = qwen4_exp.GatedResidual(ARGS, use_combine=combine)
+    gr.hc_norm.weight = 1 + 0.2 * mx.random.normal(gr.hc_norm.weight.shape)
+    gr.set_dtype(mx.float16)
+    before = mx.random.normal((1, tokens, 4 * 96)).astype(mx.float16)
+    out = mx.random.normal((1, tokens, 96)).astype(mx.float16)
+    inject_in = (2 * mx.random.uniform(shape=(1, tokens, 4))).astype(mx.float16)
+    assert fused._wide_kernel_set(24, 4 * 96, 96, 4, tokens, 4 if combine else 0) is not None
+    wide = FusedResidual(gr)(before, out, inject_in)
+    monkeypatch.setattr(fused, "WIDE_FROM", 99)
+    narrow = FusedResidual(gr)(before, out, inject_in)
+    assert all(mx.array_equal(a, b).item() for a, b in zip(wide, narrow))
+
 @pytest.mark.parametrize("tokens", [1, 3, 8, 20])
 def test_a_router_product_in_float32_from_float16_weights(tokens):
     import mlx.nn as nn
@@ -86,3 +104,94 @@ def test_a_router_product_in_float32_from_float16_weights(tokens):
         assert mx.array_equal(alone, got).item()
     linear.set_dtype(mx.float32)  # the exact way: MLX's own product
     assert mx.array_equal(router(x), linear(x)).item()
+
+
+@pytest.mark.parametrize("tokens", [1, 3, 8, 40])
+@pytest.mark.parametrize("ties", [False, True])
+def test_the_routers_choice_is_argpartitions(tokens, ties):
+    from strata_mlx.fused import top_k
+
+    mx.random.seed(tokens + 10 * ties)
+    for _ in range(20):
+        logits = mx.random.normal((1, tokens, 512))
+        if ties:
+            logits = mx.round(logits * 4) / 4
+        want = mx.argpartition(-logits, 9, axis=-1)[..., :10]
+        assert mx.array_equal(top_k(logits, 10), want).item()
+
+
+
+@pytest.mark.parametrize("tokens", [1, 3, 8, 16])
+def test_the_end_of_the_moe_block_is_mlxs_bits(tokens):
+    from strata_mlx.fused import moe_combine
+
+    def plain(y, w, g, s):
+        return (y * w[..., None]).sum(axis=-2).astype(y.dtype) + mx.sigmoid(g) * s
+
+    mx.random.seed(tokens)
+    for _ in range(20):
+        y = (mx.random.normal((1, tokens, 10, 2560)) * 0.5).astype(mx.float16)
+        w = mx.softmax(mx.random.normal((1, tokens, 10)), axis=-1)
+        g = (2 * mx.random.normal((1, tokens, 1))).astype(mx.float16)
+        s = (0.5 * mx.random.normal((1, tokens, 2560))).astype(mx.float16)
+        got = moe_combine(y, w, g, s)
+        assert mx.array_equal(got, plain(y, w, g, s)).item() and mx.array_equal(got, mx.compile(plain)(y, w, g, s)).item()
+
+
+@pytest.mark.parametrize("tokens", [1, 4, 8, 16])
+def test_a_delta_net_layers_input_in_one_kernel_is_mlxs_bits(tokens):
+    import mlx.nn as nn
+
+    from strata_mlx.fused import gdn_prep
+
+    C, key_dim = 1536, 256  # two heads of q and of k, eight of v
+    conv = nn.Conv1d(C, C, kernel_size=4, groups=C, bias=False)
+    mx.random.seed(tokens)
+    conv.weight = (0.3 * mx.random.normal(conv.weight.shape)).astype(mx.float16)
+
+    def plain(state, mixed):
+        joined = mx.concatenate([state, mixed], axis=1)
+        q, k, v = mx.split(nn.silu(conv(joined)), [key_dim, 2 * key_dim], axis=-1)
+        q = (128**-0.5) ** 2 * mx.fast.rms_norm(q.reshape(1, tokens, -1, 128), None, 1e-6)
+        k = 128**-0.5 * mx.fast.rms_norm(k.reshape(1, tokens, -1, 128), None, 1e-6)
+        return joined, q.reshape(1, tokens, -1), k.reshape(1, tokens, -1), v
+
+    for _ in range(5):
+        state = mx.random.normal((1, 3, C)).astype(mx.float16)
+        mixed = (2 * mx.random.normal((1, tokens, C))).astype(mx.float16)
+        got = gdn_prep(state, mixed, conv.weight, key_dim, 128)
+        for want in (plain(state, mixed), mx.compile(plain)(state, mixed)):
+            assert all(mx.array_equal(a, b).item() for a, b in zip(got, want))
+
+
+
+@pytest.mark.parametrize("tokens", [1, 4, 8, 16])
+def test_a_delta_net_layers_output_norm_in_one_kernel_is_mlxs_bits(tokens):
+    from strata_mlx.fused import gated_norm
+
+    norm = qwen4_exp.RMSNormGated(128, eps=1e-6)
+    mx.random.seed(tokens)
+    norm.weight = (1 + 0.2 * mx.random.normal((128,))).astype(mx.float16)
+    for _ in range(5):
+        x = mx.random.normal((1, tokens, 6, 128)).astype(mx.float16)
+        z = (2 * mx.random.normal((1, tokens, 6, 128))).astype(mx.float16)
+        got = gated_norm(norm, x, z)
+        assert mx.array_equal(got, norm(x, z)).item() and mx.array_equal(got, mx.compile(norm)(x, z)).item()
+
+
+@pytest.mark.parametrize("tokens", [1, 4, 8, 16])
+@pytest.mark.parametrize("head_dim, rot", [(256, 64), (128, 128)])
+def test_q_and_k_norm_and_rope_in_one_kernel_are_mlxs_bits(tokens, head_dim, rot):
+    from strata_mlx.attention import qk_rope
+
+    norm = qwen4_exp.RMSNorm(head_dim, eps=1e-6)
+    mx.random.seed(tokens + head_dim)
+    norm.weight = (1 + 0.2 * mx.random.normal((head_dim,))).astype(mx.float16)
+    rope = qwen4_exp.RotaryEmbedding(rot, 10000.0)
+    for offset in (0, 37, 5000):
+        proj = mx.random.normal((1, tokens, 4 * 2 * head_dim)).astype(mx.float16)  # four heads, each with its gate
+        q, _ = mx.split(proj.reshape(1, tokens, 4, -1), 2, axis=-1)
+        cos, sin = rope(qwen4_exp._positions(offset, tokens))
+        want = qwen4_exp._rope_partial(norm(q).transpose(0, 2, 1, 3), cos[:, None], sin[:, None])
+        got = qk_rope(proj, norm, cos[0].astype(mx.float16), sin[0].astype(mx.float16), 4, head_dim, 2 * head_dim)
+        assert mx.array_equal(got, want).item()
