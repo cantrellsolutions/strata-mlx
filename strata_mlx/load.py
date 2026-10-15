@@ -17,6 +17,7 @@ blocks too (dense.py), and the memory that spares is the experts'.
 """
 
 import os
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -31,12 +32,15 @@ from .blocks import BLOCK, BlockSwitchGLU, BlockSwitchLinear
 from .dense import AS_BLOCKS, BlockEmbedding, BlockLinear, ScaledLinear, fits, kept_floats
 from .dense import as_blocks as stays_blocks
 from .paged import ExpertStore, PagedSwitchGLU, all_fit, sizes
+from .paged import SYSTEM as paged_system_reserve
+from .paged import WORKING as paged_working
 from .paged import machine_memory as paged_machine_memory
 from .gguf import KVALUES_IQ4NL, Tensor, pack, q6k_parts, shards, to_affine, to_float
 
 _EXACT_FLOAT = ("F32", "F16", "BF16", "Q6_K")
 # the n-gram table's rows (PleTable): from how many in one call their pages are read ahead, by how many threads
 PAGE, AHEAD_FROM, AHEAD_THREADS = 16384, 256, 32
+WARM_TABLE = True  # read the n-gram table into the cache after loading, where memory is free for it (PleTable.warm)
 AHEAD_SAMPLE, AHEAD_SLOW = 64, 20e-6  # rows looked at first, and the seconds a row above which they are not cached
 
 
@@ -54,6 +58,33 @@ class PleTable(nn.Module):
 
     def __call__(self, gid: mx.array) -> mx.array:
         return self.read(np.array(gid))
+
+    @property
+    def nbytes(self) -> int:
+        return self._rows.nbytes
+
+    def warm(self, chunk: int = 64 << 20) -> threading.Thread | None:
+        """Read the table through once, in the background, so that its rows come from memory and not the disk.
+        A token's rows are hashes of the tokens before it, all over 28.8 GB (Q2_0): left in the file, every new
+        n-gram is a page fault in the middle of building a pass, and a pass waits for it. On an M5 Ultra over an
+        answer with the draft head: the table read 4.0 ms a step with the table as a start leaves it, 1.2 ms with
+        it all in the cache, and the answer came 16% faster (164 tokens in 1.38 s and 1.16). The pages are the
+        file's, so macOS lets go of them before it swaps."""
+        if self._file is None:
+            return None
+        path, offset = self._file
+
+        def run():
+            fd = os.open(path, os.O_RDONLY)
+            try:
+                for at in range(offset, offset + self.nbytes, chunk):
+                    os.pread(fd, min(chunk, offset + self.nbytes - at), at)
+            finally:
+                os.close(fd)
+
+        thread = threading.Thread(target=run, name="ngram-table-warm", daemon=True)
+        thread.start()
+        return thread
 
     def _ahead(self, rows: np.ndarray):
         """Bring the pages these rows lie in into the page cache, many at a time. Taken from the mapped file a
@@ -281,6 +312,8 @@ def load(path: str, dtype: mx.Dtype = mx.float16, expert_memory: float | str | N
     if dense_blocks is None:
         dense_blocks = AS_BLOCKS if store is not None else ()
 
+    tables = []  # the n-gram tables, warmed at the end
+
     def take(name: str) -> Tensor:
         used.add(name)
         return tensors[name]
@@ -404,6 +437,7 @@ def load(path: str, dtype: mx.Dtype = mx.float16, expert_memory: float | str | N
                 if ours.tolist() != list(meta[k + key]):
                     raise ValueError(f"the n-gram hash constants do not match the file's {key}")
             emb.ngram_embedding = PleTable(take("per_layer_token_embd.weight"))
+            tables.append(emb.ngram_embedding)
             ple.ple_embedding = HostNgram(emb, emb.ngram_embedding)
         layer.set_dtype(dtype)
         mx.eval(layer.parameters())
@@ -431,4 +465,10 @@ def load(path: str, dtype: mx.Dtype = mx.float16, expert_memory: float | str | N
         mx.set_cache_limit(POOL)
     model.eval()
     model.expert_store, model.keeps_floats = store, keep
+    # The table goes into the cache where the whole model is in memory and what is left of the machine, beside
+    # what macOS and a pass hold, takes it: the cache is let go of before anything swaps, so the rule is the
+    # least macOS is left (paged.SYSTEM) and not the quarter the model's own memory leaves it.
+    left = machine - mx.get_active_memory() - paged_system_reserve - paged_working
+    model.table_warming = ([t.warm() for t in tables]
+                           if WARM_TABLE and store is None and left >= sum(t.nbytes for t in tables) else None)
     return model, meta
