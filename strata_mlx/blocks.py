@@ -674,11 +674,16 @@ def lookup_table_glu(gate: mx.array, up: mx.array) -> mx.array:
 def lookup_matvec(lin, idx: mx.array, table: mx.array, share: int) -> mx.array:
     """out[pair] = W[idx[pair]] . x[pair / share], x given as its `lookup_table`. Returns (pairs, rows)."""
     pairs = idx.shape[0]
-    # Threads to a row (e44, e45: the real model's 48 layers chained, the rule alternated with the one before,
-    # which was 16 and 4 below 21 pairs, 4 from there): rows of 2,560 inputs want 8 up to 40 pairs (four tokens)
-    # and 2 beyond; the experts' down rows, of 640, want 2 throughout. 3% faster for a token, 8% for four, 17-27%
-    # from eight to 128.
-    per_row = min(_threads_per_row(lin.input_dims // 32), 8 if pairs <= 40 and lin.input_dims >= 2048 else 2)
+    # Threads to a row (e44: the real model's 48 layers chained, the rule alternated with the one before, which
+    # was 16 below 21 pairs and 4 from there): rows of 2,560 inputs want 8 up to 40 pairs (four tokens) and 2
+    # beyond. The experts' down rows keep that rule: their table is built in `lookup_down_glu` since pull request
+    # 9, which must give these bits, and with it the change measured 0.4 ms less a pass at four tokens and 3.0 at
+    # eight on an M4 Max, in one process with the passes shuffled.
+    per_row = _threads_per_row(lin.input_dims // 32)
+    if lin.input_dims >= 2048:
+        per_row = min(per_row, 8 if pairs <= 40 else 2)
+    elif pairs > 20:
+        per_row = min(per_row, 4)
     key = ("lookup", lin.output_dims, lin.input_dims, share, per_row)
     if key not in _kernels:
         _kernels[key] = mx.fast.metal_kernel(

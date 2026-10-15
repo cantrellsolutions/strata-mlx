@@ -949,9 +949,31 @@ tokens and 30 for eight. Two things measured, the real model's 48 expert layers 
   for the table of sums. Not used.
 - The table kernel's threads to a row. It gave rows of 2,560 inputs 16 threads below 21 pairs and 4 from there,
   the experts' down rows 4. Swept, then the new rule alternated with the old: 8 up to 40 pairs and 2 beyond, 2
-  for the down rows. 3% for a token, 7% for two, 8% for four, 11% for six, 17-27% from eight to 128.
+  for the down rows. (Since pull request 9 the down rows keep the old rule, below.) 3% for a token, 7% for two, 8% for four, 11% for six, 17-27% from eight to 128.
 
 Through `spec_decode.py`, Q2_0, in the order new, old, old, new, the drafts as sure as the head is: prose 77.2 /
 76.4 and 74.0 / 68.2 tok/s, code 77.5 / 74.5 and 71.4 / 66.3, reasoning 100.4 / 92.6 and 89.9 / 84.3, editing
 99.9 / 84.3 and 77.6 / 80.8: the new rule ahead in seven of eight pairs, about 6% on the mean. The machine slowed
 through the run (other programs, heat), so the pairs and not the figures are what compare.
+
+### Pull requests 9 and 10 (vendyluo, measured on an M5 Ultra; checked here)
+
+**9: ten small kernel changes for a decode pass**, each with a switch and tests against MLX's own operations;
+the logits the same bits one and four tokens at a time. **10: the n-gram table read into the page cache in the
+background after loading**, where the whole model is in memory and the table fits beside it (on the M5 Ultra a
+step waited 4.0 ms on its page faults with the table cold, 1.2 with it cached).
+
+Here, on the M4 Max, in one process with an engine for each setting sharing the weights and the passes shuffled
+(another program kept this GPU 18-76% busy throughout, so processes compared in turns told nothing), Q2_0, ms a
+pass, lower quartile:
+
+    tokens   main's paths   with 9 and 10   and the thread rule above
+    1           22.46          20.83            20.83
+    4           35.02          32.02            31.60
+    8           53.28          52.43            49.48
+
+Its first commit fused the hyper-connections up to eight tokens instead of six; here windows of seven and eight
+ran slower that way (69.2 and 72.1 ms against 64.2 and 66.5 with six, the wide kernel on or off making no
+difference), so the engine fuses up to six (`engine.FUSE_UPTO`), which also leaves those windows' logits what
+they were. The thread rule above now applies to the rows of 2,560 inputs only: the down rows' table is built in
+their own kernel since 9, which must give the bits of the separate one.
