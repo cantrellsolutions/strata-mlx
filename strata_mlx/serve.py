@@ -21,6 +21,9 @@ The server starts `<exe> --serve <args>` and talks over stdin and stdout. Prompt
 
     strata-mlx --serve --native <shard 1 of the GGUF> --mtp <folder of the draft head>
 
+`--fusion-limit auto|6|8` selects the hyper-connection fusion window. `auto` keeps the chip-generation
+default; explicit values support measured settings on other GPU sizes. The INFO line records the effective value.
+
 On a machine whose memory does not hold the model, only part of the experts stays in memory and the others are
 read from the SSD as tokens ask for them (paged.py). How much is worked out from the machine's memory;
 `--expert-memory <GB>` sets it by hand, and `--machine-memory <GiB>` runs as a machine of that size would.
@@ -61,7 +64,7 @@ import time
 
 from . import bylayer
 from .conversations import Parked, resume
-from .engine import Engine, Stats
+from .engine import Engine, Stats, FUSE_UPTO
 from .paged import available_memory, load_profile, machine_memory, save_profile
 from .sampler import Sampling
 
@@ -278,17 +281,28 @@ def model_identity(path: str, dtype: str) -> str:
     return f"{os.path.getsize(path)}:{head}:{dtype}"
 
 
+def fusion_limit(value: str, automatic: int) -> int:
+    """Explicit measured override; auto retains the existing generation-based default."""
+    if value == "auto":
+        return automatic
+    if value not in ("6", "8"):
+        raise ValueError("--fusion-limit must be auto, 6, or 8")
+    return int(value)
+
+
 def _options(argv: list) -> dict:
     """The arguments this engine knows; the CUDA engine's others (expert cache, K/V placement, ...) are skipped."""
     known = {"--native": None, "--mtp": None, "--spec": "4", "--max-context": "131072", "--dtype": "float16",
              "--prefill": "2048", "--suffix-draft": "auto", "--expert-memory": "auto", "--machine-memory": None,
              "--expert-profile": "auto", "--guess-rows": "on", "--conversation-cache-mib": "0",
              "--conversation-cache-slots": "4", "--conversation-cache-min-tokens": "0",
-             "--prompt-by-layer": "on", "--read-ahead": "on", "--keep-awake": "600", "--wired": "on"}
+             "--prompt-by-layer": "on", "--read-ahead": "on", "--keep-awake": "600", "--wired": "on", "--fusion-limit": "auto"}
     out, skipped, i = dict(known), [], 0
     while i < len(argv):
         a = argv[i]
         if a in known:
+            if i + 1 >= len(argv) or argv[i + 1].startswith("--"):
+                raise ValueError(f"{a} requires a value")
             out[a] = argv[i + 1]
             i += 2
         else:
@@ -303,7 +317,6 @@ def main():
         from .check import main as check
 
         return check([a for a in argv if a != "--check"])
-    opts, skipped = _options(argv)
     # the protocol owns stdout: anything a library prints goes to the log instead
     wire = os.fdopen(os.dup(1), "w", buffering=1)
     os.dup2(2, 1)
@@ -311,6 +324,13 @@ def main():
     def write(line: str):
         wire.write(line + "\n")
         wire.flush()
+
+    try:
+        opts, skipped = _options(argv)
+        selected_fusion = fusion_limit(opts["--fusion-limit"], FUSE_UPTO)
+    except ValueError as error:
+        write(f"ERR {error}")
+        return 1
 
     if not opts["--native"]:
         write("ERR --native <shard 1 of the GGUF> is required")
@@ -372,7 +392,7 @@ def main():
     # against 74), so they are then only on if asked for.
     head = mtp if int(opts["--spec"]) > 1 else None
     copies = opts["--suffix-draft"]
-    engine = Engine(model, head, lookup=head is None if copies == "auto" else int(copies) > 0,
+    engine = Engine(model, head, fuse_upto=selected_fusion, lookup=head is None if copies == "auto" else int(copies) > 0,
                     chunk=chunk, guess_rows=opts["--guess-rows"] != "off",
                     # where experts are read from the SSD (bylayer.py): `off` for a prompt read chunk by chunk
                     # as before, and for no layer's experts read while another is computed
@@ -438,7 +458,7 @@ def main():
     session = Session(engine, write, max_context, stop, parked)
     write(f"INFO engine={VERSION}-mlx backend=mlx mlx={mx.__version__} context={max_context} "
           f"floats={opts['--dtype']} drafts={engine.drafts} lookup={int(engine.lookup is not None)} "
-          f"guess_rows={int(engine.rows is not None)}"
+          f"guess_rows={int(engine.rows is not None)} fusion_limit={engine.fuse_upto}"
           + (f" conversation_cache_mib={parked.budget >> 20} conversation_cache_slots={parked.slots}"
              if parked.budget else "")
           + (f" expert_memory_gb={store.budget / 1e9:.1f}" if paged else "")

@@ -1,0 +1,2658 @@
+{
+  "method": "Paired round medians, seeded 2000-resample bootstrap interval. Baseline is new6; control6 repeats the same setting. Positive savings means faster. Timing evidence only; parity/quality gate is separate.",
+  "packs": {
+    "Q2_0": {
+      "configuration": {
+        "device": {
+          "device_name": "Apple M5 Pro",
+          "max_recommended_working_set_size": 61865984000,
+          "memory_size": 68719476736,
+          "architecture": "applegpu_g17s",
+          "max_buffer_length": 41747087360,
+          "resource_limit": 499000
+        },
+        "auto_fuse_upto": 8,
+        "model": "/Users/jakecantrell/inference-lab/models/standard-gsq/ed59f92082b1/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf",
+        "load_s": 44.951618333987426,
+        "table_warming_started": false,
+        "active_bytes_after_load": 39468436800,
+        "cache_bytes_after_load": 19384,
+        "settings": {
+          "reference6": [
+            false,
+            6
+          ],
+          "new6": [
+            true,
+            6
+          ],
+          "new8": [
+            true,
+            8
+          ],
+          "control6": [
+            true,
+            6
+          ]
+        },
+        "precision": "float16; MLX_ENABLE_TF32 unset",
+        "kernel_reference_limit": "Reference toggles eight trunk module switches and fuse limit; current shared draft-head and Q2 thread rule remain. Not an exact historical source comparison.",
+        "seed": 20261015,
+        "full_model_resident": true,
+        "draft_load_s": 7.0369537500082515,
+        "warm_s": {
+          "reference6": 8.309322166023776,
+          "new6": 1.2590857080067508,
+          "new8": 1.26497937500244,
+          "control6": 0.8509833750431426
+        },
+        "table_warming_finished": false
+      },
+      "micro": [
+        {
+          "window": 1,
+          "setting": "reference6",
+          "paired_rounds": 20,
+          "median_ms": 27.393937518354505,
+          "new6_median_ms": 25.83983348449692,
+          "median_saving_ms": -1.6092919977381825,
+          "bootstrap_95_median_interval_ms": [
+            -1.6900835034903139,
+            -1.326311961747706
+          ],
+          "duplicate_control_median_ms": 0.09866646723821759,
+          "duplicate_control_abs_p95_ms": 0.5156669649295509,
+          "logits_bit_equal_to_new6": true,
+          "argmax_equal_to_new6": true
+        },
+        {
+          "window": 1,
+          "setting": "new8",
+          "paired_rounds": 20,
+          "median_ms": 25.929916475433856,
+          "new6_median_ms": 25.83983348449692,
+          "median_saving_ms": -0.04725047620013356,
+          "bootstrap_95_median_interval_ms": [
+            -0.15431249630637467,
+            0.0968335079960525
+          ],
+          "duplicate_control_median_ms": 0.09866646723821759,
+          "duplicate_control_abs_p95_ms": 0.5156669649295509,
+          "logits_bit_equal_to_new6": true,
+          "argmax_equal_to_new6": true
+        },
+        {
+          "window": 1,
+          "setting": "control6",
+          "paired_rounds": 20,
+          "median_ms": 25.813042011577636,
+          "new6_median_ms": 25.83983348449692,
+          "median_saving_ms": 0.09866646723821759,
+          "bootstrap_95_median_interval_ms": [
+            -0.1068130077328533,
+            0.312541495077312
+          ],
+          "duplicate_control_median_ms": 0.09866646723821759,
+          "duplicate_control_abs_p95_ms": 0.5156669649295509,
+          "logits_bit_equal_to_new6": true,
+          "argmax_equal_to_new6": true
+        },
+        {
+          "window": 4,
+          "setting": "reference6",
+          "paired_rounds": 20,
+          "median_ms": 39.416688028723,
+          "new6_median_ms": 36.41079203225672,
+          "median_saving_ms": -3.049979015486315,
+          "bootstrap_95_median_interval_ms": [
+            -3.123291942756623,
+            -2.906833484303206
+          ],
+          "duplicate_control_median_ms": -0.021375512005761266,
+          "duplicate_control_abs_p95_ms": 0.32133294735103846,
+          "logits_bit_equal_to_new6": true,
+          "argmax_equal_to_new6": true
+        },
+        {
+          "window": 4,
+          "setting": "new8",
+          "paired_rounds": 20,
+          "median_ms": 36.43679150263779,
+          "new6_median_ms": 36.41079203225672,
+          "median_saving_ms": -0.05862550460733473,
+          "bootstrap_95_median_interval_ms": [
+            -0.0884364708326757,
+            0.024333508918061852
+          ],
+          "duplicate_control_median_ms": -0.021375512005761266,
+          "duplicate_control_abs_p95_ms": 0.32133294735103846,
+          "logits_bit_equal_to_new6": true,
+          "argmax_equal_to_new6": true
+        },
+        {
+          "window": 4,
+          "setting": "control6",
+          "paired_rounds": 20,
+          "median_ms": 36.44252102822065,
+          "new6_median_ms": 36.41079203225672,
+          "median_saving_ms": -0.021375512005761266,
+          "bootstrap_95_median_interval_ms": [
+            -0.1271044893655926,
+            0.059645535657182336
+          ],
+          "duplicate_control_median_ms": -0.021375512005761266,
+          "duplicate_control_abs_p95_ms": 0.32133294735103846,
+          "logits_bit_equal_to_new6": true,
+          "argmax_equal_to_new6": true
+        },
+        {
+          "window": 7,
+          "setting": "reference6",
+          "paired_rounds": 20,
+          "median_ms": 51.31347899441607,
+          "new6_median_ms": 46.98577101225965,
+          "median_saving_ms": -4.315645492170006,
+          "bootstrap_95_median_interval_ms": [
+            -4.402291990118101,
+            -4.2253324936609715
+          ],
+          "duplicate_control_median_ms": 0.10272898362018168,
+          "duplicate_control_abs_p95_ms": 0.3659170470200479,
+          "logits_bit_equal_to_new6": true,
+          "argmax_equal_to_new6": true
+        },
+        {
+          "window": 7,
+          "setting": "new8",
+          "paired_rounds": 20,
+          "median_ms": 48.32022948539816,
+          "new6_median_ms": 46.98577101225965,
+          "median_saving_ms": -1.3361255114432424,
+          "bootstrap_95_median_interval_ms": [
+            -1.4278960006777197,
+            -1.2693329772446305
+          ],
+          "duplicate_control_median_ms": 0.10272898362018168,
+          "duplicate_control_abs_p95_ms": 0.3659170470200479,
+          "logits_bit_equal_to_new6": false,
+          "argmax_equal_to_new6": true
+        },
+        {
+          "window": 7,
+          "setting": "control6",
+          "paired_rounds": 20,
+          "median_ms": 46.91081200144254,
+          "new6_median_ms": 46.98577101225965,
+          "median_saving_ms": 0.10272898362018168,
+          "bootstrap_95_median_interval_ms": [
+            -0.021333456970751286,
+            0.14172898954711854
+          ],
+          "duplicate_control_median_ms": 0.10272898362018168,
+          "duplicate_control_abs_p95_ms": 0.3659170470200479,
+          "logits_bit_equal_to_new6": true,
+          "argmax_equal_to_new6": true
+        },
+        {
+          "window": 8,
+          "setting": "reference6",
+          "paired_rounds": 20,
+          "median_ms": 53.35925001418218,
+          "new6_median_ms": 48.55287502869032,
+          "median_saving_ms": -4.781520052347332,
+          "bootstrap_95_median_interval_ms": [
+            -4.830999503610656,
+            -4.68429148895666
+          ],
+          "duplicate_control_median_ms": 0.08995801908895373,
+          "duplicate_control_abs_p95_ms": 0.2348329871892929,
+          "logits_bit_equal_to_new6": true,
+          "argmax_equal_to_new6": true
+        },
+        {
+          "window": 8,
+          "setting": "new8",
+          "paired_rounds": 20,
+          "median_ms": 50.288083497434855,
+          "new6_median_ms": 48.55287502869032,
+          "median_saving_ms": -1.7082915001083165,
+          "bootstrap_95_median_interval_ms": [
+            -1.8383950227871537,
+            -1.5835414815228432
+          ],
+          "duplicate_control_median_ms": 0.08995801908895373,
+          "duplicate_control_abs_p95_ms": 0.2348329871892929,
+          "logits_bit_equal_to_new6": false,
+          "argmax_equal_to_new6": true
+        },
+        {
+          "window": 8,
+          "setting": "control6",
+          "paired_rounds": 20,
+          "median_ms": 48.48462500376627,
+          "new6_median_ms": 48.55287502869032,
+          "median_saving_ms": 0.08995801908895373,
+          "bootstrap_95_median_interval_ms": [
+            0.048645015340298414,
+            0.12014599633403122
+          ],
+          "duplicate_control_median_ms": 0.08995801908895373,
+          "duplicate_control_abs_p95_ms": 0.2348329871892929,
+          "logits_bit_equal_to_new6": true,
+          "argmax_equal_to_new6": true
+        }
+      ],
+      "answers": {
+        "reference6": {
+          "requests": 24,
+          "graded": 15,
+          "correct": 12,
+          "completion_limits": 3,
+          "per_case": {
+            "chinese": {
+              "wall_s": [
+                5.237000791006722,
+                4.789898540999275,
+                4.816814000019804
+              ],
+              "decode_tps": [
+                46.36847140907622,
+                50.87553548604136,
+                50.58505112377192
+              ],
+              "ttft_s": [
+                0.2120346250012517,
+                0.21009416598826647,
+                0.21071012498578057
+              ]
+            },
+            "code": {
+              "wall_s": [
+                3.361418332962785,
+                3.3575454159872606,
+                3.3609761249972507
+              ],
+              "decode_tps": [
+                81.05572916987784,
+                81.1734874555025,
+                81.08262152122684
+              ],
+              "ttft_s": [
+                0.21543466701405123,
+                0.21612562495283782,
+                0.21603587496792898
+              ]
+            },
+            "code-result": {
+              "wall_s": [
+                0.34419950004667044,
+                0.36595950002083555,
+                0.3648785420227796
+              ],
+              "decode_tps": [
+                101.09945658025121,
+                86.95846505987984,
+                83.67087324373263
+              ],
+              "ttft_s": [
+                0.22550450003473088,
+                0.22796258400194347,
+                0.22145945800002664
+              ]
+            },
+            "invoice": {
+              "wall_s": [
+                0.6007304579834454,
+                0.6212438330403529,
+                0.6216658749617636
+              ],
+              "decode_tps": [
+                76.77157510976289,
+                72.05771014807661,
+                71.63846455367529
+              ],
+              "ttft_s": [
+                0.2490377909853123,
+                0.24654416600242257,
+                0.24477337498683482
+              ]
+            },
+            "operations": {
+              "wall_s": [
+                0.37865754100494087,
+                0.35134016699157655,
+                0.34411116695264354
+              ],
+              "decode_tps": [
+                52.823295338825154,
+                66.71482272807958,
+                68.71626540895204
+              ],
+              "ttft_s": [
+                0.24614025000482798,
+                0.2464159580413252,
+                0.2422429999569431
+              ]
+            },
+            "prose": {
+              "wall_s": [
+                4.837950624991208,
+                4.13694083300652,
+                4.235023167042527
+              ],
+              "decode_tps": [
+                53.57739753988689,
+                62.97098042205497,
+                61.39045338051699
+              ],
+              "ttft_s": [
+                0.2277976250043139,
+                0.2144991250243038,
+                0.21159629203611985
+              ]
+            },
+            "structured-output": {
+              "wall_s": [
+                1.3229824170120992,
+                1.5438998329918832,
+                1.5421437089680694
+              ],
+              "decode_tps": [
+                106.0491172331503,
+                88.24122713065775,
+                88.37350161937233
+              ],
+              "ttft_s": [
+                0.21029045805335045,
+                0.20665641699451953,
+                0.20690183399710804
+              ]
+            },
+            "tool-choice": {
+              "wall_s": [
+                0.5373424999997951,
+                0.5746508330339566,
+                0.5689479160355404
+              ],
+              "decode_tps": [
+                89.00635505230639,
+                79.28794381304348,
+                77.22850206036821
+              ],
+              "ttft_s": [
+                0.3014042910072021,
+                0.30979341600323096,
+                0.2970275830011815
+              ]
+            }
+          }
+        },
+        "new6": {
+          "requests": 24,
+          "graded": 15,
+          "correct": 12,
+          "completion_limits": 3,
+          "per_case": {
+            "chinese": {
+              "wall_s": [
+                4.564933457993902,
+                4.928237833024468,
+                4.51505291700596
+              ],
+              "decode_tps": [
+                53.34993567448462,
+                49.09232453160174,
+                53.97705332354193
+              ],
+              "ttft_s": [
+                0.19754299998749048,
+                0.20244816603371873,
+                0.19840379199013114
+              ]
+            },
+            "code": {
+              "wall_s": [
+                2.975750625017099,
+                2.9385227910242975,
+                2.950929749989882
+              ],
+              "decode_tps": [
+                92.07594287492924,
+                93.33356618221042,
+                92.91664671862883
+              ],
+              "ttft_s": [
+                0.20629758399445564,
+                0.2063867500401102,
+                0.2065345419687219
+              ]
+            },
+            "code-result": {
+              "wall_s": [
+                0.3873165419790894,
+                0.3356950840097852,
+                0.3552740419982001
+              ],
+              "decode_tps": [
+                79.7308637006831,
+                96.60481027747153,
+                87.32202454156833
+              ],
+              "ttft_s": [
+                0.23681020800722763,
+                0.21147766703506932,
+                0.21785166702466086
+              ]
+            },
+            "invoice": {
+              "wall_s": [
+                0.5622860420262441,
+                0.5577412500279024,
+                0.5286636250093579
+              ],
+              "decode_tps": [
+                79.89456875758636,
+                82.82542049015859,
+                92.05224089821938
+              ],
+              "ttft_s": [
+                0.22434066701680422,
+                0.23175437498139217,
+                0.23535191704286262
+              ]
+            },
+            "operations": {
+              "wall_s": [
+                0.3454387080273591,
+                0.3612547499942593,
+                0.375032874988392
+              ],
+              "decode_tps": [
+                59.21998832454218,
+                52.80133044840637,
+                49.50241235188988
+              ],
+              "ttft_s": [
+                0.2272353750304319,
+                0.22868233296321705,
+                0.23362562496913597
+              ]
+            },
+            "prose": {
+              "wall_s": [
+                3.9789559160126373,
+                4.425639791996218,
+                3.850062292010989
+              ],
+              "decode_tps": [
+                66.34566482432419,
+                58.88529950688272,
+                67.72105267618137
+              ],
+              "ttft_s": [
+                0.1957396250218153,
+                0.19708016701042652,
+                0.20274745800998062
+              ]
+            },
+            "structured-output": {
+              "wall_s": [
+                1.4632157500018366,
+                1.3557596250320785,
+                1.2771042920066975
+              ],
+              "decode_tps": [
+                93.89211874902254,
+                101.98641965985459,
+                109.98323059485539
+              ],
+              "ttft_s": [
+                0.2064542499720119,
+                0.1987428340362385,
+                0.204213457996957
+              ]
+            },
+            "tool-choice": {
+              "wall_s": [
+                0.5349418339901604,
+                0.5251732089673169,
+                0.521196624962613
+              ],
+              "decode_tps": [
+                80.25243839041038,
+                85.10944417566216,
+                85.4453073780429
+              ],
+              "ttft_s": [
+                0.2732675419538282,
+                0.27843208401463926,
+                0.27542537497356534
+              ]
+            }
+          }
+        },
+        "new8": {
+          "requests": 24,
+          "graded": 15,
+          "correct": 12,
+          "completion_limits": 3,
+          "per_case": {
+            "chinese": {
+              "wall_s": [
+                5.614604166999925,
+                4.444870374980383,
+                4.442180667014327
+              ],
+              "decode_tps": [
+                44.20320611510226,
+                54.86278803556451,
+                54.88066556920155
+              ],
+              "ttft_s": [
+                0.2077565420186147,
+                0.19791158300358802,
+                0.1966053340001963
+              ]
+            },
+            "code": {
+              "wall_s": [
+                3.159223791968543,
+                3.121651125024073,
+                3.1163505419972353
+              ],
+              "decode_tps": [
+                86.49136213972626,
+                87.32809547415219,
+                87.48538816858176
+              ],
+              "ttft_s": [
+                0.21095249999780208,
+                0.20162866701139137,
+                0.20157808298245072
+              ]
+            },
+            "code-result": {
+              "wall_s": [
+                0.33669870800804347,
+                0.34204749995842576,
+                0.3385245419922285
+              ],
+              "decode_tps": [
+                94.29875611862579,
+                91.87748731880248,
+                90.59714844806885
+              ],
+              "ttft_s": [
+                0.20944358297856525,
+                0.21143879101146013,
+                0.20607004198245704
+              ]
+            },
+            "invoice": {
+              "wall_s": [
+                0.6303172500338405,
+                0.5410742500098422,
+                0.5737392919836566
+              ],
+              "decode_tps": [
+                68.6937252088371,
+                87.26701525238961,
+                77.61193816146096
+              ],
+              "ttft_s": [
+                0.23726825002813712,
+                0.23167900001863018,
+                0.22585466702003032
+              ]
+            },
+            "operations": {
+              "wall_s": [
+                0.3959187500295229,
+                0.3838189169764519,
+                0.3208991659921594
+              ],
+              "decode_tps": [
+                44.731912157996426,
+                47.300426478657684,
+                72.57837736278357
+              ],
+              "ttft_s": [
+                0.23943091701949015,
+                0.23582870798418298,
+                0.224451708025299
+              ]
+            },
+            "prose": {
+              "wall_s": [
+                3.9303646669723094,
+                3.8287800410180353,
+                3.833305499982089
+              ],
+              "decode_tps": [
+                66.15068388733046,
+                68.00900316836625,
+                68.05684872402009
+              ],
+              "ttft_s": [
+                0.19646524998825043,
+                0.19690795801579952,
+                0.2039867079583928
+              ]
+            },
+            "structured-output": {
+              "wall_s": [
+                1.2334054589737207,
+                1.2151584590319544,
+                1.4246846249443479
+              ],
+              "decode_tps": [
+                113.85881266041305,
+                116.73580955267887,
+                95.78978852513191
+              ],
+              "ttft_s": [
+                0.1970342089771293,
+                0.20432895905105397,
+                0.1928205419681035
+              ]
+            },
+            "tool-choice": {
+              "wall_s": [
+                0.5819660410052165,
+                0.5311525829602033,
+                0.5239912089891732
+              ],
+              "decode_tps": [
+                71.30436479770576,
+                82.59086245333836,
+                82.94526797505443
+              ],
+              "ttft_s": [
+                0.2874539159820415,
+                0.2768871669541113,
+                0.2708122089970857
+              ]
+            }
+          }
+        },
+        "control6": {
+          "requests": 24,
+          "graded": 15,
+          "correct": 12,
+          "completion_limits": 3,
+          "per_case": {
+            "chinese": {
+              "wall_s": [
+                4.478279875009321,
+                4.459961333021056,
+                4.479195083025843
+              ],
+              "decode_tps": [
+                54.43258339071436,
+                54.66117713688988,
+                54.419067159671876
+              ],
+              "ttft_s": [
+                0.1977554999757558,
+                0.1973381660063751,
+                0.1976075409911573
+              ]
+            },
+            "code": {
+              "wall_s": [
+                3.1273736670264043,
+                3.108730000036303,
+                3.1199483750388026
+              ],
+              "decode_tps": [
+                87.16458352617522,
+                87.7064857057946,
+                87.35927055675238
+              ],
+              "ttft_s": [
+                0.20187354204244912,
+                0.20130533300107345,
+                0.20096795802237466
+              ]
+            },
+            "code-result": {
+              "wall_s": [
+                0.3345658329781145,
+                0.3505420419969596,
+                0.3401414999971166
+              ],
+              "decode_tps": [
+                95.36240697672945,
+                86.47529425969115,
+                89.82565400057439
+              ],
+              "ttft_s": [
+                0.20873008301714435,
+                0.21177408401854336,
+                0.20654937496874481
+              ]
+            },
+            "invoice": {
+              "wall_s": [
+                0.5850507499999367,
+                0.5756200419855304,
+                0.5709049589931965
+              ],
+              "decode_tps": [
+                74.72667680075153,
+                77.43644258554315,
+                78.21600871798974
+              ],
+              "ttft_s": [
+                0.22373399999924004,
+                0.226946999959182,
+                0.22570708399871364
+              ]
+            },
+            "operations": {
+              "wall_s": [
+                0.3620905840070918,
+                0.31982162495842203,
+                0.3189043340389617
+              ],
+              "decode_tps": [
+                52.101747259002536,
+                73.10075112304908,
+                73.22561848567621
+              ],
+              "ttft_s": [
+                0.22773808398051187,
+                0.22406337497523054,
+                0.22330937499646097
+              ]
+            },
+            "prose": {
+              "wall_s": [
+                3.81786412501242,
+                3.820896667020861,
+                3.8505593750160187
+              ],
+              "decode_tps": [
+                68.20037279368216,
+                68.15421205090456,
+                67.61313959358374
+              ],
+              "ttft_s": [
+                0.19618304201867431,
+                0.19676262501161546,
+                0.1974232910433784
+              ]
+            },
+            "structured-output": {
+              "wall_s": [
+                1.0865044579841197,
+                1.4280055410345085,
+                1.4209180420148186
+              ],
+              "decode_tps": [
+                133.54024526897894,
+                95.53476189867641,
+                96.07865091124177
+              ],
+              "ttft_s": [
+                0.20287570799700916,
+                0.19285304099321365,
+                0.1927575830486603
+              ]
+            },
+            "tool-choice": {
+              "wall_s": [
+                0.5260902090230957,
+                0.5266687920084223,
+                0.5207405419787392
+              ],
+              "decode_tps": [
+                83.0310141141219,
+                82.31881662858015,
+                83.49189604067298
+              ],
+              "ttft_s": [
+                0.27317266701720655,
+                0.2715630839811638,
+                0.2692191249807365
+              ]
+            }
+          }
+        }
+      },
+      "answer_parity": [
+        {
+          "round": 0,
+          "case": "code-result",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "code-result",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "code-result",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "tool-choice",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "tool-choice",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "tool-choice",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "operations",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "operations",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "operations",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "invoice",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "invoice",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "invoice",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "structured-output",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "structured-output",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "structured-output",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "prose",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": false,
+          "visible_text_equal_to_new6": false
+        },
+        {
+          "round": 0,
+          "case": "prose",
+          "setting": "new8",
+          "output_ids_equal_to_new6": false,
+          "visible_text_equal_to_new6": false
+        },
+        {
+          "round": 0,
+          "case": "prose",
+          "setting": "control6",
+          "output_ids_equal_to_new6": false,
+          "visible_text_equal_to_new6": false
+        },
+        {
+          "round": 0,
+          "case": "code",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "code",
+          "setting": "new8",
+          "output_ids_equal_to_new6": false,
+          "visible_text_equal_to_new6": false
+        },
+        {
+          "round": 0,
+          "case": "code",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "chinese",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "chinese",
+          "setting": "new8",
+          "output_ids_equal_to_new6": false,
+          "visible_text_equal_to_new6": false
+        },
+        {
+          "round": 0,
+          "case": "chinese",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "code-result",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "code-result",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "code-result",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "tool-choice",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "tool-choice",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "tool-choice",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "operations",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "operations",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "operations",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "invoice",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "invoice",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "invoice",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "structured-output",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "structured-output",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "structured-output",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "prose",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": false,
+          "visible_text_equal_to_new6": false
+        },
+        {
+          "round": 1,
+          "case": "prose",
+          "setting": "new8",
+          "output_ids_equal_to_new6": false,
+          "visible_text_equal_to_new6": false
+        },
+        {
+          "round": 1,
+          "case": "prose",
+          "setting": "control6",
+          "output_ids_equal_to_new6": false,
+          "visible_text_equal_to_new6": false
+        },
+        {
+          "round": 1,
+          "case": "code",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "code",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "code",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "chinese",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": false,
+          "visible_text_equal_to_new6": false
+        },
+        {
+          "round": 1,
+          "case": "chinese",
+          "setting": "new8",
+          "output_ids_equal_to_new6": false,
+          "visible_text_equal_to_new6": false
+        },
+        {
+          "round": 1,
+          "case": "chinese",
+          "setting": "control6",
+          "output_ids_equal_to_new6": false,
+          "visible_text_equal_to_new6": false
+        },
+        {
+          "round": 2,
+          "case": "code-result",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "code-result",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "code-result",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "tool-choice",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "tool-choice",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "tool-choice",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "operations",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "operations",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "operations",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "invoice",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "invoice",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "invoice",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "structured-output",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "structured-output",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "structured-output",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "prose",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "prose",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "prose",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "code",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "code",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "code",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "chinese",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "chinese",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "chinese",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        }
+      ]
+    },
+    "IQ3_S": {
+      "configuration": {
+        "device": {
+          "device_name": "Apple M5 Pro",
+          "max_recommended_working_set_size": 61865984000,
+          "memory_size": 68719476736,
+          "architecture": "applegpu_g17s",
+          "max_buffer_length": 41747087360,
+          "resource_limit": 499000
+        },
+        "auto_fuse_upto": 8,
+        "model": "/Users/jakecantrell/inference-lab/models/standard-gsq/ed59f92082b1/IQ3_S/Qwen3.8-Flash-Next-GSQ-RCO-IQ3_S-00001-of-00002.gguf",
+        "load_s": 10.491217500006314,
+        "table_warming_started": false,
+        "active_bytes_after_load": 5187826032,
+        "cache_bytes_after_load": 19384,
+        "settings": {
+          "reference6": [
+            false,
+            6
+          ],
+          "new6": [
+            true,
+            6
+          ],
+          "new8": [
+            true,
+            8
+          ],
+          "control6": [
+            true,
+            6
+          ]
+        },
+        "precision": "float16; MLX_ENABLE_TF32 unset",
+        "kernel_reference_limit": "Reference toggles eight trunk module switches and fuse limit; current shared draft-head and Q2 thread rule remain. Not an exact historical source comparison.",
+        "seed": 20261015,
+        "full_model_resident": false,
+        "draft_load_s": 1.4885687080095522,
+        "expert_budget_bytes": 39755017872,
+        "warm_s": {
+          "reference6": 3.920807583956048,
+          "new6": 2.11561083298875,
+          "new8": 1.959079708030913,
+          "control6": 1.9663305419962853
+        },
+        "table_warming_finished": false
+      },
+      "micro": [
+        {
+          "window": 1,
+          "setting": "reference6",
+          "paired_rounds": 20,
+          "median_ms": 39.797333505703136,
+          "new6_median_ms": 38.29854147625156,
+          "median_saving_ms": -1.425104506779462,
+          "bootstrap_95_median_interval_ms": [
+            -1.6369580407626927,
+            -1.3089794956613332
+          ],
+          "duplicate_control_median_ms": 0.06970798131078482,
+          "duplicate_control_abs_p95_ms": 0.7035419694148004,
+          "logits_bit_equal_to_new6": true,
+          "argmax_equal_to_new6": true
+        },
+        {
+          "window": 1,
+          "setting": "new8",
+          "paired_rounds": 20,
+          "median_ms": 38.27470800024457,
+          "new6_median_ms": 38.29854147625156,
+          "median_saving_ms": 0.05912451888434589,
+          "bootstrap_95_median_interval_ms": [
+            -0.04297951818443835,
+            0.1773544936440885
+          ],
+          "duplicate_control_median_ms": 0.06970798131078482,
+          "duplicate_control_abs_p95_ms": 0.7035419694148004,
+          "logits_bit_equal_to_new6": true,
+          "argmax_equal_to_new6": true
+        },
+        {
+          "window": 1,
+          "setting": "control6",
+          "paired_rounds": 20,
+          "median_ms": 38.23322901735082,
+          "new6_median_ms": 38.29854147625156,
+          "median_saving_ms": 0.06970798131078482,
+          "bootstrap_95_median_interval_ms": [
+            -0.047478999476879835,
+            0.19866699585691094
+          ],
+          "duplicate_control_median_ms": 0.06970798131078482,
+          "duplicate_control_abs_p95_ms": 0.7035419694148004,
+          "logits_bit_equal_to_new6": true,
+          "argmax_equal_to_new6": true
+        },
+        {
+          "window": 4,
+          "setting": "reference6",
+          "paired_rounds": 20,
+          "median_ms": 57.08747898461297,
+          "new6_median_ms": 55.13193749357015,
+          "median_saving_ms": -2.091853995807469,
+          "bootstrap_95_median_interval_ms": [
+            -2.516374981496483,
+            -1.7048129811882973
+          ],
+          "duplicate_control_median_ms": -0.05183354369364679,
+          "duplicate_control_abs_p95_ms": 1.0149579611606896,
+          "logits_bit_equal_to_new6": true,
+          "argmax_equal_to_new6": true
+        },
+        {
+          "window": 4,
+          "setting": "new8",
+          "paired_rounds": 20,
+          "median_ms": 55.17358297947794,
+          "new6_median_ms": 55.13193749357015,
+          "median_saving_ms": 0.012541539035737514,
+          "bootstrap_95_median_interval_ms": [
+            -0.32672949600964785,
+            0.2398960350546986
+          ],
+          "duplicate_control_median_ms": -0.05183354369364679,
+          "duplicate_control_abs_p95_ms": 1.0149579611606896,
+          "logits_bit_equal_to_new6": true,
+          "argmax_equal_to_new6": true
+        },
+        {
+          "window": 4,
+          "setting": "control6",
+          "paired_rounds": 20,
+          "median_ms": 55.256166495382786,
+          "new6_median_ms": 55.13193749357015,
+          "median_saving_ms": -0.05183354369364679,
+          "bootstrap_95_median_interval_ms": [
+            -0.3263540274929255,
+            0.15758301015011966
+          ],
+          "duplicate_control_median_ms": -0.05183354369364679,
+          "duplicate_control_abs_p95_ms": 1.0149579611606896,
+          "logits_bit_equal_to_new6": true,
+          "argmax_equal_to_new6": true
+        },
+        {
+          "window": 7,
+          "setting": "reference6",
+          "paired_rounds": 20,
+          "median_ms": 80.42679150821641,
+          "new6_median_ms": 77.91435398394242,
+          "median_saving_ms": -2.5052714918274432,
+          "bootstrap_95_median_interval_ms": [
+            -2.727354527451098,
+            -2.3613329394720495
+          ],
+          "duplicate_control_median_ms": -0.013791490346193314,
+          "duplicate_control_abs_p95_ms": 0.9197909384965897,
+          "logits_bit_equal_to_new6": true,
+          "argmax_equal_to_new6": true
+        },
+        {
+          "window": 7,
+          "setting": "new8",
+          "paired_rounds": 20,
+          "median_ms": 79.00845853146166,
+          "new6_median_ms": 77.91435398394242,
+          "median_saving_ms": -1.0887500538956374,
+          "bootstrap_95_median_interval_ms": [
+            -1.2115414720028639,
+            -1.017124974168837
+          ],
+          "duplicate_control_median_ms": -0.013791490346193314,
+          "duplicate_control_abs_p95_ms": 0.9197909384965897,
+          "logits_bit_equal_to_new6": false,
+          "argmax_equal_to_new6": false
+        },
+        {
+          "window": 7,
+          "setting": "control6",
+          "paired_rounds": 20,
+          "median_ms": 77.90800000657327,
+          "new6_median_ms": 77.91435398394242,
+          "median_saving_ms": -0.013791490346193314,
+          "bootstrap_95_median_interval_ms": [
+            -0.10729196947067976,
+            0.17764599760994315
+          ],
+          "duplicate_control_median_ms": -0.013791490346193314,
+          "duplicate_control_abs_p95_ms": 0.9197909384965897,
+          "logits_bit_equal_to_new6": true,
+          "argmax_equal_to_new6": true
+        },
+        {
+          "window": 8,
+          "setting": "reference6",
+          "paired_rounds": 20,
+          "median_ms": 83.2498750241939,
+          "new6_median_ms": 80.82208351697773,
+          "median_saving_ms": -2.4423124559689313,
+          "bootstrap_95_median_interval_ms": [
+            -2.524416515370831,
+            -2.1986669744364917
+          ],
+          "duplicate_control_median_ms": 0.03883300814777613,
+          "duplicate_control_abs_p95_ms": 0.9900419972836971,
+          "logits_bit_equal_to_new6": true,
+          "argmax_equal_to_new6": true
+        },
+        {
+          "window": 8,
+          "setting": "new8",
+          "paired_rounds": 20,
+          "median_ms": 81.97304198984057,
+          "new6_median_ms": 80.82208351697773,
+          "median_saving_ms": -1.1944159923586994,
+          "bootstrap_95_median_interval_ms": [
+            -1.3978540082462132,
+            -0.951792491832748
+          ],
+          "duplicate_control_median_ms": 0.03883300814777613,
+          "duplicate_control_abs_p95_ms": 0.9900419972836971,
+          "logits_bit_equal_to_new6": false,
+          "argmax_equal_to_new6": false
+        },
+        {
+          "window": 8,
+          "setting": "control6",
+          "paired_rounds": 20,
+          "median_ms": 80.74535400373861,
+          "new6_median_ms": 80.82208351697773,
+          "median_saving_ms": 0.03883300814777613,
+          "bootstrap_95_median_interval_ms": [
+            -0.18491598893888295,
+            0.3104790230281651
+          ],
+          "duplicate_control_median_ms": 0.03883300814777613,
+          "duplicate_control_abs_p95_ms": 0.9900419972836971,
+          "logits_bit_equal_to_new6": true,
+          "argmax_equal_to_new6": true
+        }
+      ],
+      "answers": {
+        "reference6": {
+          "requests": 24,
+          "graded": 15,
+          "correct": 15,
+          "completion_limits": 9,
+          "per_case": {
+            "chinese": {
+              "wall_s": [
+                9.963431374984793,
+                9.983444500016049,
+                9.53886454203166
+              ],
+              "decode_tps": [
+                28.05012048903446,
+                28.213350184003932,
+                30.274267050982978
+              ],
+              "ttft_s": [
+                0.8725613339920528,
+                0.9451701250509359,
+                1.1158695420017466
+              ]
+            },
+            "code": {
+              "wall_s": [
+                6.704573875002097,
+                6.807786291989032,
+                6.507996833010111
+              ],
+              "decode_tps": [
+                47.10812133625834,
+                47.003115528078396,
+                49.03529939338197
+              ],
+              "ttft_s": [
+                1.2914945000084117,
+                1.3826140000019222,
+                1.3076615000027232
+              ]
+            },
+            "code-result": {
+              "wall_s": [
+                1.6389698749990202,
+                1.9923297920031473,
+                1.6007827499997802
+              ],
+              "decode_tps": [
+                40.616704935982874,
+                35.13529153797993,
+                44.57518375067047
+              ],
+              "ttft_s": [
+                1.2204228750197217,
+                1.508485791971907,
+                1.2194046250078827
+              ]
+            },
+            "invoice": {
+              "wall_s": [
+                1.8899098749971017,
+                1.890893124975264,
+                2.2120392079814337
+              ],
+              "decode_tps": [
+                36.35101360920218,
+                39.115497819839895,
+                35.11669852757678
+              ],
+              "ttft_s": [
+                1.2846997909946367,
+                1.3284562079934403,
+                1.585556624981109
+              ]
+            },
+            "operations": {
+              "wall_s": [
+                1.5734147079638205,
+                1.983924833999481,
+                1.70721850002883
+              ],
+              "decode_tps": [
+                34.4908677620703,
+                32.18681611494227,
+                33.957608777696215
+              ],
+              "ttft_s": [
+                1.2544897079933435,
+                1.642169999948237,
+                1.3832852080231532
+              ]
+            },
+            "prose": {
+              "wall_s": [
+                9.022193000011612,
+                7.693276209000032,
+                8.144849749980494
+              ],
+              "decode_tps": [
+                33.58397552102035,
+                39.93983338187288,
+                37.10658291149624
+              ],
+              "ttft_s": [
+                1.4292860840214416,
+                1.3086727089830674,
+                1.272753749974072
+              ]
+            },
+            "structured-output": {
+              "wall_s": [
+                3.208019667014014,
+                2.9515509579796344,
+                3.235117290983908
+              ],
+              "decode_tps": [
+                58.23213649029809,
+                54.82506978498968,
+                58.48085086736501
+              ],
+              "ttft_s": [
+                1.1816471670172177,
+                0.799250915995799,
+                1.2173627910087816
+              ]
+            },
+            "tool-choice": {
+              "wall_s": [
+                1.8293334170011804,
+                1.960510750010144,
+                1.9725582500104792
+              ],
+              "decode_tps": [
+                45.30626217902959,
+                44.82307688375009,
+                43.32061080078233
+              ],
+              "ttft_s": [
+                1.3658213330199942,
+                1.4920020830468275,
+                1.4878005420323461
+              ]
+            }
+          }
+        },
+        "new6": {
+          "requests": 24,
+          "graded": 15,
+          "correct": 15,
+          "completion_limits": 9,
+          "per_case": {
+            "chinese": {
+              "wall_s": [
+                8.829362375021446,
+                9.574890374962706,
+                8.879779708979186
+              ],
+              "decode_tps": [
+                33.236720919767265,
+                31.420862654326534,
+                33.21144083334666
+              ],
+              "ttft_s": [
+                1.15712537500076,
+                1.4592634169966914,
+                1.2017027089605108
+              ]
+            },
+            "code": {
+              "wall_s": [
+                6.289745874993969,
+                6.424929417029489,
+                5.942268416984007
+              ],
+              "decode_tps": [
+                51.2772080015543,
+                49.30066323834029,
+                50.40964176646671
+              ],
+              "ttft_s": [
+                1.3167762079974636,
+                1.252585208043456,
+                0.8837123339762911
+              ]
+            },
+            "code-result": {
+              "wall_s": [
+                2.1724325839895755,
+                1.4785744160180911,
+                1.8548081669723615
+              ],
+              "decode_tps": [
+                28.59884380928879,
+                44.57266128967162,
+                40.11697638521876
+              ],
+              "ttft_s": [
+                1.578002959024161,
+                1.0971747080329806,
+                1.4310474169906229
+              ]
+            },
+            "invoice": {
+              "wall_s": [
+                1.7352836250211112,
+                1.866543750045821,
+                1.7883385000168346
+              ],
+              "decode_tps": [
+                46.94579381906453,
+                46.83000341351891,
+                43.148436773351904
+              ],
+              "ttft_s": [
+                1.266658041975461,
+                1.3967594580026343,
+                1.2784706659731455
+              ]
+            },
+            "operations": {
+              "wall_s": [
+                1.5418882909580134,
+                1.5668009580112994,
+                1.767361250007525
+              ],
+              "decode_tps": [
+                43.99979479240964,
+                55.57217331509117,
+                39.29528661755636
+              ],
+              "ttft_s": [
+                1.2918871250003576,
+                1.3688601659960113,
+                1.4874294580076821
+              ]
+            },
+            "prose": {
+              "wall_s": [
+                6.80885545903584,
+                7.815056750026997,
+                6.919966749963351
+              ],
+              "decode_tps": [
+                45.11588445911288,
+                38.112060780022894,
+                44.96792464151856
+              ],
+              "ttft_s": [
+                1.1567441670340486,
+                1.1242613749927841,
+                1.2492580830003135
+              ]
+            },
+            "structured-output": {
+              "wall_s": [
+                3.431703457958065,
+                2.95823658403242,
+                3.3268224589992315
+              ],
+              "decode_tps": [
+                50.86633158635202,
+                57.04619514119187,
+                50.92731684529252
+              ],
+              "ttft_s": [
+                1.111897874972783,
+                0.889737542020157,
+                1.0097948339534923
+              ]
+            },
+            "tool-choice": {
+              "wall_s": [
+                1.8865394580061547,
+                2.2643249590182677,
+                1.7947069170186296
+              ],
+              "decode_tps": [
+                45.65292242286507,
+                43.204557402880745,
+                48.431078106949435
+              ],
+              "ttft_s": [
+                1.4265470000100322,
+                1.7782651250017807,
+                1.3611010420136154
+              ]
+            }
+          }
+        },
+        "new8": {
+          "requests": 24,
+          "graded": 15,
+          "correct": 15,
+          "completion_limits": 9,
+          "per_case": {
+            "chinese": {
+              "wall_s": [
+                10.169535959023051,
+                8.90424725000048,
+                8.839693707996048
+              ],
+              "decode_tps": [
+                28.902847209171302,
+                33.047746981266215,
+                33.22016926101751
+              ],
+              "ttft_s": [
+                1.3468757499940693,
+                1.1881387920002453,
+                1.163634083000943
+              ]
+            },
+            "code": {
+              "wall_s": [
+                7.604260083986446,
+                7.484844291000627,
+                7.591751582978759
+              ],
+              "decode_tps": [
+                41.50113032842469,
+                42.24523774897245,
+                42.163164047962354
+              ],
+              "ttft_s": [
+                1.4598491250071675,
+                1.4486609579762444,
+                1.5438183749793097
+              ]
+            },
+            "code-result": {
+              "wall_s": [
+                1.550657166983001,
+                1.4200694999890402,
+                1.640774584026076
+              ],
+              "decode_tps": [
+                55.48797863870966,
+                44.479659896165494,
+                43.295941766651886
+              ],
+              "ttft_s": [
+                1.2442845000186935,
+                1.0378723330213688,
+                1.2481280840002
+              ]
+            },
+            "invoice": {
+              "wall_s": [
+                2.0939469580189325,
+                2.099957500002347,
+                1.6271192079875618
+              ],
+              "decode_tps": [
+                38.253016586493914,
+                41.065430115161696,
+                43.9732349876102
+              ],
+              "ttft_s": [
+                1.5188289160141721,
+                1.5642270829994231,
+                1.1268148749950342
+              ]
+            },
+            "operations": {
+              "wall_s": [
+                1.789318832976278,
+                1.5931402079877444,
+                1.9152187909930944
+              ],
+              "decode_tps": [
+                34.46936894799806,
+                42.14646861712884,
+                37.329947288670084
+              ],
+              "ttft_s": [
+                1.4701949169975705,
+                1.3321456250268966,
+                1.6205492080189288
+              ]
+            },
+            "prose": {
+              "wall_s": [
+                6.949906416004524,
+                6.902289749996271,
+                6.8905486250296235
+              ],
+              "decode_tps": [
+                44.72956701358341,
+                44.45246752024291,
+                44.84475077025972
+              ],
+              "ttft_s": [
+                1.2489793329732493,
+                1.1658252920024097,
+                1.2042643750319257
+              ]
+            },
+            "structured-output": {
+              "wall_s": [
+                3.31836612499319,
+                3.165392166003585,
+                3.280578207981307
+              ],
+              "decode_tps": [
+                55.17977324709791,
+                56.82033069268325,
+                55.768551697069654
+              ],
+              "ttft_s": [
+                1.179901375027839,
+                1.0886707080062479,
+                1.164690374978818
+              ]
+            },
+            "tool-choice": {
+              "wall_s": [
+                2.5741749580483884,
+                1.9552927499753423,
+                2.25577541597886
+              ],
+              "decode_tps": [
+                35.22232135434785,
+                42.57897105038601,
+                38.75105654980714
+              ],
+              "ttft_s": [
+                1.9779621250345372,
+                1.4620915409759618,
+                1.7138547080103308
+              ]
+            }
+          }
+        },
+        "control6": {
+          "requests": 24,
+          "graded": 15,
+          "correct": 15,
+          "completion_limits": 9,
+          "per_case": {
+            "chinese": {
+              "wall_s": [
+                8.533310041995719,
+                8.636038124968763,
+                8.728760041994974
+              ],
+              "decode_tps": [
+                33.334128920833656,
+                33.200246633756514,
+                33.09036498390632
+              ],
+              "ttft_s": [
+                0.8834926249692217,
+                0.9553722909768112,
+                1.0225893749739043
+              ]
+            },
+            "code": {
+              "wall_s": [
+                5.873701125034131,
+                5.9206625840161,
+                6.209495083021466
+              ],
+              "decode_tps": [
+                55.87100102416819,
+                54.9330991069369,
+                50.73745144649727
+              ],
+              "ttft_s": [
+                1.3096160840359516,
+                1.2786525000119582,
+                1.1836218329844996
+              ]
+            },
+            "code-result": {
+              "wall_s": [
+                1.3588000829913653,
+                1.2704611250082962,
+                1.692325083015021
+              ],
+              "decode_tps": [
+                55.39294432156137,
+                50.80124636934916,
+                40.029947959126716
+              ],
+              "ttft_s": [
+                1.0519017910119146,
+                0.9358236659900285,
+                1.2676430420251563
+              ]
+            },
+            "invoice": {
+              "wall_s": [
+                1.7730091669945978,
+                1.808946457982529,
+                1.8100716250482947
+              ],
+              "decode_tps": [
+                46.7536787186222,
+                49.31948459307118,
+                45.55031640470376
+              ],
+              "ttft_s": [
+                1.302457958983723,
+                1.3628752919612452,
+                1.3270892500295304
+              ]
+            },
+            "operations": {
+              "wall_s": [
+                1.6970061670290306,
+                1.615654999972321,
+                1.5634975000284612
+              ],
+              "decode_tps": [
+                48.5372543822828,
+                43.666627133333854,
+                50.418357786245636
+              ],
+              "ttft_s": [
+                1.47037612501299,
+                1.36374637496192,
+                1.3453230000450276
+              ]
+            },
+            "prose": {
+              "wall_s": [
+                8.016793707967736,
+                8.622360749985091,
+                6.9500954580144025
+              ],
+              "decode_tps": [
+                36.64508323342437,
+                34.17804196521322,
+                44.477107176106784
+              ],
+              "ttft_s": [
+                1.0581521249841899,
+                1.1614301250083372,
+                1.2168089160113595
+              ]
+            },
+            "structured-output": {
+              "wall_s": [
+                2.9913492079940625,
+                3.2362481669988483,
+                2.9486193329794332
+              ],
+              "decode_tps": [
+                65.6934372843639,
+                59.78561535981905,
+                61.48254077001719
+              ],
+              "ttft_s": [
+                1.1951271669822745,
+                1.2625292500015348,
+                1.029375291953329
+              ]
+            },
+            "tool-choice": {
+              "wall_s": [
+                1.7244841660140082,
+                1.876030916988384,
+                1.8874174999655224
+              ],
+              "decode_tps": [
+                55.644573477526045,
+                49.268851183417425,
+                44.91344537392014
+              ],
+              "ttft_s": [
+                1.3470888750161976,
+                1.449798124958761,
+                1.4198514999588951
+              ]
+            }
+          }
+        }
+      },
+      "answer_parity": [
+        {
+          "round": 0,
+          "case": "code-result",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "code-result",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "code-result",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "tool-choice",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "tool-choice",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "tool-choice",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "operations",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "operations",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "operations",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "invoice",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "invoice",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "invoice",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "structured-output",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "structured-output",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "structured-output",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "prose",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": false,
+          "visible_text_equal_to_new6": false
+        },
+        {
+          "round": 0,
+          "case": "prose",
+          "setting": "new8",
+          "output_ids_equal_to_new6": false,
+          "visible_text_equal_to_new6": false
+        },
+        {
+          "round": 0,
+          "case": "prose",
+          "setting": "control6",
+          "output_ids_equal_to_new6": false,
+          "visible_text_equal_to_new6": false
+        },
+        {
+          "round": 0,
+          "case": "code",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "code",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "code",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "chinese",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "chinese",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 0,
+          "case": "chinese",
+          "setting": "control6",
+          "output_ids_equal_to_new6": false,
+          "visible_text_equal_to_new6": false
+        },
+        {
+          "round": 1,
+          "case": "code-result",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "code-result",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "code-result",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "tool-choice",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "tool-choice",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "tool-choice",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "operations",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "operations",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "operations",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "invoice",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "invoice",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "invoice",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "structured-output",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "structured-output",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "structured-output",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "prose",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": false,
+          "visible_text_equal_to_new6": false
+        },
+        {
+          "round": 1,
+          "case": "prose",
+          "setting": "new8",
+          "output_ids_equal_to_new6": false,
+          "visible_text_equal_to_new6": false
+        },
+        {
+          "round": 1,
+          "case": "prose",
+          "setting": "control6",
+          "output_ids_equal_to_new6": false,
+          "visible_text_equal_to_new6": false
+        },
+        {
+          "round": 1,
+          "case": "code",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "code",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "code",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "chinese",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "chinese",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 1,
+          "case": "chinese",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "code-result",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "code-result",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "code-result",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "tool-choice",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "tool-choice",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "tool-choice",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "operations",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "operations",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "operations",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "invoice",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "invoice",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "invoice",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "structured-output",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "structured-output",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "structured-output",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "prose",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": false,
+          "visible_text_equal_to_new6": false
+        },
+        {
+          "round": 2,
+          "case": "prose",
+          "setting": "new8",
+          "output_ids_equal_to_new6": false,
+          "visible_text_equal_to_new6": false
+        },
+        {
+          "round": 2,
+          "case": "prose",
+          "setting": "control6",
+          "output_ids_equal_to_new6": false,
+          "visible_text_equal_to_new6": false
+        },
+        {
+          "round": 2,
+          "case": "code",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "code",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "code",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "chinese",
+          "setting": "reference6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "chinese",
+          "setting": "new8",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        },
+        {
+          "round": 2,
+          "case": "chinese",
+          "setting": "control6",
+          "output_ids_equal_to_new6": true,
+          "visible_text_equal_to_new6": true
+        }
+      ]
+    }
+  }
+}

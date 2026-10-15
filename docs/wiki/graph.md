@@ -440,3 +440,4 @@ Colours by kind: component #dbeafe, concept #f3f4f6, constraint #fee2e2, hardwar
 | [e46: as a 48 GB machine, with the memory held](experiments/e46-held-as-48gb.md) | simulated-machine, swapping, system-reserve, measurement-noise |
 | [e47: as a 32 GB machine, the memory held but not wired](experiments/e47-held-as-32gb-unwired.md) | simulated-machine, swapping, measurement-noise |
 | [e48: as a 48 GB machine, the memory held and wired](experiments/e48-wired-as-48gb.md) | simulated-machine, swapping, system-reserve, expert-store |
+| [Shared-weight controls on an M5 Pro](experiments/e49-shared-weight-controls.md) | measurement-noise, gpu-generation |

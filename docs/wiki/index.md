@@ -69,3 +69,5 @@
 Earlier experiments, e01-e42, are in [ROADMAP.md](../../ROADMAP.md) and `bench/experiments/`.
 
 The relations as a diagram: [graph.md](graph.md).
+
+- [e49: reproducible shared-weight comparisons](experiments/e49-shared-weight-controls.md): M5 Pro fusion controls, preserved legacy evidence and cleaned execution smoke.

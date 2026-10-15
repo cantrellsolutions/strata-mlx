@@ -26,6 +26,9 @@ Thresholds tuned on one machine: `strata_mlx/engine.py:FUSE_UPTO`, `strata_mlx/f
 
 ## What we know
 
+- An M5 generation name alone does not establish its best fusion threshold. On one20-core M5 Pro (applegpu_g17s), fusion6 beat8 at7/8-token fixed passes for Q2_0 and IQ3_S, opposite the reported80-core Ultra result. This is a bounded counterexample, not a general rule for all Pro variants; an explicit measured override can preserve automatic defaults. [e49]
+
+
 - MLX names the GPU's architecture (`mx.device_info()["architecture"]`): `applegpu_g16s` on the M4 Max, generation
   16; an M5 is generation 17, which is how MLX itself tells where the neural accelerators are. The hyper-connections'
   fusion limit is chosen by it: 8 from 17, 6 below [#9] [uvunqsoq].

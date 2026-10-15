@@ -252,3 +252,7 @@ order it was found.
   [pull request 1788](https://github.com/ml-explore/mlx-lm/pull/1788), which this engine builds on and pins.
 - ISTA-DASLab for the GSQ-RCO files, and Qwen for the model. The model's weights have their own license and
   are not part of this repository.
+
+## Reproducible shared-weight comparisons
+
+`bench/experiments/e49_shared_weight_controls.py --help` describes a Qwen4Exp-specific comparison with duplicate controls and raw token evidence. See [experiment e49](docs/wiki/experiments/e49-shared-weight-controls.md) for an exclusive-workload example, validation limits and the preserved legacy M5 Pro pilot. `bench/compare_results.py` validates the complete recorded plan before summarizing. This tooling does not stop another serving model automatically. `--fusion-limit auto|6|8` provides an optional measured serving override; auto behavior is unchanged.

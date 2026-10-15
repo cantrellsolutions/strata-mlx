@@ -25,6 +25,9 @@ A comparison of settings: an engine for each sharing the weights, passes shuffle
 
 ## What we know
 
+- A duplicate setting sharing the same weights bounds measurement noise; fixed-window paired differences and answer-rate differences answer different questions. In e49, duplicate fusion6 answer IDs differed3/24 Q2_0 and4/24 IQ3_S, although fixed-pass hashes matched. Raw IDs expose this limit; free-answer rates do not establish equal-work speed. [e49]
+
+
 - Compared in turns by process, three versions could not be told apart: another program kept the GPU 18-76%
   busy. In one process, an engine for each setting sharing the weights and the passes shuffled, they could [e45].
 - Separate processes differ by about 1 ms a pass on an M5 Ultra, in two clusters [#9].

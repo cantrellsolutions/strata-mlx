@@ -33,3 +33,7 @@
 - 2026-10-14 · [skkpzrnm] · started as a pilot: "Writing answers", eleven concepts, three
   experiments (e43-e45) drawn from ROADMAP.md, pull requests 9 and 10, and [skxmzozu] [wykuvxvr] [tmyqkuqv]
   [zryukqou]; the checker and the graph.
+
+- [uvuuktql] [e49] Add shared-weight comparison with duplicate control, strict complete-evidence analysis and optional explicit fusion-limit override. Record the legacy20-core M5 Pro pilot separately from cleaned methodology with CPU contracts and bounded Q2_0 GPU execution validation; no replacement performance study; retain numerical/answer/memory limits.
+
+- [uvuuktql] Rebase shared-weight contribution onto upstream memory experiments; renumber its script/page to e49, retain original e46 result artifacts unchanged, and regenerate the combined graph. No new model measurements.
