@@ -69,7 +69,7 @@ change is amended or rebased, which a commit hash does not; a commit made with p
 its hash, the same in every clone. So evidence cites change IDs. `jj log -r <id>` finds one; on GitHub the commit
 hash is in `log.md` beside it.
 
-Knowledge and code change together: a change that alters a measured behaviour updates the concept pages it touches
+Knowledge and code change together (the steps are in the repository's `AGENTS.md`): a change that alters a measured behaviour updates the concept pages it touches
 in the same change, and adds a line to `log.md`. A claim that falls is moved to `## Superseded`, not deleted.
 
 ## The checker
@@ -77,7 +77,8 @@ in the same change, and adds a line to `log.md`. A claim that falls is moved to 
     uv run python tools/wiki_check.py           # report; exit 1 on errors
     uv run python tools/wiki_check.py --write   # also rewrite graph.md
 
-It fails on: a [[link]] to no page; a relation word outside the table; a relation without evidence; an experiment
+It fails on: a change to `strata_mlx/` or `bench/` with no line in `log.md` carrying its change ID; an
+experiment script from e43 on without a page, or a page whose script is not there; a [[link]] to no page; a relation word outside the table; a relation without evidence; an experiment
 or change ID or ROADMAP heading that does not exist; an experiment page naming a concept whose page does not cite
 it, or the other way; `graph.md` out of date. It warns on code named under `## In this engine` that is not found.
 `tests/test_wiki.py` runs it with the other tests.

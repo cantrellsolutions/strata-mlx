@@ -51,3 +51,9 @@ def test_an_experiment_and_its_concepts_must_cite_each_other(copy):
     errors = errors_after(copy / "experiments" / "e43-experts-as-qmm.md", "[[expert-lookup-kernel]]", "[[exactness]]")
     assert any("names [[exactness]], whose page does not cite [e43]" in e for e in errors)
     assert any("cites [e43], whose page does not name [[expert-lookup-kernel]]" in e for e in errors)
+
+
+def test_an_experiment_page_names_a_script_that_is_there(copy):
+    errors = errors_after(copy / "experiments" / "e43-experts-as-qmm.md", "script: bench/experiments/e43_experts_as_qmm.py",
+                          "script: bench/experiments/e43_gone.py")
+    assert any("its script bench/experiments/e43_gone.py is not there" in e for e in errors)

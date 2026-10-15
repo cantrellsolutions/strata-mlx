@@ -79,6 +79,27 @@ def changes(ids: set) -> dict:
     return found
 
 
+GUARDED = ("strata_mlx/", "bench/")  # a change to these says in docs/wiki/log.md what it changed of what is known
+
+
+def unrecorded() -> list:
+    """Errors for the change under way (jj's @): it touches the engine or the benchmarks and docs/wiki/log.md has
+    no line with its change ID. A line that says nothing known changed is enough; the line is the record."""
+    if not shutil.which("jj") or not (ROOT / ".jj").exists():
+        return []
+    r = subprocess.run(["jj", "diff", "-r", "@", "--name-only"], cwd=ROOT, capture_output=True, text=True)
+    c = subprocess.run(["jj", "log", "--ignore-working-copy", "-r", "@", "--no-graph", "-T", "change_id.short(8)"],
+                       cwd=ROOT, capture_output=True, text=True)
+    if r.returncode or c.returncode:
+        return []
+    touched = [f for f in r.stdout.split() if f.startswith(GUARDED)]
+    log = (ROOT / "docs" / "wiki" / "log.md").read_text()
+    if touched and f"[{c.stdout.strip()}]" not in log:
+        return [f"this change ({c.stdout.strip()}) touches {', '.join(touched[:3])}{' and more' if len(touched) > 3 else ''}"
+                f" and docs/wiki/log.md has no line for it: say what it changed of what is known, or that it changed nothing"]
+    return []
+
+
 def check() -> tuple:
     concepts, experiments = read("concepts"), read("experiments")
     errors, warnings = [], []
@@ -138,6 +159,19 @@ def check() -> tuple:
         for ev in set(EVIDENCE.findall(c.text)):
             if ev in experiments and c.id not in experiments[ev].concepts:
                 errors.append(f"{where(c.path)} cites [{ev}], whose page does not name [[{c.id}]] under ## Concepts")
+
+    # every experiment from e43 on has a page, and a page's script is there
+    for script in sorted((ROOT / "bench" / "experiments").glob("e[0-9][0-9]_*.py")):
+        eid = script.name[:3]
+        if int(eid[1:]) > LEGACY and eid not in experiments:
+            errors.append(f"{script.relative_to(ROOT)} has no page in docs/wiki/experiments/")
+    for e in experiments.values():
+        script = front(e.text).get("script", "")
+        if script.startswith("bench/") and not (ROOT / script).exists():
+            errors.append(f"{where(e.path)}: its script {script} is not there")
+
+    if WIKI == ROOT / "docs" / "wiki":
+        errors += unrecorded()
 
     found = changes(cited_changes)
     if found is None:
