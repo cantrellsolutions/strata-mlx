@@ -1,0 +1,30 @@
+---
+id: dense-blocks
+kind: component
+status: current
+---
+# The dense tensors as the file's blocks
+
+> 中文摘要:Q3_K 和 IQ4_XS 两种稠密张量,MLX 只能按 8 位存,比文件大 1.74 GB。专家从 SSD 读的机器上它们保持文件原来的块格式,
+> 省下的内存给专家。16 GB 机器上回答快了一半,24 和 32 GB 上差别在噪声里。
+
+## What it is
+
+Two types of the file's dense tensors (Q3_K and IQ4_XS) MLX can hold only at 8 bits: 5.49 GB as arrays against
+3.64 in the file. Where experts are read from the SSD they stay the file's blocks, multiplied by kernels that
+unpack them, and the experts have the 1.74 GB.
+
+## In this engine
+
+`strata_mlx/dense.py:BlockLinear`, `strata_mlx/dense.py:BlockEmbedding`, `strata_mlx/blocks.py:window_matvec`.
+
+## Relations
+
+- costs → [[decode-pass]]: 3.8 against 4.7 ms for one token, 5.6 against 4.8 for four: slower from four tokens [e36]
+- trades-against → [[expert-store]]: 1.74 GB more for experts: as a 16 GB machine 3.3 GB of experts where 1.6, answers 10.9 tok/s where 7.2 [e36]
+
+## What we know
+
+- As a 24 GB machine 6% and 13% faster in two runs, less than a run differs from the next; as a 32 GB machine no
+  difference [e36].
+- Held whole, the engine keeps the arrays.

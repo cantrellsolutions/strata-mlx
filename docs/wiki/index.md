@@ -1,6 +1,6 @@
 # Index
 
-> 中文摘要:所有概念的目录,按领域分组。目前只有"写回答的速度"这一块(试点)。
+> 中文摘要:所有概念的目录,按领域分组:写回答的速度,内存与小内存机型,以及跨领域的概念。
 
 ## Writing answers
 
@@ -12,6 +12,22 @@
 - [The Q2_0 experts' table kernel](concepts/expert-lookup-kernel.md): experts by a table of sums, and its threads.
 - [Hyper-connections](concepts/hyper-connections.md): four residual streams mixed at every layer, 1.27 GB a token.
 - [The n-gram table](concepts/ngram-table.md): 28.8 GB looked up by hashes, on the disk.
+
+## Memory and smaller Macs
+
+- [The memory rule](concepts/memory-rule.md): from a machine's memory, held whole or how many experts stay.
+- [What is left to macOS](concepts/system-reserve.md): a quarter of the memory, 8.5 GB at least, from two machines that swapped.
+- [Working memory](concepts/working-memory.md): what the process holds beyond its weights, 5 GB.
+- [Available memory at start](concepts/available-memory.md): an option that counts what is free before loading.
+- [Swapping](concepts/swapping.md): what the rule is there to prevent, seen only on real machines.
+- [A smaller machine, simulated](concepts/simulated-machine.md): what capping the budget on a 128 GB Mac can and cannot show.
+- [The expert store](concepts/expert-store.md): experts in memory within a budget, the rest read from the SSD.
+- [Reads from the SSD](concepts/ssd-reads.md): 6.5 GB/s here; the buffer, not the size, decides the cache.
+- [The page cache](concepts/page-cache.md): what makes benchmarks fast and the n-gram table cheap, until memory is short.
+- [The dense tensors as the file's blocks](concepts/dense-blocks.md): 1.74 GB given to the experts.
+- [A prompt read a layer at a time](concepts/layer-major-prefill.md): each layer's experts read once a piece, the same bits.
+- [The next layer read ahead](concepts/layer-read-ahead.md): the disk hidden behind the layer before.
+- [Experts guessed before their router](concepts/router-lookahead.md): measured, not built.
 
 ## Across areas
 

@@ -20,6 +20,7 @@ every size of the model. Its rows land anywhere in it.
 
 ## Relations
 
+- depends-on → [[page-cache]]: read by page faults; cached on a machine with memory to spare, cold on a small one [uoonprvo] [#10]
 - costs → [[decode-pass]]: cold, a step waited 4.0 ms on its page faults, 1.2 with the table cached; an answer came 16% faster on an M5 Ultra [#10] [tousqpoo]
 
 ## What we know
