@@ -2,6 +2,8 @@
 
 > 中文摘要:知识库的变更记录,最新的在前。每行写日期、jj change ID、改了哪些页、依据什么。
 
+- 2026-10-15 · [oonxmoxu] · measurement-noise: a control engine, the same setting as the baseline, says what a
+  one-process comparison cannot tell apart; from the M5 Ultra's run in pull request 9's thread.
 - 2026-10-15 · [uvunqsoq] · hyper-connections, gpu-generation: the fusion limit chosen by GPU generation (8 from 17,
   6 below), from the M5 Ultra's measurement in pull request 9's thread.
 - 2026-10-14 · [nlykrpkv] · Every concept given an area, and graph.md drawn as an overview of the areas and one diagram
