@@ -228,6 +228,13 @@ caches are 16-bit floats (3.9 GB at 128K tokens). Nothing here has run on a Mac 
 MIT, see [LICENSE](LICENSE). The projects named below have their own; the one file taken from Strata,
 `tools/mtp_fetch.py`, is Strata's and keeps Strata's MIT license, which is beside it.
 
+## What is known, by concept
+
+[docs/wiki](docs/wiki/index.md) holds what has been learned about this engine by concept rather than by date: a
+page for each idea, its relations to the others (a [diagram](docs/wiki/graph.md)), and the experiment, change or
+issue behind every claim. It starts with how answers are written; ROADMAP.md and ISSUES.md hold the rest, in the
+order it was found.
+
 ## Thanks to
 
 - [Strata](https://github.com/Niko1221/Strata) (MIT): the design this follows, the line protocol, the order
