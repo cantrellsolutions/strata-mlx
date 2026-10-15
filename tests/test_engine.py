@@ -570,3 +570,10 @@ def test_the_ngram_tables_rows_read_ahead_are_the_rows(tmp_path, monkeypatch):
     assert set(seen) == {int(p) * load.PAGE for p in np.unique(np.concatenate([first // load.PAGE, (first + 89) // load.PAGE]))}
     seen.clear()
     assert mx.array_equal(table.read(gid[:, :1]), want[:, :1]).item() and not seen  # a few rows: the lookup itself
+
+
+def test_the_fusion_limit_is_chosen_by_the_gpus_generation():
+    from strata_mlx.engine import MAX_WINDOW, fuse_upto_for, gpu_generation
+    assert gpu_generation("applegpu_g16s") == 16 and gpu_generation("applegpu_g17p") == 17
+    assert gpu_generation("") == 0 and gpu_generation("something else") == 0
+    assert fuse_upto_for(16) == 6 and fuse_upto_for(0) == 6 and fuse_upto_for(17) == MAX_WINDOW

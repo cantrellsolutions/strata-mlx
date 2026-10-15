@@ -977,3 +977,8 @@ ran slower that way (69.2 and 72.1 ms against 64.2 and 66.5 with six, the wide k
 difference), so the engine fuses up to six (`engine.FUSE_UPTO`), which also leaves those windows' logits what
 they were. The thread rule above now applies to the rows of 2,560 inputs only: the down rows' table is built in
 their own kernel since 9, which must give the bits of the separate one.
+
+Then measured the same way on the M5 Ultra by the pull request's author, against a control engine: fused up to
+eight was 2.0 ms a pass faster at seven and eight tokens there, with Q2_0 and with IQ3_S, and the same below; the
+thread rule was no slower (0.25-0.34 ms faster at seven and eight). So the limit is chosen by the GPU's
+generation as MLX names it (`engine.gpu_generation`): 8 from 17 (an M5), 6 below.

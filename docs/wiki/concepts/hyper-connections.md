@@ -18,13 +18,14 @@ float16: 1.27 GB in all, read every token.
 ## In this engine
 
 `strata_mlx/fused.py:FusedResidual` (the fused kernels), `strata_mlx/fused.py:PlainResidual` (MLX's operations),
-`strata_mlx/engine.py:FUSE_UPTO` (windows up to this many tokens take the fused ones).
+`strata_mlx/engine.py:FUSE_UPTO` (windows up to this many tokens take the fused ones), chosen by
+`strata_mlx/engine.py:fuse_upto_for` from `strata_mlx/engine.py:gpu_generation`.
 
 ## Relations
 
 - part-of → [[decode-pass]]: 3.7-5.1 ms of a one-token pass, 7.1-8.1 of a four-token one [e06]
 - limited-by → [[kernel-fixed-cost]]: unfused it is a chain of small kernels; read once for a window and fused it costs less [e07] [e09] [#9]
-- tuned-by → [[gpu-generation]]: fused up to eight tokens an M5 Ultra ran faster; on the M4 Max windows of seven and eight took 69.2 and 72.1 ms that way against 64.2 and 66.5 fused up to six [e45] [zryukqou]
+- tuned-by → [[gpu-generation]]: fused up to eight tokens an M5 Ultra ran 2.0 ms a pass faster at seven and eight, with both files; on the M4 Max windows of seven and eight took 69.2 and 72.1 ms that way against 64.2 and 66.5 fused up to six; so the limit is 8 from GPU generation 17 and 6 below [e45] [#9] [uvunqsoq]
 - trades-against → [[exactness]]: at 8 bits it would spare 0.6 GB a token, about 1.6 ms, and llama.cpp's token at 62 of 64 steps on a 7K prompt instead of 64; fused up to eight, windows of seven and eight give other logits than before [e18] [xtxomuun]
 
 ## What we know
@@ -35,6 +36,4 @@ float16: 1.27 GB in all, read every token.
 
 ## Open questions
 
-- Whether the M5 Ultra's gain at eight tokens holds when measured the same way (one process, passes shuffled).
-  If it does, `FUSE_UPTO` is chosen by GPU.
 - 8-bit weights are not used: they change the answers. Whether a user should be allowed to choose them.

@@ -20,6 +20,7 @@ is where a follow-up request usually parts from this one.
 import errno
 import json
 import os
+import re
 import shutil
 import time
 from dataclasses import dataclass, field
@@ -137,11 +138,28 @@ class Stats:
     by_position: list = field(default_factory=lambda: [0] * MAX_WINDOW)
 
 
-# Windows up to this many tokens take the fused hyper-connection kernels, longer ones MLX's operations. Pull
-# request 9 raised it to 8 (MAX_WINDOW), which an M5 Ultra ran faster; on this M4 Max, in one process with the
-# passes shuffled, windows of 7 and 8 tokens took 69.2 and 72.1 ms that way against 64.2 and 66.5 with 6, and 6
-# keeps those windows' logits what they were before the pull request. Which suits an M5 is that machine's to say.
-FUSE_UPTO = 6
+# Windows up to this many tokens take the fused hyper-connection kernels, longer ones MLX's operations. Measured in
+# one process with the passes shuffled (e45), the best differs by GPU: on this M4 Max (generation 16) windows of 7
+# and 8 tokens took 69.2 and 72.1 ms fused against 64.2 and 66.5 with MLX's operations; on an M5 Ultra (generation
+# 17) fused was 2.0 ms a pass faster at 7 and 8, with Q2_0 and IQ3_S alike (pull request 9's author, against a
+# control engine). Up to 6 tokens either way runs the same. Fused up to 6 also keeps 7- and 8-token windows' logits
+# what they were before pull request 9; fused up to 8 they agree with a token at a time better.
+def gpu_generation(architecture: str | None = None) -> int:
+    """The Apple GPU's generation from MLX's name for it ("applegpu_g16s": 16, an M4; an M5 is 17), 0 if unknown."""
+    if architecture is None:
+        try:
+            architecture = mx.device_info().get("architecture", "")
+        except Exception:
+            return 0
+    m = re.match(r"applegpu_g(\d+)", architecture or "")
+    return int(m.group(1)) if m else 0
+
+
+def fuse_upto_for(generation: int) -> int:
+    return MAX_WINDOW if generation >= 17 else 6
+
+
+FUSE_UPTO = fuse_upto_for(gpu_generation())
 
 
 class Engine:

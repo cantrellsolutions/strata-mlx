@@ -26,6 +26,10 @@ Thresholds tuned on one machine: `strata_mlx/engine.py:FUSE_UPTO`, `strata_mlx/f
 
 ## What we know
 
+- MLX names the GPU's architecture (`mx.device_info()["architecture"]`): `applegpu_g16s` on the M4 Max, generation
+  16; an M5 is generation 17, which is how MLX itself tells where the neural accelerators are. The hyper-connections'
+  fusion limit is chosen by it: 8 from 17, 6 below [#9] [uvunqsoq].
+
 - Two thresholds moved between an M5 Ultra and this M4 Max: hyper-connections fused up to eight tokens (faster
   there, slower here at seven and eight) and the table kernel's threads to a row (slower there in a full pass,
   faster here) [e44] [e45].
@@ -33,4 +37,6 @@ Thresholds tuned on one machine: `strata_mlx/engine.py:FUSE_UPTO`, `strata_mlx/f
 
 ## Open questions
 
-- Choosing such thresholds by GPU at start. It needs each one measured on both machines the same way.
+- The other thresholds tuned on one machine (`WIDE_FROM`, `MATVEC_GLU_UPTO`) are not chosen by GPU; the threads
+  to a row of the table kernel were measured on both and hold on both [#9].
+- Generation 17 is taken from MLX's naming; the M5 Ultra's own string has not been seen here.

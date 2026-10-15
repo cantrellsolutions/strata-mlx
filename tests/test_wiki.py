@@ -38,7 +38,7 @@ def errors_after(page: Path, old: str, new: str) -> list:
     ("hyper-connections", "- part-of → [[decode-pass]]", "- slows → [[decode-pass]]", "is not a relation"),
     ("hyper-connections", "[e06]\n", "\n", "has no evidence"),
     ("hyper-connections", "[e18]", "[e99]", "has no page in experiments/"),
-    ("hyper-connections", "[zryukqou]", "[kqkqkqkq]", "is not in this repository"),
+    ("kernel-fixed-cost", "[wykuvxvr]", "[kqkqkqkq]", "is not in this repository"),
     ("decode-pass", "[ROADMAP: Faster answers]", "[ROADMAP: No such heading]", "is no heading"),
     ("decode-pass", "area: answers", "area: somewhere", "is not one of"),
 ])
