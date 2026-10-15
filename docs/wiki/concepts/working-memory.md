@@ -25,6 +25,10 @@ tensors, the activations), MLX's pool of freed buffers.
 
 ## What we know
 
+- What the process holds is more than its arrays: as a 96 GB machine, Q2_0 with the draft head, MLX's arrays
+  peaked at 20.4 GB and the kernel's footprint of the process at 21.95 (`bench/memory.py:footprint`), 1.55 GB that
+  MLX's counters do not see [wumtsnom].
+
 - Measured with Q2_0: 1.3 GB not arrays, 2.1 GB at the peak of reading a 1,500-token prompt, MLX's pool 0.5
   [ROADMAP: Macs with 16, 24 and 32 GB].
 - Without a cap MLX's pool held 37 GB after 2,048 tokens and the machine swapped; the same speed at 1, 4 and 16 GiB [ROADMAP: Done].

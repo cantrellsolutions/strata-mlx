@@ -9,6 +9,12 @@ page cache of this machine has been answering for the disk of a smaller one.
 is loaded, as the server does; `--dense arrays` holds the dense tensors as MLX's own quantized arrays, as a
 machine that has all experts in memory does, where the default here is the file's blocks (1.7 GB less).
 `--read <file>` reads that prompt as well, twice, and says how fast.
+
+`--hold auto` (or a number of GiB) makes the machine smaller in fact and not only in the budget: another process
+holds what the machine has beyond `--machine-memory` in random bytes for the whole run (bench/memory.py), so
+swapping shows as it would on the small machine. Every row says this process's footprint as the kernel counts it;
+the last says its peak, what the machine swapped out meanwhile, and whether the hold stayed whole, without which
+the run says nothing about pressure.
 """
 
 import argparse
@@ -21,6 +27,7 @@ import mlx.core as mx
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from drop_cache import in_memory  # noqa: E402
+from memory import Hold, footprint, machine_gib, swapped  # noqa: E402
 from spec_decode import PROMPTS, STOP, tokenize  # noqa: E402
 
 from strata_mlx.engine import Engine  # noqa: E402
@@ -41,10 +48,36 @@ def main():
     p.add_argument("--tokens", type=int, default=200)
     p.add_argument("--prompts", nargs="+", default=["prose", "code", "reasoning", "edit"])
     p.add_argument("--read", help="a long prompt in a file, read twice")
+    p.add_argument("--hold", help="GiB held by another process for the run, or 'auto': all but --machine-memory")
     p.add_argument("--json")
     args = p.parse_args()
     if (args.budget is None) == (args.machine_memory is None):
         p.error("one of --budget and --machine-memory")
+    hold = None
+    if args.hold:
+        if args.hold == "auto" and not args.machine_memory:
+            p.error("--hold auto needs --machine-memory")
+        hold = round(machine_gib() - args.machine_memory, 1) if args.hold == "auto" else float(args.hold)
+    swapped_before = swapped()[0]
+    if hold:
+        print(f"holding {hold} GiB in another process", flush=True)
+        with Hold(hold) as h:
+            rows = run(args)
+        print(f"the hold: {h.report()}", flush=True)
+    else:
+        h, rows = None, run(args)
+    now, peak = footprint()
+    summary = {"summary": True, "footprint_peak_gb": round(peak / 1e9, 2),
+               "swapped_out_gb": round((swapped()[0] - swapped_before) / 1e9, 2), **(h.report() if h else {})}
+    rows.append(summary)
+    print(f"this process: footprint peak {summary['footprint_peak_gb']} GB; the machine swapped out "
+          f"{summary['swapped_out_gb']} GB meanwhile" + ("" if not h else "; the hold " +
+          ("stayed whole" if h.whole else "did NOT stay whole: the run says nothing about pressure")), flush=True)
+    if args.json:
+        Path(args.json).write_text(json.dumps(rows, indent=1) + "\n")
+
+
+def run(args) -> list:
     if args.available:  # counted before the model's files are read: their pages are file cache for a while
         from strata_mlx.paged import available_memory
 
@@ -90,7 +123,8 @@ def main():
                        "prompt_read_gb": round(read_prompt / 1e9, 2), "tok_s": round(n / dt, 1),
                        "misses_per_token": round(store.misses / n, 1), "read_mb_per_token": round(store.bytes_read / n / 1e6, 1),
                        "read_share": round(store.read_s / dt, 2), "tokens_per_pass": round(e.stats.tokens / max(e.stats.steps, 1), 2),
-                       "held_gb": round(store.held / 1e9, 2), "active_gb": round(mx.get_active_memory() / 1e9, 1)}
+                       "held_gb": round(store.held / 1e9, 2), "active_gb": round(mx.get_active_memory() / 1e9, 1),
+                       "footprint_gb": round(footprint()[0] / 1e9, 1)}
                 rows.append(row)
                 print(f"{round_:5} {name:9} {label:16} {row['tok_s']:5.1f} tok/s  {row['misses_per_token']:6.1f} misses/token  "
                       f"{row['read_mb_per_token']:6.1f} MB/token  {row['read_share']:4.0%} of the time reading  "
@@ -109,7 +143,8 @@ def main():
                    "read_tokens": len(ids), "read_tok_s": round(len(ids) / dt, 1),
                    "read_gb": round(store.bytes_read / 1e9, 2), "read_share": round(store.read_s / dt, 2),
                    "first_token": int(first),
-                   "peak_gb": round(mx.get_peak_memory() / 1e9, 2), "active_gb": round(mx.get_active_memory() / 1e9, 2)}
+                   "peak_gb": round(mx.get_peak_memory() / 1e9, 2), "active_gb": round(mx.get_active_memory() / 1e9, 2),
+                   "footprint_peak_gb": round(footprint()[1] / 1e9, 2)}
             rows.append(row)
             print(f"read {len(ids)} tokens at {row['read_tok_s']:.0f} tok/s, {row['read_gb']} GB from the disk in "
                   f"{row['read_share']:.0%} of the time; arrays at the "
@@ -117,8 +152,7 @@ def main():
             time.sleep(4)
     print(f"held {store.held / 1e9:.2f} GB of experts; all arrays {mx.get_active_memory() / 1e9:.1f} GB, "
           f"peak {mx.get_peak_memory() / 1e9:.1f} GB; {in_memory(args.model):.1f} GB of the file in the page cache", flush=True)
-    if args.json:
-        Path(args.json).write_text(json.dumps(rows, indent=1) + "\n")
+    return rows
 
 
 if __name__ == "__main__":
