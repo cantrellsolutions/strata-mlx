@@ -1,6 +1,7 @@
 ---
 id: exactness
 kind: constraint
+area: precision
 status: current
 ---
 # Exactness

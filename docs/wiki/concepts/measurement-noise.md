@@ -1,6 +1,7 @@
 ---
 id: measurement-noise
 kind: method
+area: across
 status: current
 ---
 # Measurement noise

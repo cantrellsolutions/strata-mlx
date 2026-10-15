@@ -1,6 +1,7 @@
 ---
 id: router-lookahead
 kind: mechanism
+area: memory
 status: current
 ---
 # Experts guessed before their router: not built

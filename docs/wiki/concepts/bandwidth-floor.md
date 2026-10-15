@@ -1,6 +1,7 @@
 ---
 id: bandwidth-floor
 kind: constraint
+area: answers
 status: current
 ---
 # The memory bandwidth floor

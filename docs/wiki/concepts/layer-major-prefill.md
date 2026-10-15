@@ -1,6 +1,7 @@
 ---
 id: layer-major-prefill
 kind: mechanism
+area: memory
 status: current
 ---
 # A prompt read a layer at a time

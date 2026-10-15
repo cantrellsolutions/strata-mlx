@@ -1,6 +1,7 @@
 ---
 id: guess-acceptance
 kind: metric
+area: answers
 status: current
 ---
 # Guess acceptance

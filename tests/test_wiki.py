@@ -40,6 +40,7 @@ def errors_after(page: Path, old: str, new: str) -> list:
     ("hyper-connections", "[e18]", "[e99]", "has no page in experiments/"),
     ("hyper-connections", "[zryukqou]", "[kqkqkqkq]", "is not in this repository"),
     ("decode-pass", "[ROADMAP: Faster answers]", "[ROADMAP: No such heading]", "is no heading"),
+    ("decode-pass", "area: answers", "area: somewhere", "is not one of"),
 ])
 def test_the_checker_finds_each_kind_of_error(copy, page, old, new, expected):
     errors = errors_after(copy / "concepts" / f"{page}.md", old, new)

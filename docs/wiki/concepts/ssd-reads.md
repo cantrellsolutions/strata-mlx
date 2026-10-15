@@ -1,6 +1,7 @@
 ---
 id: ssd-reads
 kind: hardware
+area: memory
 status: current
 ---
 # Reads from the SSD

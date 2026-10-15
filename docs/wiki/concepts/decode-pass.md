@@ -1,6 +1,7 @@
 ---
 id: decode-pass
 kind: concept
+area: answers
 status: current
 ---
 # A decode pass

@@ -1,6 +1,7 @@
 ---
 id: draft-window
 kind: mechanism
+area: answers
 status: current
 ---
 # The draft window

@@ -1,6 +1,7 @@
 ---
 id: page-cache
 kind: concept
+area: memory
 status: current
 ---
 # The page cache

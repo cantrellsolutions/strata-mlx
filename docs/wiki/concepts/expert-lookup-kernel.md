@@ -1,6 +1,7 @@
 ---
 id: expert-lookup-kernel
 kind: component
+area: answers
 status: current
 ---
 # The Q2_0 experts' table kernel

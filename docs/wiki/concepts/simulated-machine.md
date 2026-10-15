@@ -1,6 +1,7 @@
 ---
 id: simulated-machine
 kind: method
+area: memory
 status: current
 ---
 # A smaller machine, simulated

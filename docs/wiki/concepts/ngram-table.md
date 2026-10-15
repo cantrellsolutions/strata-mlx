@@ -1,6 +1,7 @@
 ---
 id: ngram-table
 kind: component
+area: prompts
 status: current
 ---
 # The n-gram table

@@ -2,6 +2,11 @@
 
 > 中文摘要:知识库的变更记录,最新的在前。每行写日期、jj change ID、改了哪些页、依据什么。
 
+- 2026-10-14 · [nlykrpkv] · Every concept given an area, and graph.md drawn as an overview of the areas and one diagram
+  for each. Three areas added: "Reading prompts" (prompt-chunk, expert-tiles, kept-floats, gpu-idle; ngram-table
+  moved here), "Conversations" (recurrent-state, attention-cache, checkpoints, conversation-parking,
+  session-files, stopping), "Precision" (float32-path, tf32-on-m5, reference-agreement; exactness moved here),
+  from ROADMAP.md's "Done" and prompt sections, e29 to e33, issues 1, 3 and 5, pull request 7.
 - 2026-10-14 · [wvuromwk] · "Memory and smaller Macs": thirteen concepts (memory-rule, system-reserve, working-memory,
   available-memory, swapping, simulated-machine, expert-store, ssd-reads, page-cache, dense-blocks,
   layer-major-prefill, layer-read-ahead, router-lookahead) from ROADMAP.md's sections on small Macs, e35 to e40,

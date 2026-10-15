@@ -1,6 +1,7 @@
 ---
 id: layer-read-ahead
 kind: mechanism
+area: memory
 status: current
 ---
 # The next layer read ahead

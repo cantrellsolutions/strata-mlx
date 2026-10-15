@@ -1,6 +1,7 @@
 ---
 id: available-memory
 kind: mechanism
+area: memory
 status: current
 ---
 # Available memory at start

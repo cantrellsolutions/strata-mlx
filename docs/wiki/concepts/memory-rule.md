@@ -1,6 +1,7 @@
 ---
 id: memory-rule
 kind: mechanism
+area: memory
 status: current
 ---
 # The memory rule

@@ -1,6 +1,7 @@
 ---
 id: kernel-fixed-cost
 kind: constraint
+area: answers
 status: current
 ---
 # The fixed cost of a kernel

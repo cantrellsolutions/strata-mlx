@@ -1,6 +1,7 @@
 ---
 id: working-memory
 kind: constraint
+area: memory
 status: current
 ---
 # Working memory

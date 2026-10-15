@@ -19,6 +19,8 @@ LINK = re.compile(r"\[\[([a-z0-9-]+)\]\]")
 EVIDENCE = re.compile(r"(?<!\[)\[(e\d{2}|#\d+|[k-z]{8}|ROADMAP: [^\]]+)\](?!\])")
 RELATION = re.compile(r"^- ([a-z-]+) → \[\[([a-z0-9-]+)\]\]: (.+)$")
 CODE = re.compile(r"`([\w/]+\.py):(\w+)`")
+AREAS = {"answers": "Writing answers", "memory": "Memory and smaller Macs", "prompts": "Reading prompts",
+         "conversations": "Conversations", "precision": "Precision", "across": "Across areas"}
 LEGACY = 42  # experiments up to this one are in ROADMAP.md and bench/experiments, without a page here
 
 
@@ -29,6 +31,7 @@ class Page:
     title: str
     kind: str
     text: str
+    area: str = ""
     relations: list = field(default_factory=list)  # (relation, target, note, evidence)
     concepts: list = field(default_factory=list)  # an experiment's "## Concepts"
 
@@ -51,7 +54,7 @@ def read(folder: str) -> dict:
         text = path.read_text()
         meta = front(text)
         title = next((line[2:] for line in text.splitlines() if line.startswith("# ")), path.stem)
-        page = Page(path, meta.get("id", path.stem), title, meta.get("kind", "experiment"), text)
+        page = Page(path, meta.get("id", path.stem), title, meta.get("kind", "experiment"), text, meta.get("area", ""))
         for line in section(text, "Relations").splitlines():
             m = RELATION.match(line)
             if m:
@@ -112,6 +115,8 @@ def check() -> tuple:
                 errors.append(f"{where(page.path)}: '{rel}' is not a relation ({', '.join(RELATIONS)})")
             if not evidence:
                 errors.append(f"{where(page.path)}: {rel} → {target} has no evidence")
+        if page.id in concepts and page.area not in AREAS:
+            errors.append(f"{where(page.path)}: area '{page.area}' is not one of {', '.join(AREAS)}")
         if page.id in concepts:
             for file, name in CODE.findall(section(page.text, "In this engine")):
                 src = ROOT / file
@@ -144,34 +149,52 @@ def check() -> tuple:
 
 
 def graph(concepts: dict, experiments: dict, found: dict) -> str:
-    def node(c):
-        return f'  {c.id.replace("-", "_")}["{c.title}"]'
+    def nid(cid):
+        return cid.replace("-", "_")
 
+    edges = [(c.id, rel, target, evidence) for c in concepts.values() for rel, target, _, evidence in c.relations
+             if rel and target in concepts]
+    colours = {"component": "#dbeafe", "concept": "#f3f4f6", "constraint": "#fee2e2", "hardware": "#fef3c7",
+               "mechanism": "#dcfce7", "method": "#ede9fe", "metric": "#e0f2fe"}
     out = ["# The relations", "",
-           "> 中文摘要:概念之间的关系图,由 `tools/wiki_check.py --write` 生成,不要手改。箭头从一个概念指向它影响或依赖的概念。",
+           "> 中文摘要:概念之间的关系图,由 `tools/wiki_check.py --write` 生成,不要手改。先是各领域之间的总览,"
+           "再是每个领域一张图:本领域的概念是实线框,其他领域的相关概念是灰色虚线框。箭头从一个概念指向它影响或依赖的概念。",
            "", "Written by `tools/wiki_check.py --write` from the `## Relations` of every concept page. Do not edit.",
-           "", "```mermaid", "flowchart LR"]
-    out += [node(c) for c in concepts.values()]
-    for c in concepts.values():
-        for rel, target, _, _ in c.relations:
-            if rel:
-                out.append(f'  {c.id.replace("-", "_")} -- {rel} --> {target.replace("-", "_")}')
-    kinds = sorted({c.kind for c in concepts.values()})
-    colours = dict(zip(["component", "concept", "constraint", "hardware", "mechanism", "method", "metric"],
-                       ["#dbeafe", "#f3f4f6", "#fee2e2", "#fef3c7", "#dcfce7", "#ede9fe", "#e0f2fe"]))
-    for k in kinds:
-        out.append(f"  classDef {k} fill:{colours.get(k, '#ffffff')},stroke:#555")
-        ids = ",".join(c.id.replace("-", "_") for c in concepts.values() if c.kind == k)
-        out.append(f"  class {ids} {k}")
-    out += ["```", "", "Colours by kind: " + ", ".join(kinds) + ".", "",
-            "| from | relation | to | evidence |", "| :--- | :--- | :--- | :--- |"]
-    for c in concepts.values():
-        for rel, target, _, evidence in c.relations:
-            if rel:
-                ev = ", ".join(f"{e} ({found[e]})" if e in found else e for e in evidence)
-                out.append(f"| [{c.title}](concepts/{c.id}.md) | {rel} | [{concepts[target].title if target in concepts else target}]"
-                           f"(concepts/{target}.md) | {ev} |")
-    out += ["", "| experiment | concepts |", "| :--- | :--- |"]
+           "", "## The areas", "", "Relations between areas, with how many run each way.", "", "```mermaid", "flowchart LR"]
+    out += [f'  {a}["{t}"]' for a, t in AREAS.items()]
+    between = {}
+    for src, _, dst, _ in edges:
+        a, b = concepts[src].area, concepts[dst].area
+        if a != b:
+            between[(a, b)] = between.get((a, b), 0) + 1
+    out += [f"  {a} -- {n} --> {b}" for (a, b), n in sorted(between.items())]
+    out += ["```", ""]
+    for area, title in AREAS.items():
+        own = [c for c in concepts.values() if c.area == area]
+        if not own:
+            continue
+        mine = {c.id for c in own}
+        near = [(s_, r, d, e) for s_, r, d, e in edges if s_ in mine or d in mine]
+        others = sorted({x for s_, _, d, _ in near for x in (s_, d)} - mine)
+        out += [f"## {title}", "", f"{len(own)} concepts, {len(near)} relations touching them.", "", "```mermaid",
+                "flowchart LR"]
+        out += [f'  {nid(c.id)}["{c.title}"]' for c in own]
+        out += [f'  {nid(o)}["{concepts[o].title}"]' for o in others]
+        out += [f"  {nid(s_)} -- {r} --> {nid(d)}" for s_, r, d, _ in near]
+        for k in sorted({c.kind for c in own}):
+            out.append(f"  classDef {k} fill:{colours.get(k, '#ffffff')},stroke:#555")
+            out.append(f"  class {','.join(nid(c.id) for c in own if c.kind == k)} {k}")
+        if others:
+            out.append("  classDef elsewhere fill:#ffffff,stroke:#aaa,stroke-dasharray:4 3,color:#777")
+            out.append(f"  class {','.join(nid(o) for o in others)} elsewhere")
+        out += ["```", "", "| from | relation | to | evidence |", "| :--- | :--- | :--- | :--- |"]
+        for s_, r, d, ev in near:
+            if s_ in mine:
+                evs = ", ".join(f"{e} ({found[e]})" if e in found else e for e in ev)
+                out.append(f"| [{concepts[s_].title}](concepts/{s_}.md) | {r} | [{concepts[d].title}](concepts/{d}.md) | {evs} |")
+        out.append("")
+    out += ["Colours by kind: " + ", ".join(f"{k} {v}" for k, v in colours.items()) + "; other areas dashed.", "",
+            "## Experiments", "", "| experiment | concepts |", "| :--- | :--- |"]
     for e in experiments.values():
         out.append(f"| [{e.title}](experiments/{e.path.name}) | " + ", ".join(e.concepts) + " |")
     return "\n".join(out) + "\n"

@@ -1,6 +1,7 @@
 ---
 id: dense-blocks
 kind: component
+area: memory
 status: current
 ---
 # The dense tensors as the file's blocks

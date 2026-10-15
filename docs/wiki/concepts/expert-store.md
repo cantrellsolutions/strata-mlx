@@ -1,6 +1,7 @@
 ---
 id: expert-store
 kind: component
+area: memory
 status: current
 ---
 # The expert store

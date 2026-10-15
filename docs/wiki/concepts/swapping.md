@@ -1,6 +1,7 @@
 ---
 id: swapping
 kind: metric
+area: memory
 status: current
 ---
 # Swapping

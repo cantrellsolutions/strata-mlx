@@ -1,6 +1,6 @@
 # Index
 
-> 中文摘要:所有概念的目录,按领域分组:写回答的速度,内存与小内存机型,以及跨领域的概念。
+> 中文摘要:所有概念的目录,按领域分组:写回答的速度、内存与小内存机型、读提示、对话、精度,以及跨领域的概念。
 
 ## Writing answers
 
@@ -11,7 +11,6 @@
 - [Guess acceptance](concepts/guess-acceptance.md): the share of guesses kept, the content's more than the engine's.
 - [The Q2_0 experts' table kernel](concepts/expert-lookup-kernel.md): experts by a table of sums, and its threads.
 - [Hyper-connections](concepts/hyper-connections.md): four residual streams mixed at every layer, 1.27 GB a token.
-- [The n-gram table](concepts/ngram-table.md): 28.8 GB looked up by hashes, on the disk.
 
 ## Memory and smaller Macs
 
@@ -29,9 +28,32 @@
 - [The next layer read ahead](concepts/layer-read-ahead.md): the disk hidden behind the layer before.
 - [Experts guessed before their router](concepts/router-lookahead.md): measured, not built.
 
-## Across areas
+## Reading prompts
+
+- [A prompt read in chunks](concepts/prompt-chunk.md): 2,048 tokens through all the layers at a time.
+- [A prompt's experts in tiles](concepts/expert-tiles.md): 16 tokens by 64 rows, from the file's blocks, every type.
+- [The floats kept for prompts](concepts/kept-floats.md): the Q6_K layers made float once, 3.3 GB with IQ3_S.
+- [The GPU after a rest](concepts/gpu-idle.md): why a short prompt waited half a second, and the fix.
+- [The n-gram table](concepts/ngram-table.md): 28.8 GB looked up by hashes, on the disk.
+
+## Conversations
+
+- [The recurrent state](concepts/recurrent-state.md): 110 MiB that cannot be cut back, only restored.
+- [The attention caches](concepts/attention-cache.md): 30 KB a token, cut back anywhere, not counted by the rule.
+- [Checkpoints](concepts/checkpoints.md): where a follow-up goes on from; the root, `ckpt=0`, `pin=N`.
+- [Parked conversations](concepts/conversation-parking.md): a chat interrupted is taken back, 19.7 s to 0.26.
+- [A conversation on disk](concepts/session-files.md): `SAVE` and `RESTORE`.
+- [Stopping a request](concepts/stopping.md): where a stop is seen and what stays read.
+
+## Precision
 
 - [Exactness](concepts/exactness.md): the same bits for the same input; the rule every change keeps or reports.
+- [The float32 path](concepts/float32-path.md): the exact path, at half the speed with Q2_0.
+- [Reduced-precision float32 on an M5](concepts/tf32-on-m5.md): MLX's default there, and `MLX_ENABLE_TF32=0`.
+- [Agreement with llama.cpp](concepts/reference-agreement.md): how a change that is not bit for bit is judged.
+
+## Across areas
+
 - [The GPU's generation](concepts/gpu-generation.md): thresholds tuned on one chip are not settled for another.
 - [Measurement noise](concepts/measurement-noise.md): why changes are compared in one process, passes shuffled.
 

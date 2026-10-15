@@ -1,6 +1,7 @@
 ---
 id: gpu-generation
 kind: hardware
+area: across
 status: current
 ---
 # The GPU's generation

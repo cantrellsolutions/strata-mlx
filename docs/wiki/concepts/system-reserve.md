@@ -1,6 +1,7 @@
 ---
 id: system-reserve
 kind: constraint
+area: memory
 status: current
 ---
 # What is left to macOS
