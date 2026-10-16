@@ -443,3 +443,4 @@ Colours by kind: component #dbeafe, concept #f3f4f6, constraint #fee2e2, hardwar
 | [e49: as a 48 GB machine wired, the experts bounded by what was available](experiments/e49-wired-as-48gb-available.md) | available-memory, swapping, simulated-machine, system-reserve |
 | [e50: as a quiet 32 GB machine, the memory wired](experiments/e50-quiet-as-32gb.md) | simulated-machine, swapping, system-reserve |
 | [e51: a margin on what is available, not settled](experiments/e51-available-margin.md) | available-memory, measurement-noise, simulated-machine |
+| [e52: letting go of arrays takes their compression off](experiments/e52-shed-compressed.md) | expert-store, swapping, available-memory |

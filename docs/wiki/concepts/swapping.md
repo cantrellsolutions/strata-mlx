@@ -26,6 +26,9 @@ Nothing in the engine sees it; `--check` and the [[memory-rule]] are meant to ke
 
 ## What we know
 
+- What macOS compresses is memory the CPU wrote: MLX arrays copied from the CPU were compressed almost whole
+  under pressure, arrays the GPU made were not; the GPU's reads do not keep pages from it [e52].
+
 - Compression comes before swapping and with room to spare: as a quiet 32 GB machine wired, nothing swapped and
   the engine still had 11.9 GB compressed at once [e50].
 

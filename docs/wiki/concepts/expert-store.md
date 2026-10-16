@@ -36,6 +36,9 @@ most (`strata_mlx/paged.py:preload`), by the engine's profile and then the machi
 
 ## Open questions
 
+- Shedding experts under pressure takes their compression off nearly one for one, whichever experts they are:
+  macOS compresses those the GPU reads every second as much as idle ones [e52].
+
 - The store counts an expert as in memory when macOS has compressed it: misses near nothing and answers at
   10-15 tok/s as a wired 48 GB machine with a full desktop [e48].
 

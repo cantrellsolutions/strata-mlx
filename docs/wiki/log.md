@@ -2,6 +2,8 @@
 
 > 中文摘要:知识库的变更记录,最新的在前。每行写日期、jj change ID、改了哪些页、依据什么。
 
+- 2026-10-16 · [yowlwvyo] · e52: under pressure, letting go of arrays takes their compression off one for one, and macOS
+  compresses arrays the GPU reads as much as idle ones; expert-store, swapping, available-memory.
 - 2026-10-16 · [zxmztxsx] · e51: margins of 8, 0, 4 GB on --expert-memory available, not settled (what is available
   moved by 10.7 GB between runs); AVAILABLE_MARGIN stays 0; available-memory, measurement-noise, simulated-machine.
 - 2026-10-16 · [kmznkvlw] · e50 and --hold quiet: a quiet 32 GB machine, no swap, a quarter slower than issue 6's Air;

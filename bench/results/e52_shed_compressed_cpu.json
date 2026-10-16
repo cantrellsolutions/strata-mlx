@@ -1,0 +1,91 @@
+{
+ "args": {
+  "arrays_gb": 45.0,
+  "short_gb": 25.0,
+  "piece_mib": 10,
+  "wait": 150.0,
+  "after": 40,
+  "json": "bench/results/e52_shed_compressed_cpu.json"
+ },
+ "hold": {
+  "hold_gib": 92.74557304382324,
+  "hold_wired": true,
+  "hold_least_gib": 92.75,
+  "hold_samples": 239,
+  "hold_whole": true
+ },
+ "rows": [
+  {
+   "t": 51.6,
+   "phase": "held",
+   "resident": 0.1,
+   "resident_peak": 0.1,
+   "internal": 0.07,
+   "internal_peak": 0.07,
+   "compressed": 0.0,
+   "compressed_peak": 0.0,
+   "compressed_lifetime": 0.0,
+   "footprint": 0.07
+  },
+  {
+   "t": 76.3,
+   "phase": "made",
+   "resident": 2.86,
+   "resident_peak": 16.2,
+   "internal": 2.84,
+   "internal_peak": 16.17,
+   "compressed": 42.27,
+   "compressed_peak": 42.27,
+   "compressed_lifetime": 42.27,
+   "footprint": 45.13
+  },
+  {
+   "t": 143.8,
+   "phase": "before",
+   "resident": 0.05,
+   "resident_peak": 16.2,
+   "internal": 0.02,
+   "internal_peak": 16.17,
+   "compressed": 45.06,
+   "compressed_peak": 45.06,
+   "compressed_lifetime": 45.07,
+   "footprint": 45.27
+  },
+  {
+   "t": 213.9,
+   "phase": "before",
+   "resident": 0.05,
+   "resident_peak": 16.2,
+   "internal": 0.02,
+   "internal_peak": 16.17,
+   "compressed": 45.06,
+   "compressed_peak": 45.06,
+   "compressed_lifetime": 45.08,
+   "footprint": 45.27
+  },
+  {
+   "t": 214.0,
+   "phase": "let go",
+   "resident": 0.05,
+   "resident_peak": 16.2,
+   "internal": 0.02,
+   "internal_peak": 16.17,
+   "compressed": 22.56,
+   "compressed_peak": 45.06,
+   "compressed_lifetime": 45.08,
+   "footprint": 22.76
+  },
+  {
+   "t": 291.3,
+   "phase": "after",
+   "resident": 0.05,
+   "resident_peak": 16.2,
+   "internal": 0.02,
+   "internal_peak": 16.17,
+   "compressed": 22.56,
+   "compressed_peak": 45.06,
+   "compressed_lifetime": 45.08,
+   "footprint": 22.76
+  }
+ ]
+}

@@ -68,6 +68,7 @@
 - [e49: as e48, the experts bounded by what was available](experiments/e49-wired-as-48gb-available.md): twice as fast, hardly any swap, no margin left.
 - [e50: as a quiet 32 GB machine, the memory wired](experiments/e50-quiet-as-32gb.md): no swap, a quarter slower than the real Air.
 - [e51: a margin on what is available](experiments/e51-available-margin.md): not settled; what is available moved by 10.7 GB in 30 s.
+- [e52: letting go of arrays takes their compression off](experiments/e52-shed-compressed.md): one for one, whichever arrays.
 
 Earlier experiments, e01-e42, are in [ROADMAP.md](../../ROADMAP.md) and `bench/experiments/`.
 

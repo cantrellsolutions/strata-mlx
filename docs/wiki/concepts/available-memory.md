@@ -42,6 +42,9 @@ constant cannot: other programs holding more than the rule leaves them.
 
 ## Open questions
 
+- Following the pressure at run time, not only at start: letting go of experts would take the compression
+  off [e52].
+
 - A reading at start says nothing of what other programs will ask for after it: with the smaller budget of the
   two, a run during which they came back in did worse [e51].
 
