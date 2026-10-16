@@ -83,6 +83,27 @@ def swapped() -> tuple:
     return swapouts * page, int(float(used.group(1)) * (GIB if used.group(2) == "G" else 1 << 20)) if used else 0
 
 
+def settle(within: float = 1e9, over: float = 60.0, most: float = 300.0) -> tuple:
+    """Wait until what is free or in the file cache has moved by less than `within` bytes for `over` seconds, at
+    most `most` seconds: after a hold is let go the programs it pushed out come back in, and the next run would
+    start on another machine (e51: 10.7 GB apart 30 s apart). Returns (seconds waited, bytes available, steady)."""
+    def available():
+        out = subprocess.run(["/usr/bin/vm_stat"], capture_output=True, text=True).stdout
+        page = int(re.search(r"page size of (\d+)", out).group(1))
+        free = int(re.search(r"Pages free:\s+(\d+)", out).group(1))
+        cached = int(re.search(r"File-backed pages:\s+(\d+)", out).group(1))
+        return (free + cached) * page
+
+    t0, seen = time.time(), []
+    while True:
+        seen = [(t, a) for t, a in seen if t >= time.time() - over] + [(time.time(), available())]
+        if time.time() - t0 >= over and max(a for _, a in seen) - min(a for _, a in seen) < within:
+            return time.time() - t0, seen[-1][1], True
+        if time.time() - t0 >= most:
+            return time.time() - t0, seen[-1][1], False
+        time.sleep(5)
+
+
 def machine_gib() -> float:
     return os.sysconf("SC_PHYS_PAGES") * os.sysconf("SC_PAGE_SIZE") / GIB
 

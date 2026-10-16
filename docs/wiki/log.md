@@ -2,6 +2,8 @@
 
 > 中文摘要:知识库的变更记录,最新的在前。每行写日期、jj change ID、改了哪些页、依据什么。
 
+- 2026-10-16 · [yytmkrlk] · pressure-following, new: the budget follows the process's compression and the pressure
+  level (opt-in, --follow-pressure); runs under held memory wait for the machine to settle first.
 - 2026-10-16 · [yowlwvyo] · e52: under pressure, letting go of arrays takes their compression off one for one, and macOS
   compresses arrays the GPU reads as much as idle ones; expert-store, swapping, available-memory.
 - 2026-10-16 · [zxmztxsx] · e51: margins of 8, 0, 4 GB on --expert-memory available, not settled (what is available

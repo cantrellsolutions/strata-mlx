@@ -375,6 +375,21 @@ def test_experts_read_from_a_file_write_what_experts_in_memory_write(block_model
         assert store.hits == 0
 
 
+def test_a_budget_cut_in_the_middle_of_an_answer_changes_no_token(block_model, tmp_path):
+    answer = Engine(block_model).generate(PROMPT, N)
+    model = _paged(tmp_path, 1 << 30)
+    store, engine = model.expert_store, Engine(model)
+    out = [engine.read(PROMPT)]
+    cut = False
+    while len(out) < N:
+        out += engine.step(N - len(out))
+        if not cut and len(out) >= N // 2:
+            store.shrink_to(3 * ONE_EXPERT)  # as the pressure would: most of what is held let go at once
+            assert store.held <= 3 * ONE_EXPERT
+            cut = True
+    assert out[:N] == answer[: len(out[:N])]
+
+
 def test_windows_over_experts_read_from_a_file_give_the_plain_answer(block_model, tmp_path):
     answer = Engine(block_model).generate(PROMPT, N)
     rng = random.Random(5)

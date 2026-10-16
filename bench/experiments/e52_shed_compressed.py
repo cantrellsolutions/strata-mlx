@@ -6,7 +6,7 @@ store's experts, a wired hold that leaves the machine some gigabytes short, half
 every second and half left alone; once the process is compressed, the idle half is let go, MLX's cache emptied,
 and the process watched again.
 
-    uv run python bench/experiments/e52_shed_compressed.py --arrays-gb 20 --short-gb 15
+    uv run python bench/experiments/e52_shed_compressed.py --arrays-gb 45 --short-gb 25   # the run in e52
 """
 
 import argparse

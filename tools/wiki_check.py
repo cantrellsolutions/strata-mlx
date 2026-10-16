@@ -76,6 +76,7 @@ def changes(ids: set) -> dict:
                            cwd=ROOT, capture_output=True, text=True)
         if r.returncode == 0 and r.stdout.strip() and set(r.stdout.strip()) != {"0"}:  # not the root
             found[c] = r.stdout.split()[0]
+
     return found
 
 
@@ -224,7 +225,7 @@ def graph(concepts: dict, experiments: dict, found: dict) -> str:
         out += ["```", "", "| from | relation | to | evidence |", "| :--- | :--- | :--- | :--- |"]
         for s_, r, d, ev in near:
             if s_ in mine:
-                evs = ", ".join(f"{e} ({found[e]})" if e in found else e for e in ev)
+                evs = ", ".join(ev)  # a change ID as it is: its commit moves while the change is under way
                 out.append(f"| [{concepts[s_].title}](concepts/{s_}.md) | {r} | [{concepts[d].title}](concepts/{d}.md) | {evs} |")
         out.append("")
     out += ["Colours by kind: " + ", ".join(f"{k} {v}" for k, v in colours.items()) + "; other areas dashed.", "",

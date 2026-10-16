@@ -18,12 +18,14 @@ kernels take them separately. Replacing one expert inside a 1.4 GB array copies 
 each expert is its own array.
 """
 
+import ctypes
 import fcntl
 import os
 import subprocess
 import threading
 import time
 from collections import OrderedDict
+from dataclasses import dataclass, field
 from concurrent.futures import ThreadPoolExecutor, wait
 
 import mlx.core as mx
@@ -106,6 +108,84 @@ def all_fit(machine: int, experts: int, dense: int, floats: int = 0) -> bool:
     return machine - left_to_system(machine) - WORKING >= experts + DENSE_AS_ARRAYS * dense + DRAFT_HEAD + floats
 
 
+# ---- the budget following the pressure while the engine runs (`ExpertStore.follow_pressure`, opt-in)
+#
+# A budget set at start cannot see what other programs ask for after it, and macOS then compresses the engine:
+# as a 48 GB machine with a full desktop, 30 GB of the process at once and answers at a third of their speed
+# (e48); what was available at start moved by 10.7 GB between runs a minute apart (e51). Letting go of arrays
+# takes their compression off nearly one for one, and macOS compresses the experts in use as much as idle ones,
+# so which experts go does not matter, how many do (e52). So the store watches its own process: while more than
+# a little of it is compressed, or the system says its memory is under pressure, the budget comes down by what is
+# compressed, a step at a time; once nothing has been compressed for a while it grows back to what the rule gave.
+
+
+class _TaskVmInfo(ctypes.Structure):
+    # struct task_vm_info (mach/task_info.h): 64-bit fields from resident_size on; room for later revisions
+    _fields_ = [("virtual_size", ctypes.c_uint64), ("region_count", ctypes.c_int32), ("page_size", ctypes.c_int32),
+                ("fields", ctypes.c_uint64 * 60)]
+
+
+_libc = ctypes.CDLL("/usr/lib/libSystem.B.dylib", use_errno=True)
+_COMPRESSED = 13  # of task_vm_info's 64-bit fields from resident_size on
+
+
+def compressed_bytes() -> int | None:
+    """Of this process, the bytes in the compressor or swapped out; None where they cannot be read."""
+    try:
+        info, count = _TaskVmInfo(), ctypes.c_uint(ctypes.sizeof(_TaskVmInfo) // 4)
+        task = ctypes.c_uint.in_dll(_libc, "mach_task_self_")
+        if _libc.task_info(task, 22, ctypes.byref(info), ctypes.byref(count)) != 0:  # TASK_VM_INFO
+            return None
+        return info.fields[_COMPRESSED]
+    except (OSError, ValueError, AttributeError):
+        return None
+
+
+def pressure_level() -> int:
+    """The system's memory pressure: 1 normal, 2 warning, 4 critical; 1 where it cannot be read."""
+    value, size = ctypes.c_uint32(0), ctypes.c_size_t(4)
+    if _libc.sysctlbyname(b"kern.memorystatus_vm_pressure_level", ctypes.byref(value), ctypes.byref(size), None, 0):
+        return 1
+    return value.value or 1
+
+
+@dataclass
+class Follow:
+    """When and how far the budget moves, from what is read; `decide` is the whole rule, so it can be tested."""
+
+    ceiling: int  # what the rule gave at start: never more
+    every: float = 1.0  # seconds between readings
+    high: int = 1 << 30  # compressed bytes that count as being under pressure, read twice in a row
+    slack: int = 512 << 20  # shed this much beyond what is compressed
+    most: int = 2 << 30  # the most shed at one reading
+    quiet_for: float = 30.0  # seconds with nothing compressed and no pressure before growing
+    grow: int = 1 << 30  # grown at a time
+    last: float = float("-inf")
+    highs: int = 0
+    quiet_since: float | None = None
+    log: list = field(default_factory=list)
+
+    def decide(self, now: float, compressed: int, level: int, held: int, budget: int) -> int | None:
+        """The new budget, or None to leave it."""
+        if now - self.last < self.every:
+            return None
+        self.last = now
+        self.highs = self.highs + 1 if compressed > self.high else 0
+        if level >= 2 or self.highs >= 2:
+            self.quiet_since = None
+            new = max(LEAST, held - compressed - self.slack, budget - self.most)
+            return new if new < budget else None
+        if compressed < self.high // 4 and level <= 1:
+            if self.quiet_since is None:
+                self.quiet_since = now
+            elif now - self.quiet_since >= self.quiet_for and budget < self.ceiling:
+                self.quiet_since = now
+                return min(self.ceiling, budget + self.grow)
+        else:
+            self.quiet_since = None
+        return None
+
+
 class ExpertStore:
     """The experts in memory, within a budget of bytes."""
 
@@ -126,6 +206,7 @@ class ExpertStore:
         # the reads of the thread that runs the model meanwhile
         self.reader, self.ahead_pool, self.coming = ThreadPoolExecutor(1), ThreadPoolExecutor(threads), None
         self.counting = threading.Lock()  # bytes_read and read_s: a read ahead counts on its own thread
+        self.follow = None  # a Follow while the budget follows the pressure
         self.reset_stats()
 
     def fit(self, machine: int, available: int | None = None, margin: int | None = None) -> int:
@@ -144,6 +225,37 @@ class ExpertStore:
             self.budget = min(self.budget, available - loaded - WORKING - (AVAILABLE_MARGIN if margin is None else margin))
         self.budget = max(LEAST, self.budget)
         return self.budget
+
+    def follow_pressure(self, on: bool = True, **rule) -> None:
+        """From now on the budget follows the pressure, up to what it is now (`Follow`)."""
+        self.follow = Follow(ceiling=self.budget, **rule) if on else None
+
+    def shrink_to(self, budget: int) -> None:
+        """The budget set to `budget` and the least recently used experts let go until it holds. (The rule that
+        asks for it keeps to the least; this does as it is told.)"""
+        self.budget = max(0, budget)
+        while self.held > self.budget and self.lru:
+            _, (_, size) = self.lru.popitem(last=False)
+            self.held -= size
+        mx.clear_cache()  # the pool keeps freed buffers otherwise, and they are what is compressed
+
+    def _follow(self):
+        f = self.follow
+        now = time.monotonic()
+        if now - f.last < f.every:
+            return
+        compressed = compressed_bytes()
+        if compressed is None:
+            return
+        level = pressure_level()
+        new = f.decide(now, compressed, level, self.held, self.budget)
+        if new is not None:
+            f.log.append({"t": round(now, 1), "compressed_gb": round(compressed / 1e9, 2), "level": level,
+                          "from_gb": round(self.budget / 1e9, 2), "to_gb": round(new / 1e9, 2)})
+            if new < self.budget:
+                self.shrink_to(new)
+            else:
+                self.budget = new
 
     def reset_stats(self):
         self.hits = self.misses = self.bytes_read = 0
@@ -339,6 +451,8 @@ class ExpertStore:
         return self._get(layer, tensors, experts, keep)
 
     def _get(self, layer: int, tensors: tuple, experts: list, keep: bool) -> list:
+        if self.follow is not None and self.kept is None:  # not while a prompt holds a layer whole
+            self._follow()
         if keep:  # an answer's tokens, not a prompt's
             for e in experts:
                 self.use[(layer, e)] = self.use.get((layer, e), 0) + 1

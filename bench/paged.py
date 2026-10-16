@@ -29,7 +29,7 @@ import mlx.core as mx
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from drop_cache import in_memory  # noqa: E402
-from memory import Hold, footprint, machine_gib, own, swapped  # noqa: E402
+from memory import Hold, footprint, machine_gib, own, settle, swapped  # noqa: E402
 from spec_decode import PROMPTS, STOP, tokenize  # noqa: E402
 
 from strata_mlx.engine import Engine  # noqa: E402
@@ -48,6 +48,8 @@ def main():
     p.add_argument("--machine-memory", type=float, help="GiB of a machine: its experts get what the rest leaves")
     p.add_argument("--available", action="store_true", help="with --machine-memory, on a machine of that size: bound "
                    "the experts by what it has free or in its file cache now (the server's --expert-memory available)")
+    p.add_argument("--follow-pressure", action="store_true", help="the budget follows the memory pressure as it runs "
+                   "(the server's --follow-pressure on)")
     p.add_argument("--margin", type=float, help="with --available: GB of what is available left to other programs")
     p.add_argument("--dense", choices=["blocks", "arrays"], default="blocks")
     p.add_argument("--engines", nargs="+", choices=["one", "head"], default=["one", "head"])
@@ -60,6 +62,10 @@ def main():
     args = p.parse_args()
     if (args.budget is None) == (args.machine_memory is None):
         p.error("one of --budget and --machine-memory")
+    if args.hold:  # the machine as it is, not as the last run left it
+        waited, available, steady = settle()
+        print(f"waited {waited:.0f} s for the machine to settle: {available / 1e9:.1f} GB free or in the file cache"
+              + ("" if steady else ", still moving"), flush=True)
     hold = None
     if args.hold:
         if args.hold in ("auto", "quiet") and not args.machine_memory:
@@ -118,6 +124,8 @@ def run(args) -> list:
             print(f"{free / 1e9:.1f} GB free and {cached / 1e9:.1f} GB of file cache before loading; by the rule alone the experts "
                   f"would get {ruled / 1e9:.2f} GB", flush=True)
         args.budget = round(store.budget / 1e9, 2)
+    if args.follow_pressure:
+        store.follow_pressure()
     for e in engines.values():
         e.warm()
     in_memory(args.model, drop=True)
@@ -145,9 +153,10 @@ def run(args) -> list:
                        "misses_per_token": round(store.misses / n, 1), "read_mb_per_token": round(store.bytes_read / n / 1e6, 1),
                        "read_share": round(store.read_s / dt, 2), "tokens_per_pass": round(e.stats.tokens / max(e.stats.steps, 1), 2),
                        "held_gb": round(store.held / 1e9, 2), "active_gb": round(mx.get_active_memory() / 1e9, 1),
-                       "footprint_gb": round(footprint()[0] / 1e9, 1)}
+                       "footprint_gb": round(footprint()[0] / 1e9, 1), "budget_now_gb": round(store.budget / 1e9, 2),
+                       "compressed_gb": round(own()["compressed"] / 1e9, 2)}
                 rows.append(row)
-                print(f"{round_:5} {name:9} {label:16} {row['tok_s']:5.1f} tok/s  {row['misses_per_token']:6.1f} misses/token  "
+                print(f"{round_:5} {name:9} {label:16} {row['compressed_gb']:5.1f} GB compressed, budget {row['budget_now_gb']:5.1f} | {row['tok_s']:5.1f} tok/s  {row['misses_per_token']:6.1f} misses/token  "
                       f"{row['read_mb_per_token']:6.1f} MB/token  {row['read_share']:4.0%} of the time reading  "
                       f"{row['tokens_per_pass']:4.2f} tokens/pass | prompt {row['prompt_tok_s']:5.1f} tok/s", flush=True)
     if args.read:
@@ -171,6 +180,10 @@ def run(args) -> list:
                   f"{row['read_share']:.0%} of the time; arrays at the "
                   f"peak {row['peak_gb']} GB, after {row['active_gb']} GB; first token of the answer {first}", flush=True)
             time.sleep(4)
+    if store.follow is not None:
+        rows.append({"follow": store.follow.log})
+        print(f"the budget moved {len(store.follow.log)} times: " + ", ".join(
+            f"{d['from_gb']}->{d['to_gb']}" for d in store.follow.log[:12]) + (" ..." if len(store.follow.log) > 12 else ""), flush=True)
     print(f"held {store.held / 1e9:.2f} GB of experts; all arrays {mx.get_active_memory() / 1e9:.1f} GB, "
           f"peak {mx.get_peak_memory() / 1e9:.1f} GB; {in_memory(args.model):.1f} GB of the file in the page cache", flush=True)
     return rows

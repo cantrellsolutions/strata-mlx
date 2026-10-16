@@ -284,7 +284,7 @@ def _options(argv: list) -> dict:
              "--prefill": "2048", "--suffix-draft": "auto", "--expert-memory": "auto", "--machine-memory": None,
              "--expert-profile": "auto", "--guess-rows": "on", "--conversation-cache-mib": "0",
              "--conversation-cache-slots": "4", "--conversation-cache-min-tokens": "0",
-             "--prompt-by-layer": "on", "--read-ahead": "on", "--keep-awake": "600", "--wired": "on"}
+             "--prompt-by-layer": "on", "--read-ahead": "on", "--follow-pressure": "off", "--keep-awake": "600", "--wired": "on"}
     out, skipped, i = dict(known), [], 0
     while i < len(argv):
         a = argv[i]
@@ -390,6 +390,10 @@ def main():
         elif wanted == "available":
             print("strata-mlx: --expert-memory available: " + ("not as another machine (--machine-memory)"
                   if opts["--machine-memory"] else "the counts could not be read") + "; the rule alone", file=sys.stderr)
+    if paged and opts["--follow-pressure"] == "on":  # the budget comes down while macOS compresses the engine
+        store.follow_pressure()
+        print(f"strata-mlx: the experts' budget follows the memory pressure, up to {store.budget / 1e9:.1f} GB",
+              file=sys.stderr)
 
     max_context = int(opts["--max-context"])
     # compile the kernels of every window size and of the sampler now, not during the first request

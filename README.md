@@ -212,6 +212,8 @@ than the machine has free or in its file cache when the engine starts, where oth
 default, and the memory is taken from the experts' on a Mac that does not hold the model whole),
 `--keep-awake SECONDS` (how long after a request the GPU is kept awake and the arrays wired; 0 for never),
 `--wired off` (keep the GPU awake without wiring the arrays),
+`--follow-pressure on` (where experts are read from the SSD: the experts' budget comes down while macOS compresses
+the engine and grows back once it stops; off by default, being measured),
 `--prompt-by-layer off` (where experts are read from the SSD: read a long prompt chunk by chunk, as before),
 `--read-ahead off` (and do not read a layer's experts while the one before it is computed).
 
