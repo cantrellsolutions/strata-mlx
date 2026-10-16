@@ -2,6 +2,8 @@
 
 > 中文摘要:知识库的变更记录,最新的在前。每行写日期、jj change ID、改了哪些页、依据什么。
 
+- 2026-10-16 · [szyzmoou] · e48: as a 48 GB machine wired, a full desktop open: the engine compressed, 10-15 tok/s;
+  simulated-machine, swapping, system-reserve, expert-store.
 - 2026-10-16 · [zzzlsupr] · e47: an unwired hold of 96 GiB kept 8.9 resident, so the hold is wired since; simulated-machine,
   swapping, measurement-noise.
 - 2026-10-16 · [tukzwlpx] · A hold is judged by its resident part, not its footprint, which counts swapped pages too;

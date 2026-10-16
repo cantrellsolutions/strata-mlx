@@ -36,5 +36,8 @@ most (`strata_mlx/paged.py:preload`), by the engine's profile and then the machi
 
 ## Open questions
 
+- The store counts an expert as in memory when macOS has compressed it: misses near nothing and answers at
+  10-15 tok/s as a wired 48 GB machine with a full desktop [e48].
+
 - The 64 GB M5 Pro with IQ3_S, 93% of its experts in memory, wrote answers at 17-44 tok/s: the router wait costs a
   machine that nearly holds a file as much as the disk does [#8].

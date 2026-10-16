@@ -26,6 +26,10 @@ Nothing in the engine sees it; `--check` and the [[memory-rule]] are meant to ke
 
 ## What we know
 
+- What the engine loses first is its own memory compressed, not reads: as a 48 GB machine wired, with a full
+  desktop, its store read next to nothing once filled and answers came at 10-15 tok/s, 31 GB of the process
+  compressed or swapped out [e48].
+
 - 32 GB MacBook Air M5: with apps open and the fixed rule, 16.8 GB swapped out; with `--expert-memory available`,
   1.70 and 0.41 GB [#6] [trprrzsw].
 - 48 GB M4 Pro: 4.98 GiB swapped out at the start with 30.1 GB of experts, none with 24 [xukwosuo].

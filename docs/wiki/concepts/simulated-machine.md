@@ -44,6 +44,9 @@ the coldest memory on the machine and is pushed out first [e47] [zzzlsupr].
 
 ## Open questions
 
+- A quiet small machine: a wired hold leaves the other programs of this machine inside the simulated one. As a
+  48 GB machine with about 38 GB of them open, the engine had 31 GB compressed or swapped out [e48].
+
 - Which process a system-wide swap-out came from: as a 48 GB machine with 80 GiB held, 25 GB were swapped
   out and the hold stayed whole [e46]. This process's own page-ins would say.
 

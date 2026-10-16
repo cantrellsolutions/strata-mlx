@@ -41,5 +41,8 @@ user runs. It cannot be measured from inside the engine, so it is a rule fitted 
 
 ## Open questions
 
+- What the rule leaves is not enough when other programs hold much: a wired 48 GB machine with 38 GB of them
+  open pushed the engine out [e48]. Whether `--expert-memory available` holds there is the next run.
+
 - Two machines. A 64 GB M5 Pro did not swap at 93% of IQ3_S's experts, which the quarter cuts to 76%: the share
   may want to fall as the memory grows.
