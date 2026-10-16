@@ -48,6 +48,7 @@ def main():
     p.add_argument("--machine-memory", type=float, help="GiB of a machine: its experts get what the rest leaves")
     p.add_argument("--available", action="store_true", help="with --machine-memory, on a machine of that size: bound "
                    "the experts by what it has free or in its file cache now (the server's --expert-memory available)")
+    p.add_argument("--margin", type=float, help="with --available: GB of what is available left to other programs")
     p.add_argument("--dense", choices=["blocks", "arrays"], default="blocks")
     p.add_argument("--engines", nargs="+", choices=["one", "head"], default=["one", "head"])
     p.add_argument("--tokens", type=int, default=200)
@@ -113,7 +114,7 @@ def run(args) -> list:
     if args.machine_memory:
         ruled = store.fit(int(args.machine_memory * 2**30))
         if args.available:  # on the machine itself: no more than it had free or in its file cache (#6)
-            store.fit(int(args.machine_memory * 2**30), free + cached)
+            store.fit(int(args.machine_memory * 2**30), free + cached, None if args.margin is None else int(args.margin * 1e9))
             print(f"{free / 1e9:.1f} GB free and {cached / 1e9:.1f} GB of file cache before loading; by the rule alone the experts "
                   f"would get {ruled / 1e9:.2f} GB", flush=True)
         args.budget = round(store.budget / 1e9, 2)

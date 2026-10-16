@@ -67,6 +67,7 @@
 - [e48: as a 48 GB machine, the memory held and wired](experiments/e48-wired-as-48gb.md): the engine pushed out, 10-15 tok/s, with a full desktop.
 - [e49: as e48, the experts bounded by what was available](experiments/e49-wired-as-48gb-available.md): twice as fast, hardly any swap, no margin left.
 - [e50: as a quiet 32 GB machine, the memory wired](experiments/e50-quiet-as-32gb.md): no swap, a quarter slower than the real Air.
+- [e51: a margin on what is available](experiments/e51-available-margin.md): not settled; what is available moved by 10.7 GB in 30 s.
 
 Earlier experiments, e01-e42, are in [ROADMAP.md](../../ROADMAP.md) and `bench/experiments/`.
 

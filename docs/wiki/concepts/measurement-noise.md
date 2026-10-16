@@ -37,6 +37,9 @@ A comparison of settings: an engine for each sharing the weights, passes shuffle
 
 ## Open questions
 
+- After a large hold is let go the machine takes minutes to be itself again: runs under held memory 30 s apart
+  started with 15.5 to 26.2 GB available [e51].
+
 - A measurement under held memory needs its own check that the hold held: one that did not passed for whole by
   its footprint [e46] [e47].
 

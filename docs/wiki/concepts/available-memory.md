@@ -42,4 +42,9 @@ constant cannot: other programs holding more than the rule leaves them.
 
 ## Open questions
 
-- How much to leave out of what is available, or how much of the file cache to count [e49].
+- A reading at start says nothing of what other programs will ask for after it: with the smaller budget of the
+  two, a run during which they came back in did worse [e51].
+
+- How much to leave out of what is available, or how much of the file cache to count [e49]. Tried at 8, 0 and
+  4 GB on a busy machine: what was available moved by 10.7 GB between runs 30 s apart, more than any margin [e51].
+  `strata_mlx/paged.py:AVAILABLE_MARGIN` is 0.

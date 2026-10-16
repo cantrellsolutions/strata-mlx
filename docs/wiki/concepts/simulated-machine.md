@@ -45,6 +45,9 @@ the coldest memory on the machine and is pushed out first [e47] [zzzlsupr].
 
 ## Open questions
 
+- Runs under held memory one after another are not alike: what the next one finds available depends on what the
+  last one pushed out [e51].
+
 - With the memory wired the two ways of setting the budget can be compared on this machine: the rule's
   against what is available [e48] [e49].
 

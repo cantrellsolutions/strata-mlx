@@ -59,6 +59,10 @@ DRAFT_HEAD = int(1.6e9)
 # the file's blocks (dense.BlockLinear), 1.7 GB less with the Q2_0 file; its store finds that out when it fits
 # itself to what is loaded (`fit`), and `check.py` counts it.
 DENSE_AS_ARRAYS = 1.6
+# Of what `--expert-memory available` finds at start, this much is left to other programs: taking all of it, the
+# process grew to 29.9 of the 31.3 GB there were and macOS compressed up to 23.3 GB of it at once (e49). Margins of
+# 8, 0 and 4 GB did not settle it: what was available moved by 10.7 GB between runs 30 s apart (e51). So none yet.
+AVAILABLE_MARGIN = 0
 LEAST = int(0.5e9)  # of experts in memory, however little is left for them
 
 
@@ -124,7 +128,7 @@ class ExpertStore:
         self.counting = threading.Lock()  # bytes_read and read_s: a read ahead counts on its own thread
         self.reset_stats()
 
-    def fit(self, machine: int, available: int | None = None) -> int:
+    def fit(self, machine: int, available: int | None = None, margin: int | None = None) -> int:
         """Set the budget to what a machine of that much memory has left, everything else being loaded now.
 
         With `available`, the bytes of memory that were free or held a file's pages before anything was
@@ -132,11 +136,12 @@ class ExpertStore:
         macOS and other programs a constant, and a machine on which they hold more than that swaps (#6: 11.5 GB
         free at the start where another run had 24.5, and 16.8 GB swapped out with the same 16.5 GB of experts).
         Counted before loading, not now: loading reads the model's files, and their pages, 9 GB of them on
-        that machine, are file cache for the next twenty seconds."""
+        that machine, are file cache for the next twenty seconds. `margin` bytes of what was available are left to
+        what other programs will ask for after the start (AVAILABLE_MARGIN)."""
         loaded = mx.get_active_memory() - self.held
         self.budget = machine - left_to_system(machine) - WORKING - loaded
         if available is not None:
-            self.budget = min(self.budget, available - loaded - WORKING)
+            self.budget = min(self.budget, available - loaded - WORKING - (AVAILABLE_MARGIN if margin is None else margin))
         self.budget = max(LEAST, self.budget)
         return self.budget
 
