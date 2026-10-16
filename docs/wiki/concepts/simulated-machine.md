@@ -20,7 +20,8 @@ here was measured until users ran the engine on theirs.
 `--machine-memory` in `strata_mlx/serve.py`, `bench/paged.py`, `bench/prompt_by_layer.py`; `bench/drop_cache.py`.
 `bench/paged.py --hold auto` makes the machine smaller in fact: another process holds what the machine has beyond
 `--machine-memory` in random bytes (`bench/memory.py:Hold`), and the run is valid only if the hold stayed resident;
-`bench/memory.py:own` counts this process's memory compressed or swapped out.
+`bench/memory.py:own` counts this process's memory compressed or swapped out. The hold is wired: unwired it is
+the coldest memory on the machine and is pushed out first [e47] [zzzlsupr].
 
 ## Relations
 
@@ -35,6 +36,8 @@ here was measured until users ran the engine on theirs.
 - Real machines heard from so far: a 32 GB MacBook Air M5 [#6], a 48 GB M4 Pro [xukwosuo], a 64 GB M5 Pro [#8].
 
 ## Superseded
+
+- A hold left unwired [tukzwlpx]: as a 32 GB machine 96 GiB were held and 8.9 stayed resident [e47].
 
 - A hold judged whole by its footprint [wumtsnom]: the footprint counts compressed and swapped pages; it is judged
   by its resident part since [tukzwlpx].

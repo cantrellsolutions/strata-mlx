@@ -34,6 +34,9 @@ Nothing in the engine sees it; `--check` and the [[memory-rule]] are meant to ke
 
 ## Open questions
 
+- macOS pushes out the coldest memory first: an idle hold of 96 GiB went down to 8.9 resident while the
+  engine lost 1.57 GB [e47].
+
 - Here, as a 48 GB machine with 80 GiB held by another process and a full desktop open, 25 GB swapped out with
   the hold "whole" by a footprint that counts swapped pages too: the hold's, the engine's or the other programs',
   not told apart [e46].

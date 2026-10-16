@@ -11,7 +11,9 @@ memory, so it never swaps, and a real 32 GB Mac did (issue 6). Two things close 
   second, and a measurement is valid only if the hold stayed whole through it (`Hold.whole`): macOS may swap the
   hold itself out, which says the machine was under pressure and that the hold no longer stood for anything.
   Whole is judged by what of it is resident (`own()["internal"]`), not by its footprint: the footprint counts
-  pages compressed or swapped out as well.
+  pages compressed or swapped out as well. The hold is wired (`mlock`) unless told not to: held and left alone it
+  is the coldest memory on the machine, and macOS compresses and swaps it out before anything else, so that a
+  hold of 96 GiB kept 8.9 of them resident and the machine was not smaller at all (e47).
 - `own()`: this process's resident, compressed and swapped memory (`task_info`), which tells whether the
   engine itself was pushed out where a count for the whole machine cannot. A mapped file's pages (the n-gram
   table) are dropped, not compressed, so they do not show here.
@@ -88,11 +90,11 @@ def machine_gib() -> float:
 class Hold:
     """Hold `gib` GiB in a process of its own while the `with` block runs."""
 
-    def __init__(self, gib: float):
-        self.gib, self.samples, self.proc = gib, [], None
+    def __init__(self, gib: float, wired: bool = True):
+        self.gib, self.wired, self.samples, self.proc = gib, wired, [], None
 
     def __enter__(self):
-        self.proc = subprocess.Popen([sys.executable, "-I", __file__, "--hold", str(self.gib)],
+        self.proc = subprocess.Popen([sys.executable, "-I", __file__, "--hold", str(self.gib)] + ([] if self.wired else ["--unwired"]),
                                      stdout=subprocess.PIPE, text=True)
         for line in self.proc.stdout:  # it says so once every byte is written
             if line.startswith("held"):
@@ -122,17 +124,21 @@ class Hold:
         return getattr(self, "alive", self.proc.poll() is None) and self.least >= 0.98 * self.gib * GIB
 
     def report(self) -> dict:
-        return {"hold_gib": self.gib, "hold_least_gib": round(self.least / GIB, 2), "hold_samples": len(self.samples),
+        return {"hold_gib": self.gib, "hold_wired": self.wired, "hold_least_gib": round(self.least / GIB, 2), "hold_samples": len(self.samples),
                 "hold_whole": self.whole}
 
 
-def _hold(gib: float):
+def _hold(gib: float, wired: bool = True):
     import numpy as np
 
+    _libc.mlock.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
     rng, kept, left = np.random.default_rng(), [], int(gib * GIB)
     while left > 0:
         n = min(left, 256 << 20)
         kept.append(np.frombuffer(rng.bytes(n), dtype=np.uint8).copy())  # random bytes: nothing to compress
+        if wired and _libc.mlock(kept[-1].ctypes.data, n) != 0:  # vm.user_wire_limit bounds it
+            print("not wired:", os.strerror(ctypes.get_errno()), flush=True)
+            sys.exit(1)
         left -= n
     print("held", sum(a.nbytes for a in kept), flush=True)
     while True:
@@ -141,7 +147,7 @@ def _hold(gib: float):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) == 3 and sys.argv[1] == "--hold":
-        _hold(float(sys.argv[2]))
+    if len(sys.argv) in (3, 4) and sys.argv[1] == "--hold":
+        _hold(float(sys.argv[2]), wired="--unwired" not in sys.argv)
     else:
         print(__doc__)

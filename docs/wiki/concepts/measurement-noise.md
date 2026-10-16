@@ -37,6 +37,9 @@ A comparison of settings: an engine for each sharing the weights, passes shuffle
 
 ## Open questions
 
+- A measurement under held memory needs its own check that the hold held: one that did not passed for whole by
+  its footprint [e46] [e47].
+
 - A system-wide count (swap-outs) cannot say which process paid; a run under held memory with other programs open
   measures the machine as it is that day [e46].
 
