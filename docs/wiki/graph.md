@@ -441,3 +441,4 @@ Colours by kind: component #dbeafe, concept #f3f4f6, constraint #fee2e2, hardwar
 | [e47: as a 32 GB machine, the memory held but not wired](experiments/e47-held-as-32gb-unwired.md) | simulated-machine, swapping, measurement-noise |
 | [e48: as a 48 GB machine, the memory held and wired](experiments/e48-wired-as-48gb.md) | simulated-machine, swapping, system-reserve, expert-store, available-memory |
 | [e49: as a 48 GB machine wired, the experts bounded by what was available](experiments/e49-wired-as-48gb-available.md) | available-memory, swapping, simulated-machine, system-reserve |
+| [e50: as a quiet 32 GB machine, the memory wired](experiments/e50-quiet-as-32gb.md) | simulated-machine, swapping, system-reserve |

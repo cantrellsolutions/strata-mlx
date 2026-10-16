@@ -66,6 +66,7 @@
 - [e47: as a 32 GB machine, the memory held but not wired](experiments/e47-held-as-32gb-unwired.md): invalid; an idle hold is pushed out first.
 - [e48: as a 48 GB machine, the memory held and wired](experiments/e48-wired-as-48gb.md): the engine pushed out, 10-15 tok/s, with a full desktop.
 - [e49: as e48, the experts bounded by what was available](experiments/e49-wired-as-48gb-available.md): twice as fast, hardly any swap, no margin left.
+- [e50: as a quiet 32 GB machine, the memory wired](experiments/e50-quiet-as-32gb.md): no swap, a quarter slower than the real Air.
 
 Earlier experiments, e01-e42, are in [ROADMAP.md](../../ROADMAP.md) and `bench/experiments/`.
 

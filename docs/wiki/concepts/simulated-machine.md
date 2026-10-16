@@ -20,7 +20,8 @@ here was measured until users ran the engine on theirs.
 `--machine-memory` in `strata_mlx/serve.py`, `bench/paged.py`, `bench/prompt_by_layer.py`; `bench/drop_cache.py`.
 `bench/paged.py --hold auto` makes the machine smaller in fact: another process holds what the machine has beyond
 `--machine-memory` in random bytes (`bench/memory.py:Hold`), and the run is valid only if the hold stayed resident;
-`bench/memory.py:own` counts this process's memory compressed or swapped out. The hold is wired: unwired it is
+`bench/memory.py:own` counts this process's memory compressed or swapped out. `--hold quiet` holds less by what
+the other programs hold beyond a quiet macOS (6.1 GB). The hold is wired: unwired it is
 the coldest memory on the machine and is pushed out first [e47] [zzzlsupr].
 
 ## Relations
@@ -48,7 +49,9 @@ the coldest memory on the machine and is pushed out first [e47] [zzzlsupr].
   against what is available [e48] [e49].
 
 - A quiet small machine: a wired hold leaves the other programs of this machine inside the simulated one. As a
-  48 GB machine with about 38 GB of them open, the engine had 31 GB compressed or swapped out [e48].
+  48 GB machine with about 38 GB of them open, the engine had 31 GB compressed or swapped out [e48]. Held as a
+  quiet 32 GB machine it still had 11.9 GB compressed at once and wrote a quarter slower than the real Air with
+  nothing open: active programs keep asking for memory, which no hold takes out [e50].
 
 - Which process a system-wide swap-out came from: as a 48 GB machine with 80 GiB held, 25 GB were swapped
   out and the hold stayed whole [e46]. This process's own page-ins would say.

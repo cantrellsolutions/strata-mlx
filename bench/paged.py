@@ -14,7 +14,9 @@ machine that has all experts in memory does, where the default here is the file'
 holds what the machine has beyond `--machine-memory` in random bytes for the whole run (bench/memory.py), so
 swapping shows as it would on the small machine. Every row says this process's footprint as the kernel counts it;
 the last says its peak, what the machine swapped out meanwhile, and whether the hold stayed whole, without which
-the run says nothing about pressure.
+the run says nothing about pressure. `--hold quiet` holds less by what this machine's other programs hold now
+beyond a quiet macOS (6.1 GB, issue 6's Air with nothing open), so that the small machine has a quiet macOS in it
+and not this one's desktop (e48 had 38 GB of it inside a 48 GB machine).
 """
 
 import argparse
@@ -35,6 +37,9 @@ from strata_mlx.load import load  # noqa: E402
 from strata_mlx.mtp import load_mtp  # noqa: E402
 
 
+QUIET_MACOS = 6.1e9  # what macOS held on issue 6's 32 GB Air with nothing else open
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--model", required=True)
@@ -48,16 +53,26 @@ def main():
     p.add_argument("--tokens", type=int, default=200)
     p.add_argument("--prompts", nargs="+", default=["prose", "code", "reasoning", "edit"])
     p.add_argument("--read", help="a long prompt in a file, read twice")
-    p.add_argument("--hold", help="GiB held by another process for the run, or 'auto': all but --machine-memory")
+    p.add_argument("--hold", help="GiB held by another process for the run; 'auto': all but --machine-memory; "
+                   "'quiet': less what this machine's other programs hold beyond a quiet macOS")
     p.add_argument("--json")
     args = p.parse_args()
     if (args.budget is None) == (args.machine_memory is None):
         p.error("one of --budget and --machine-memory")
     hold = None
     if args.hold:
-        if args.hold == "auto" and not args.machine_memory:
-            p.error("--hold auto needs --machine-memory")
-        hold = round(machine_gib() - args.machine_memory, 1) if args.hold == "auto" else float(args.hold)
+        if args.hold in ("auto", "quiet") and not args.machine_memory:
+            p.error(f"--hold {args.hold} needs --machine-memory")
+        hold = round(machine_gib() - args.machine_memory, 1) if args.hold in ("auto", "quiet") else float(args.hold)
+        if args.hold == "quiet":
+            from strata_mlx.paged import available_memory
+
+            free, cached = available_memory()
+            others = machine_gib() * 2**30 - free - cached  # what nothing frees for the asking
+            extra = max(0.0, (others - QUIET_MACOS) / 2**30)
+            hold = round(hold - extra, 1)
+            print(f"other programs hold {others / 1e9:.1f} GB beyond the free memory and the file cache; a quiet macOS "
+                  f"{QUIET_MACOS / 1e9:.1f}: {extra:.1f} GiB less held", flush=True)
     swapped_before, own_before = swapped()[0], own()
     if hold:
         print(f"holding {hold} GiB in another process", flush=True)

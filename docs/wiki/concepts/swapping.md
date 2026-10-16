@@ -26,6 +26,9 @@ Nothing in the engine sees it; `--check` and the [[memory-rule]] are meant to ke
 
 ## What we know
 
+- Compression comes before swapping and with room to spare: as a quiet 32 GB machine wired, nothing swapped and
+  the engine still had 11.9 GB compressed at once [e50].
+
 - `--expert-memory available` cut it from 19.9 GB to 0.96 under the same held memory [e49].
 
 - What the engine loses first is its own memory compressed, not reads: as a 48 GB machine wired, with a full
