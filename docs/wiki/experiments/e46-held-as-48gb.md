@@ -8,7 +8,8 @@ date: 2026-10-16
 
 > 中文摘要:第一次真正"变小"地模拟 48 GB 机器:另一个进程占住 80 GiB 随机字节,全程没有被换出。引擎按规则拿到 28.3 GB 专家,
 > 进程峰值 36.3 GB;第二轮回答 25-34 tok/s,和一台真实 48 GB M4 Pro 封顶 24 GB 时的 23.6-34.1 相近。
-> 但测量期间整台机器换出了 25.3 GB,只能确定不是占内存的进程,分不清是引擎还是本机其他程序。
+> 但测量期间整台机器换出了 25.3 GB,分不清是谁的:当时判断占内存进程"完整"用的是 footprint,而 footprint 把已压缩、已换出的页也算在内,
+> 所以连占内存的进程本身也不能排除。之后改为按常驻内存判断,并记录引擎进程自己被压缩或换出的量。
 
 ## Question
 
@@ -33,16 +34,18 @@ editor, Xcode, a dozen agent sessions) stayed open, and they are part of what th
 
 - The experts' budget by the rule: 28.3 GB; held at the end 28.05 GB. MLX's arrays peaked at 35.6 GB, the kernel's
   footprint of the process at 36.33 GB.
-- The hold: 80.06 GiB at its least over 120 samples, so whole.
+- The hold: 80.06 GiB of footprint at its least over 120 samples. That was taken for "whole", and it does not
+  say so: a footprint counts pages compressed or swapped out as well. Since [tukzwlpx] a hold is judged by what of it
+  is resident.
 - The machine swapped out 25.28 GB while the run went on.
 
 ## Conclusion
 
 - The answers once the store is filled, 25-34 tok/s, are those of a real 48 GB M4 Pro with the experts capped at
   24 GB (23.6-34.1, three prompts of 128 tokens), reported on X after `9f37174`.
-- 25 GB swapped out was not the hold, which stayed whole. Whether it was this process or the other programs
-  pushed out by 80 GiB more is not told by a system-wide count: the next run should count this process's own
-  page-ins. With 85.9 GB held, 36.3 in this process and the author's programs, the machine had little left, so
+- 25 GB swapped out. It may have been the hold's (see above), this process's or the other programs'; whether it
+  was any one of them a system-wide count does not tell. Since [tukzwlpx] the run counts this process's own memory
+  compressed or swapped out, and the hold's resident part. With 85.9 GB held, 36.3 in this process and the author's programs, the machine had little left, so
   this is a 48 GB machine with a full desktop open, not a quiet one.
 
 ## Concepts

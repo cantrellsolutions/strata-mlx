@@ -27,7 +27,7 @@ import mlx.core as mx
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from drop_cache import in_memory  # noqa: E402
-from memory import Hold, footprint, machine_gib, swapped  # noqa: E402
+from memory import Hold, footprint, machine_gib, own, swapped  # noqa: E402
 from spec_decode import PROMPTS, STOP, tokenize  # noqa: E402
 
 from strata_mlx.engine import Engine  # noqa: E402
@@ -58,7 +58,7 @@ def main():
         if args.hold == "auto" and not args.machine_memory:
             p.error("--hold auto needs --machine-memory")
         hold = round(machine_gib() - args.machine_memory, 1) if args.hold == "auto" else float(args.hold)
-    swapped_before = swapped()[0]
+    swapped_before, own_before = swapped()[0], own()
     if hold:
         print(f"holding {hold} GiB in another process", flush=True)
         with Hold(hold) as h:
@@ -67,11 +67,16 @@ def main():
     else:
         h, rows = None, run(args)
     now, peak = footprint()
+    mine = own()
     summary = {"summary": True, "footprint_peak_gb": round(peak / 1e9, 2),
-               "swapped_out_gb": round((swapped()[0] - swapped_before) / 1e9, 2), **(h.report() if h else {})}
+               "swapped_out_gb": round((swapped()[0] - swapped_before) / 1e9, 2),
+               "own_compressed_peak_gb": round(mine["compressed_peak"] / 1e9, 2),
+               "own_compressed_during_gb": round((mine["compressed_lifetime"] - own_before["compressed_lifetime"]) / 1e9, 2),
+               **(h.report() if h else {})}
     rows.append(summary)
-    print(f"this process: footprint peak {summary['footprint_peak_gb']} GB; the machine swapped out "
-          f"{summary['swapped_out_gb']} GB meanwhile" + ("" if not h else "; the hold " +
+    print(f"this process: footprint peak {summary['footprint_peak_gb']} GB, {summary['own_compressed_during_gb']} GB of it "
+          f"compressed or swapped out during the run (at most {summary['own_compressed_peak_gb']} GB at once); the machine "
+          f"swapped out {summary['swapped_out_gb']} GB meanwhile" + ("" if not h else "; the hold " +
           ("stayed whole" if h.whole else "did NOT stay whole: the run says nothing about pressure")), flush=True)
     if args.json:
         Path(args.json).write_text(json.dumps(rows, indent=1) + "\n")

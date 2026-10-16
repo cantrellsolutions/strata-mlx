@@ -2,6 +2,9 @@
 
 > 中文摘要:知识库的变更记录,最新的在前。每行写日期、jj change ID、改了哪些页、依据什么。
 
+- 2026-10-16 · [tukzwlpx] · A hold is judged by its resident part, not its footprint, which counts swapped pages too;
+  the run counts this process's own memory compressed or swapped out (bench/memory.py:own). e46's "hold whole"
+  corrected; simulated-machine, swapping.
 - 2026-10-16 · [vrnvzqql] · e46: as a 48 GB machine with 80 GiB held; simulated-machine, swapping, system-reserve,
   measurement-noise.
 - 2026-10-15 · [wumtsnom] · simulated-machine, working-memory: memory held by another process and the kernel's

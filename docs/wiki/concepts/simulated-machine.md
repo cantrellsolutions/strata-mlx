@@ -19,7 +19,8 @@ here was measured until users ran the engine on theirs.
 
 `--machine-memory` in `strata_mlx/serve.py`, `bench/paged.py`, `bench/prompt_by_layer.py`; `bench/drop_cache.py`.
 `bench/paged.py --hold auto` makes the machine smaller in fact: another process holds what the machine has beyond
-`--machine-memory` in random bytes (`bench/memory.py:Hold`), and the run is valid only if the hold stayed whole.
+`--machine-memory` in random bytes (`bench/memory.py:Hold`), and the run is valid only if the hold stayed resident;
+`bench/memory.py:own` counts this process's memory compressed or swapped out.
 
 ## Relations
 
@@ -32,6 +33,11 @@ here was measured until users ran the engine on theirs.
   meant to close that: TensorFold's harness does the same and rejects a run whose hold died. As a 96 GB machine
   with 32 GiB held, the hold stayed whole through the run (50 samples) and nothing swapped; as a 48 GB one with 80 GiB held, the store filled, answers came at 25-34 tok/s [e46] [wumtsnom].
 - Real machines heard from so far: a 32 GB MacBook Air M5 [#6], a 48 GB M4 Pro [xukwosuo], a 64 GB M5 Pro [#8].
+
+## Superseded
+
+- A hold judged whole by its footprint [wumtsnom]: the footprint counts compressed and swapped pages; it is judged
+  by its resident part since [tukzwlpx].
 
 ## Open questions
 

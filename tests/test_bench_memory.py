@@ -30,3 +30,10 @@ def test_a_hold_that_died_is_not_whole():
         h.proc.kill()
         h.proc.wait()
     assert not h.whole
+
+
+def test_own_memory_agrees_with_the_footprint_and_counts_what_is_resident():
+    kept = np.ones(256 << 20, dtype=np.uint8)
+    mine = memory.own()
+    assert abs(mine["footprint"] - memory.footprint()[0]) < 64 << 20
+    assert mine["internal"] >= kept.nbytes and mine["compressed_lifetime"] >= mine["compressed"] >= 0

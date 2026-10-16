@@ -10,6 +10,11 @@ memory, so it never swaps, and a real 32 GB Mac did (issue 6). Two things close 
   share, for as long as a measurement runs; so the machine has what is left. It reports its own footprint every
   second, and a measurement is valid only if the hold stayed whole through it (`Hold.whole`): macOS may swap the
   hold itself out, which says the machine was under pressure and that the hold no longer stood for anything.
+  Whole is judged by what of it is resident (`own()["internal"]`), not by its footprint: the footprint counts
+  pages compressed or swapped out as well.
+- `own()`: this process's resident, compressed and swapped memory (`task_info`), which tells whether the
+  engine itself was pushed out where a count for the whole machine cannot. A mapped file's pages (the n-gram
+  table) are dropped, not compressed, so they do not show here.
 
     uv run python bench/memory.py --hold 8      # hold 8 GiB until stopped, its footprint every second
 """
@@ -42,6 +47,28 @@ def footprint(pid: int | None = None) -> tuple:
     if _libc.proc_pid_rusage(pid or os.getpid(), _RUSAGE_INFO_V4, ctypes.byref(info)) != 0:
         raise OSError(ctypes.get_errno(), "proc_pid_rusage")
     return info.counters[_PHYS_FOOTPRINT], info.counters[_LIFETIME_MAX_PHYS_FOOTPRINT]
+
+
+class _TaskVmInfo(ctypes.Structure):
+    # struct task_vm_info (mach/task_info.h): then 64-bit fields from resident_size on; room for later revisions
+    _fields_ = [("virtual_size", ctypes.c_uint64), ("region_count", ctypes.c_int32), ("page_size", ctypes.c_int32),
+                ("fields", ctypes.c_uint64 * 60)]
+
+
+_TASK_VM_INFO = 22
+_VM_FIELDS = {"resident": 0, "resident_peak": 1, "internal": 4, "internal_peak": 5, "compressed": 13,
+              "compressed_peak": 14, "compressed_lifetime": 15, "footprint": 16}
+_task_self = ctypes.c_uint.in_dll(_libc, "mach_task_self_")
+
+
+def own() -> dict:
+    """Bytes of this process: resident, anonymous and resident (internal), in the compressor or swapped out
+    (compressed), the most ever there (compressed_peak) and all that ever went there (compressed_lifetime)."""
+    info = _TaskVmInfo()
+    count = ctypes.c_uint(ctypes.sizeof(info) // 4)
+    if _libc.task_info(_task_self, _TASK_VM_INFO, ctypes.byref(info), ctypes.byref(count)) != 0:
+        raise OSError("task_info")
+    return {k: info.fields[i] for k, i in _VM_FIELDS.items()}
 
 
 def swapped() -> tuple:
@@ -77,7 +104,7 @@ class Hold:
 
     def _watch(self):
         for line in self.proc.stdout:
-            if line.startswith("footprint"):
+            if line.startswith("internal"):
                 self.samples.append((time.time(), int(line.split()[1])))
 
     def __exit__(self, *exc):
@@ -91,7 +118,7 @@ class Hold:
 
     @property
     def whole(self) -> bool:
-        """The hold lived through the measurement and none of it left memory."""
+        """The hold lived through the measurement and none of it left memory: resident, not compressed or out."""
         return getattr(self, "alive", self.proc.poll() is None) and self.least >= 0.98 * self.gib * GIB
 
     def report(self) -> dict:
@@ -109,7 +136,7 @@ def _hold(gib: float):
         left -= n
     print("held", sum(a.nbytes for a in kept), flush=True)
     while True:
-        print("footprint", footprint()[0], flush=True)
+        print("internal", own()["internal"], flush=True)
         time.sleep(1)
 
 
