@@ -32,6 +32,8 @@ user runs. It cannot be measured from inside the engine, so it is a rule fitted 
 - 8.5 GB then. A real 48 GB M4 Pro swapped 4.98 GiB out as it started with the 30.1 GB of experts that gave, and
   not with 24; Strata's own Metal engine chose 25.6 there [xukwosuo].
 - A quarter of the memory, 8.5 GB at least, fits both: the same for 32 GB, 12.9 GB for 48 [xukwosuo].
+- As a 48 GB machine with the memory held, the rule gave the experts 28.3 GB and the answers came at 25-34 tok/s
+  once they were in memory, those of the real M4 Pro capped at 24 [e46].
 
 ## Superseded
 

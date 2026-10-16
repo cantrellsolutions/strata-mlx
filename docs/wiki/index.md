@@ -62,6 +62,7 @@
 - [e43: the experts through MLX's quantized product](experiments/e43-experts-as-qmm.md): slower, not used.
 - [e44: threads to a row of the table kernel](experiments/e44-lookup-threads.md): 3-27% on the M4 Max.
 - [e45: pull requests 9 and 10 checked on the M4 Max](experiments/e45-pull-request-9-check.md): merged, fused up to six.
+- [e46: as a 48 GB machine, with the memory held](experiments/e46-held-as-48gb.md): 25-34 tok/s; 25 GB swapped, whose not told.
 
 Earlier experiments, e01-e42, are in [ROADMAP.md](../../ROADMAP.md) and `bench/experiments/`.
 

@@ -34,4 +34,7 @@ Nothing in the engine sees it; `--check` and the [[memory-rule]] are meant to ke
 
 ## Open questions
 
+- Here, as a 48 GB machine with 80 GiB held by another process and a full desktop open, 25 GB swapped out with
+  the hold whole: the engine's or the other programs', not yet told apart [e46].
+
 - Which allocation the startup swaps come from.

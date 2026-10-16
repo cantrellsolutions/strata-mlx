@@ -2,6 +2,8 @@
 
 > 中文摘要:知识库的变更记录,最新的在前。每行写日期、jj change ID、改了哪些页、依据什么。
 
+- 2026-10-16 · [vrnvzqql] · e46: as a 48 GB machine with 80 GiB held; simulated-machine, swapping, system-reserve,
+  measurement-noise.
 - 2026-10-15 · [wumtsnom] · simulated-machine, working-memory: memory held by another process and the kernel's
   footprint (bench/memory.py, bench/paged.py --hold); a first run as a 96 GB machine; MLX's arrays miss 1.55 GB
   of what the process holds.

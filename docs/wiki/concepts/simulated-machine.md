@@ -30,9 +30,12 @@ here was measured until users ran the engine on theirs.
 - What a simulated run measures holds where memory is not short: the disk, the kernels, how many experts are read.
 - What it cannot measure by itself: what macOS and other programs hold, pressure, swapping [#6]. Held memory is
   meant to close that: TensorFold's harness does the same and rejects a run whose hold died. As a 96 GB machine
-  with 32 GiB held, the hold stayed whole through the run (50 samples) and nothing swapped [wumtsnom].
+  with 32 GiB held, the hold stayed whole through the run (50 samples) and nothing swapped; as a 48 GB one with 80 GiB held, the store filled, answers came at 25-34 tok/s [e46] [wumtsnom].
 - Real machines heard from so far: a 32 GB MacBook Air M5 [#6], a 48 GB M4 Pro [xukwosuo], a 64 GB M5 Pro [#8].
 
 ## Open questions
+
+- Which process a system-wide swap-out came from: as a 48 GB machine with 80 GiB held, 25 GB were swapped
+  out and the hold stayed whole [e46]. This process's own page-ins would say.
 
 - A run as a 32 GB machine with 96 GiB held, which is what would have shown issue 6's swapping here [wumtsnom].

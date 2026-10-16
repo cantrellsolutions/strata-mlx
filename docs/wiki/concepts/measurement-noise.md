@@ -37,5 +37,8 @@ A comparison of settings: an engine for each sharing the weights, passes shuffle
 
 ## Open questions
 
+- A system-wide count (swap-outs) cannot say which process paid; a run under held memory with other programs open
+  measures the machine as it is that day [e46].
+
 - A script for the one-process comparison that any change can use, with the control built in, instead of one
   written per experiment.
