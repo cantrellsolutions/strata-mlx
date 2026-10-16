@@ -113,7 +113,7 @@ flowchart LR
 
 ## Memory and smaller Macs
 
-14 concepts, 41 relations touching them.
+14 concepts, 42 relations touching them.
 
 ```mermaid
 flowchart LR
@@ -168,6 +168,7 @@ flowchart LR
   page_cache -- invalidates --> simulated_machine
   pressure_following -- depends-on --> expert_store
   pressure_following -- trades-against --> swapping
+  pressure_following -- trades-against --> ssd_reads
   pressure_following -- depends-on --> available_memory
   prompt_chunk -- costs --> working_memory
   router_lookahead -- limited-by --> ssd_reads
@@ -223,6 +224,7 @@ flowchart LR
 | [The page cache](concepts/page-cache.md) | invalidates | [A smaller machine, simulated](concepts/simulated-machine.md) | ROADMAP: The dense tensors of two types |
 | [The budget following the pressure](concepts/pressure-following.md) | depends-on | [The expert store](concepts/expert-store.md) | e52, yytmkrlk |
 | [The budget following the pressure](concepts/pressure-following.md) | trades-against | [Swapping](concepts/swapping.md) | e52, yytmkrlk |
+| [The budget following the pressure](concepts/pressure-following.md) | trades-against | [Reads from the SSD](concepts/ssd-reads.md) | e53 |
 | [The budget following the pressure](concepts/pressure-following.md) | depends-on | [Available memory at start](concepts/available-memory.md) | e49, e51 |
 | [Experts guessed before their router: not built](concepts/router-lookahead.md) | limited-by | [Reads from the SSD](concepts/ssd-reads.md) | e35 |
 | [Experts guessed before their router: not built](concepts/router-lookahead.md) | depends-on | [The expert store](concepts/expert-store.md) | e35 |
@@ -451,3 +453,4 @@ Colours by kind: component #dbeafe, concept #f3f4f6, constraint #fee2e2, hardwar
 | [e50: as a quiet 32 GB machine, the memory wired](experiments/e50-quiet-as-32gb.md) | simulated-machine, swapping, system-reserve, pressure-following |
 | [e51: a margin on what is available, not settled](experiments/e51-available-margin.md) | available-memory, measurement-noise, simulated-machine, pressure-following |
 | [e52: letting go of arrays takes their compression off](experiments/e52-shed-compressed.md) | expert-store, swapping, available-memory, pressure-following |
+| [e53: the budget following the pressure, off and on](experiments/e53-follow-pressure.md) | pressure-following |

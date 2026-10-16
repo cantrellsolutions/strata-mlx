@@ -2,6 +2,8 @@
 
 > 中文摘要:知识库的变更记录,最新的在前。每行写日期、jj change ID、改了哪些页、依据什么。
 
+- 2026-10-16 · [lptnxxvz] · e53: following the pressure, off and on as a 48 GB machine wired: no swap and faster prompts,
+  answers not faster (the budget fell to 3-7 GB, the experts read from the disk); stays off; pressure-following.
 - 2026-10-16 · [yytmkrlk] · pressure-following, new: the budget follows the process's compression and the pressure
   level (opt-in, --follow-pressure); runs under held memory wait for the machine to settle first.
 - 2026-10-16 · [yowlwvyo] · e52: under pressure, letting go of arrays takes their compression off one for one, and macOS
