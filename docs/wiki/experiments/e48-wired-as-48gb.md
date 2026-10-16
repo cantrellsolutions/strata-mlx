@@ -45,4 +45,4 @@ the author's other programs and caches held about 38 GB, and stayed open.
 
 ## Concepts
 
-[[simulated-machine]] [[swapping]] [[system-reserve]] [[expert-store]]
+[[simulated-machine]] [[swapping]] [[system-reserve]] [[expert-store]] [[available-memory]]

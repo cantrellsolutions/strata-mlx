@@ -31,6 +31,15 @@ constant cannot: other programs holding more than the rule leaves them.
 - Kept an option: it buys no swapping and steadier answers (15.9-17.7 tok/s against 10.8-24.7 with the fixed
   rule), not a higher mean [#6].
 
+- Under held, wired memory as a 48 GB machine with a full desktop: 20.9 GB of experts where the rule gives
+  28.3, answers 17.4-25.6 tok/s where 10.5-14.5, the machine swapping 0.96 GB where 19.9 [e48] [e49].
+- It leaves no margin: the process grew to 29.9 of the 31.3 GB available at its start, and 23.3 GB of it was
+  compressed at once at the most [e49].
+
 ## Superseded
 
 - Counting after loading [trprrzsw]: before, since [ooosmwnq].
+
+## Open questions
+
+- How much to leave out of what is available, or how much of the file cache to count [e49].

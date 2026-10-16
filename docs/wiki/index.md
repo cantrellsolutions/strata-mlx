@@ -65,6 +65,7 @@
 - [e46: as a 48 GB machine, with the memory held](experiments/e46-held-as-48gb.md): 25-34 tok/s; 25 GB swapped, whose not told.
 - [e47: as a 32 GB machine, the memory held but not wired](experiments/e47-held-as-32gb-unwired.md): invalid; an idle hold is pushed out first.
 - [e48: as a 48 GB machine, the memory held and wired](experiments/e48-wired-as-48gb.md): the engine pushed out, 10-15 tok/s, with a full desktop.
+- [e49: as e48, the experts bounded by what was available](experiments/e49-wired-as-48gb-available.md): twice as fast, hardly any swap, no margin left.
 
 Earlier experiments, e01-e42, are in [ROADMAP.md](../../ROADMAP.md) and `bench/experiments/`.
 

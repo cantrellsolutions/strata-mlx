@@ -44,6 +44,9 @@ the coldest memory on the machine and is pushed out first [e47] [zzzlsupr].
 
 ## Open questions
 
+- With the memory wired the two ways of setting the budget can be compared on this machine: the rule's
+  against what is available [e48] [e49].
+
 - A quiet small machine: a wired hold leaves the other programs of this machine inside the simulated one. As a
   48 GB machine with about 38 GB of them open, the engine had 31 GB compressed or swapped out [e48].
 

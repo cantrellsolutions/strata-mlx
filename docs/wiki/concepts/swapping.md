@@ -26,6 +26,8 @@ Nothing in the engine sees it; `--check` and the [[memory-rule]] are meant to ke
 
 ## What we know
 
+- `--expert-memory available` cut it from 19.9 GB to 0.96 under the same held memory [e49].
+
 - What the engine loses first is its own memory compressed, not reads: as a 48 GB machine wired, with a full
   desktop, its store read next to nothing once filled and answers came at 10-15 tok/s, 31 GB of the process
   compressed or swapped out [e48].
