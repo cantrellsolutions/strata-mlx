@@ -1,0 +1,46 @@
+{
+  "device": {
+    "device_name": "Apple M5 Pro",
+    "max_recommended_working_set_size": 61865984000,
+    "memory_size": 68719476736,
+    "architecture": "applegpu_g17s",
+    "max_buffer_length": 41747087360,
+    "resource_limit": 499000
+  },
+  "auto_fuse_upto": 8,
+  "model": "Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf",
+  "load_s": 44.951618333987426,
+  "table_warming_started": false,
+  "active_bytes_after_load": 39468436800,
+  "cache_bytes_after_load": 19384,
+  "settings": {
+    "reference6": [
+      false,
+      6
+    ],
+    "new6": [
+      true,
+      6
+    ],
+    "new8": [
+      true,
+      8
+    ],
+    "control6": [
+      true,
+      6
+    ]
+  },
+  "precision": "float16; MLX_ENABLE_TF32 unset",
+  "kernel_reference_limit": "Reference toggles eight trunk module switches and fuse limit; current shared draft-head and Q2 thread rule remain. Not an exact historical source comparison.",
+  "seed": 20261015,
+  "full_model_resident": true,
+  "draft_load_s": 7.0369537500082515,
+  "warm_s": {
+    "reference6": 8.309322166023776,
+    "new6": 1.2590857080067508,
+    "new8": 1.26497937500244,
+    "control6": 0.8509833750431426
+  },
+  "table_warming_finished": false
+}

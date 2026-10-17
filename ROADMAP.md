@@ -982,3 +982,14 @@ Then measured the same way on the M5 Ultra by the pull request's author, against
 eight was 2.0 ms a pass faster at seven and eight tokens there, with Q2_0 and with IQ3_S, and the same below; the
 thread rule was no slower (0.25-0.34 ms faster at seven and eight). So the limit is chosen by the GPU's
 generation as MLX names it (`engine.gpu_generation`): 8 from 17 (an M5), 6 below.
+
+### Pull request 11 (cantrellsolutions, measured on an M5 Pro with 64 GB)
+
+The same kind of comparison on a Mac mini with a 20-core M5 Pro, issue 8's kind of machine, by the pull request's
+author (e54): one process, engines sharing the weights, passes shuffled, a control engine. There fused up to eight
+was the slower at seven and eight tokens, by 1.34 and 1.71 ms a pass with Q2_0 (47.0 and 48.6 ms fused up to six)
+and 1.09 and 1.19 with IQ3_S, where the control varied by 0.2-0.4 and 1.0-1.1 ms; the same below. So an M5 is not
+enough to choose 8. Merged with `--fusion-limit 6|8` to set it by hand; the engine still chooses by generation, as
+two M5s do not say what else to choose by. Pull request 9's switches were faster at every size there too, 1.4-4.8 ms
+a pass. With it a script for the comparison, `bench/experiments/e54_shared_weight_controls.py`, and
+`bench/compare_results.py`, which summarizes a run only when every planned sample is in it.

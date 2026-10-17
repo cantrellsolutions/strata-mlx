@@ -70,6 +70,8 @@
 - [e50: as a quiet 32 GB machine, the memory wired](experiments/e50-quiet-as-32gb.md): no swap, a quarter slower than the real Air.
 - [e51: a margin on what is available](experiments/e51-available-margin.md): not settled; what is available moved by 10.7 GB in 30 s.
 - [e52: letting go of arrays takes their compression off](experiments/e52-shed-compressed.md): one for one, whichever arrays.
+- [e53: the budget following the pressure, off and on](experiments/e53-follow-pressure.md): no swap, answers not faster; stays off.
+- [e54: the fusion limit on an M5 Pro, against a control engine](experiments/e54-shared-weight-controls.md): 6 faster there; `--fusion-limit`.
 
 Earlier experiments, e01-e42, are in [ROADMAP.md](../../ROADMAP.md) and `bench/experiments/`.
 

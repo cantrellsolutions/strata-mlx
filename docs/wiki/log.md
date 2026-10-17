@@ -2,6 +2,11 @@
 
 > 中文摘要:知识库的变更记录,最新的在前。每行写日期、jj change ID、改了哪些页、依据什么。
 
+- 2026-10-17 · [uvwtszxp] · e54, pull request 11 merged ([uvuuktql]): on a 20-core M5 Pro fused up to six was
+  faster than eight at seven and eight tokens, against a control engine, so the GPU's generation does not choose the
+  fusion limit alone; `--fusion-limit 6|8` sets it by hand, the engine's choice unchanged. Its script, page and
+  results renumbered from e49/e46, which are other experiments here; gpu-generation, hyper-connections,
+  measurement-noise. e53's line added to index.md.
 - 2026-10-16 · [lptnxxvz] · e53: following the pressure, off and on as a 48 GB machine wired: no swap and faster prompts,
   answers not faster (the budget fell to 3-7 GB, the experts read from the disk); stays off; pressure-following.
 - 2026-10-16 · [yytmkrlk] · pressure-following, new: the budget follows the process's compression and the pressure

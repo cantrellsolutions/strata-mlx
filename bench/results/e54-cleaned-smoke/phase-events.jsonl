@@ -1,0 +1,28 @@
+{"phase": "run-start", "monotonic": 496230.655030041, "utc": "2026-10-15T15:25:14Z"}
+{"phase": "load", "monotonic": 496231.551277125, "utc": "2026-10-15T15:25:15Z"}
+{"phase": "draft-load", "monotonic": 496276.806161458, "utc": "2026-10-15T15:26:00Z"}
+{"phase": "warm-reference6", "monotonic": 496282.699145083, "utc": "2026-10-15T15:26:06Z"}
+{"phase": "warm-new6", "monotonic": 496291.94109875, "utc": "2026-10-15T15:26:15Z"}
+{"phase": "warm-new8", "monotonic": 496292.799872333, "utc": "2026-10-15T15:26:16Z"}
+{"phase": "warm-control6", "monotonic": 496293.646337583, "utc": "2026-10-15T15:26:17Z"}
+{"phase": "micro-start", "monotonic": 496294.494653666, "utc": "2026-10-15T15:26:18Z"}
+{"phase": "micro-end", "monotonic": 496296.66207375, "utc": "2026-10-15T15:26:20Z"}
+{"phase": "answers-start", "monotonic": 496296.662141083, "utc": "2026-10-15T15:26:20Z"}
+{"phase": "request-start", "monotonic": 496296.663355458, "utc": "2026-10-15T15:26:20Z", "round": 0, "case": "code-result", "setting": "new8"}
+{"phase": "request-end", "monotonic": 496297.040255916, "utc": "2026-10-15T15:26:20Z", "round": 0, "case": "code-result", "setting": "new8"}
+{"phase": "request-start", "monotonic": 496297.044364583, "utc": "2026-10-15T15:26:20Z", "round": 0, "case": "code-result", "setting": "reference6"}
+{"phase": "request-end", "monotonic": 496297.404611625, "utc": "2026-10-15T15:26:20Z", "round": 0, "case": "code-result", "setting": "reference6"}
+{"phase": "request-start", "monotonic": 496297.409191041, "utc": "2026-10-15T15:26:20Z", "round": 0, "case": "code-result", "setting": "control6"}
+{"phase": "request-end", "monotonic": 496297.748541583, "utc": "2026-10-15T15:26:21Z", "round": 0, "case": "code-result", "setting": "control6"}
+{"phase": "request-start", "monotonic": 496297.75400875, "utc": "2026-10-15T15:26:21Z", "round": 0, "case": "code-result", "setting": "new6"}
+{"phase": "request-end", "monotonic": 496298.090400666, "utc": "2026-10-15T15:26:21Z", "round": 0, "case": "code-result", "setting": "new6"}
+{"phase": "request-start", "monotonic": 496298.092148416, "utc": "2026-10-15T15:26:21Z", "round": 0, "case": "tool-choice", "setting": "control6"}
+{"phase": "request-end", "monotonic": 496298.641648208, "utc": "2026-10-15T15:26:22Z", "round": 0, "case": "tool-choice", "setting": "control6"}
+{"phase": "request-start", "monotonic": 496298.646623, "utc": "2026-10-15T15:26:22Z", "round": 0, "case": "tool-choice", "setting": "reference6"}
+{"phase": "request-end", "monotonic": 496299.198303875, "utc": "2026-10-15T15:26:22Z", "round": 0, "case": "tool-choice", "setting": "reference6"}
+{"phase": "request-start", "monotonic": 496299.20312275, "utc": "2026-10-15T15:26:22Z", "round": 0, "case": "tool-choice", "setting": "new8"}
+{"phase": "request-end", "monotonic": 496299.726008166, "utc": "2026-10-15T15:26:23Z", "round": 0, "case": "tool-choice", "setting": "new8"}
+{"phase": "request-start", "monotonic": 496299.731707291, "utc": "2026-10-15T15:26:23Z", "round": 0, "case": "tool-choice", "setting": "new6"}
+{"phase": "request-end", "monotonic": 496300.2339235, "utc": "2026-10-15T15:26:23Z", "round": 0, "case": "tool-choice", "setting": "new6"}
+{"phase": "answers-end", "monotonic": 496300.234022, "utc": "2026-10-15T15:26:23Z"}
+{"phase": "complete", "monotonic": 496300.257650708, "utc": "2026-10-15T15:26:23Z"}

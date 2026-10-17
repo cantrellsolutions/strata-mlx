@@ -1,0 +1,89 @@
+[
+  {
+    "name": "code-result",
+    "prompt": "<|im_start|>user\nEvaluate this Python expression: sorted(set([9,2,9,5])). Return only JSON with key result.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+    "expected": {
+      "result": [
+        2,
+        5,
+        9
+      ]
+    }
+  },
+  {
+    "name": "tool-choice",
+    "prompt": "<|im_start|>user\nAvailable tools: list_files(path,recursive), read_file(path), write_file(path,content). The user asks for filenames only directly under /project. Return only JSON {\"tool\":...,\"arguments\":...} for the one required tool, explicitly setting recursive false.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+    "expected": {
+      "tool": "list_files",
+      "arguments": {
+        "path": "/project",
+        "recursive": false
+      }
+    }
+  },
+  {
+    "name": "operations",
+    "prompt": "<|im_start|>user\nThere are 90 jobs. Exactly 11 are failed, 8 deferred, and all others completed. Return only JSON with key completed.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+    "expected": {
+      "completed": 71
+    }
+  },
+  {
+    "name": "invoice",
+    "prompt": "<|im_start|>user\nFour items cost 7.25 each, plus shipping of 3. No delivery date is supplied. Return only JSON with total and delivery_date.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+    "expected": {
+      "total": 32,
+      "delivery_date": null
+    }
+  },
+  {
+    "name": "structured-output",
+    "prompt": "<|im_start|>user\nReturn only a JSON array containing every integer from 0 through 31 inclusive.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+    "expected": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31
+    ]
+  },
+  {
+    "name": "prose",
+    "prompt": "<|im_start|>user\nExplain in a few paragraphs why the sky is blue during the day and red at sunset.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+  },
+  {
+    "name": "code",
+    "prompt": "<|im_start|>user\nWrite a Python function that removes duplicate integer IDs while preserving order, with example assertions and explain its complexity.<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+  },
+  {
+    "name": "chinese",
+    "prompt": "<|im_start|>user\n用中文解释为什么白天天空是蓝色，日落时天空是红色。请写三段。<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+  }
+]

@@ -215,7 +215,9 @@ default, and the memory is taken from the experts' on a Mac that does not hold t
 `--follow-pressure on` (where experts are read from the SSD: the experts' budget comes down while macOS compresses
 the engine and grows back once it stops; off by default, being measured),
 `--prompt-by-layer off` (where experts are read from the SSD: read a long prompt chunk by chunk, as before),
-`--read-ahead off` (and do not read a layer's experts while the one before it is computed).
+`--read-ahead off` (and do not read a layer's experts while the one before it is computed),
+`--fusion-limit 6` or `8` (fuse the hyper-connections for windows up to that many tokens, in place of what the
+GPU's generation chooses: a 20-core M5 Pro was faster at 6, an M5 Ultra at 8).
 
 The benchmarks in `bench/` tokenize with llama.cpp's `llama-tokenize`, and `bench/compare_servers.py` starts
 `llama-server` and LM Studio's `lms` if they are installed.

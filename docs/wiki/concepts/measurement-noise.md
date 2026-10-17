@@ -32,8 +32,12 @@ A comparison of settings: an engine for each sharing the weights, passes shuffle
   baseline by is what the run cannot tell apart. On the M5 Ultra it was 0.00-0.13 ms, so the 2.0 ms between two
   fusion limits held; a run without one had found up to 4 ms between two settings at window sizes where both ran
   the same code, and was thrown away [#9].
+- On a 20-core M5 Pro the control's paired differences reached 0.24-0.52 ms (95th percentile, by size) with Q2_0
+  held whole and 0.72-1.14 ms with IQ3_S, its experts from the SSD: a difference of 1.1 ms was the control's own
+  size there, though the paired intervals stayed above zero [e54] [#11].
 - Whole answers are not the same text from run to run even greedy, so tokens a second through whole answers
-  compare less cleanly than passes [#9] [e44].
+  compare less cleanly than passes [#9] [e44]. Nor between two engines of one setting in one process: on the M5 Pro
+  they gave other tokens in 3 of 24 answers with Q2_0 and 4 of 24 with IQ3_S, their passes the same bits [e54].
 
 ## Open questions
 
@@ -47,4 +51,5 @@ A comparison of settings: an engine for each sharing the weights, passes shuffle
   measures the machine as it is that day [e46].
 
 - A script for the one-process comparison that any change can use, with the control built in, instead of one
-  written per experiment.
+  written per experiment. `bench/experiments/e54_shared_weight_controls.py` has the control and
+  `bench/compare_results.py` refuses a run with samples missing, but their settings are e54's.

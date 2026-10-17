@@ -107,7 +107,7 @@ flowchart LR
 | [The Q2_0 experts' table kernel](concepts/expert-lookup-kernel.md) | depends-on | [Exactness](concepts/exactness.md) | e44 |
 | [Hyper-connections](concepts/hyper-connections.md) | part-of | [A decode pass](concepts/decode-pass.md) | e06 |
 | [Hyper-connections](concepts/hyper-connections.md) | limited-by | [The fixed cost of a kernel](concepts/kernel-fixed-cost.md) | e07, e09, #9 |
-| [Hyper-connections](concepts/hyper-connections.md) | tuned-by | [The GPU's generation](concepts/gpu-generation.md) | e45, #9, uvunqsoq |
+| [Hyper-connections](concepts/hyper-connections.md) | tuned-by | [The GPU's generation](concepts/gpu-generation.md) | e45, #9, uvunqsoq, e54, #11 |
 | [Hyper-connections](concepts/hyper-connections.md) | trades-against | [Exactness](concepts/exactness.md) | e18, xtxomuun |
 | [The fixed cost of a kernel](concepts/kernel-fixed-cost.md) | tuned-by | [The GPU's generation](concepts/gpu-generation.md) | #9, e45 |
 
@@ -454,3 +454,4 @@ Colours by kind: component #dbeafe, concept #f3f4f6, constraint #fee2e2, hardwar
 | [e51: a margin on what is available, not settled](experiments/e51-available-margin.md) | available-memory, measurement-noise, simulated-machine, pressure-following |
 | [e52: letting go of arrays takes their compression off](experiments/e52-shed-compressed.md) | expert-store, swapping, available-memory, pressure-following |
 | [e53: the budget following the pressure, off and on](experiments/e53-follow-pressure.md) | pressure-following |
+| [e54: the fusion limit on an M5 Pro, against a control engine](experiments/e54-shared-weight-controls.md) | hyper-connections, gpu-generation, measurement-noise |
