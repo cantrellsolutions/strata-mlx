@@ -993,3 +993,18 @@ enough to choose 8. Merged with `--fusion-limit 6|8` to set it by hand; the engi
 two M5s do not say what else to choose by. Pull request 9's switches were faster at every size there too, 1.4-4.8 ms
 a pass. With it a script for the comparison, `bench/experiments/e54_shared_weight_controls.py`, and
 `bench/compare_results.py`, which summarizes a run only when every planned sample is in it.
+
+### Pull request 13 (cantrellsolutions, M5 Pro with 64 GB)
+
+Opt-in GENI/SVE1 image receiving, image rotary positions and image-aware RAM parking.
+The first e62 full-model evidence came from a separate resident integration with an unsupported
+abliterated IQ3_XXS file. Exact-branch Q2_0 follow-up (e63) passed 17/17 synthetic requests,
+including two 1024×768 images at 4,442 input tokens and a follow-up at 4,482. Full suite: 537 tests,
+22 subtests. Two shuffled image/text/control triplets retain decode measurements and control variation;
+no isolated ImageRoPE cost or stable percentage overhead is established.
+Deployment helpers and server policy are excluded from this contribution.
+
+October 21 PR13 rebase onto 5fea2f2 retains upstream submission/dense-kernel changes; our experiments
+are renumbered e62/e63 after upstream e61. Fresh Q2_0 qualification repeats 17/17 correct requests,
+4,442 / 4,482 input tokens and zero new swap-outs; 543 tests plus 22 subtests pass. Historical
+October 18 measurements remain separate; two-triplet decode rates are not a stable overhead estimate. [e63]
