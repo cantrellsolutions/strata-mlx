@@ -2,6 +2,8 @@
 
 > 中文摘要:知识库的变更记录,最新的在前。每行写日期、jj change ID、改了哪些页、依据什么。
 
+- 2026-10-21 · [ruspomnz] · e58: each part of a pass left out, shuffled: the delta-net recurrence is 2.7 ms and reads no
+  weights (2.2 over its state's floor); the delta-net projections 5.4 ms, near their 8-bit floor; decode-pass.
 - 2026-10-21 · [rmxrzznt] · e57 measured as single passes: a pass submitted every 6 layers 2.4-3.0 ms shorter at one token,
   gate and up in one kernel 0.4-0.7 more, the same bits; both on by default; decode-pass, expert-lookup-kernel,
   measurement-noise.

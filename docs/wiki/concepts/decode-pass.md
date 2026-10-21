@@ -39,6 +39,11 @@ Parts, measured by leaving each out of a real pass (Q2_0, M4 Max, ms for one / f
 | routers | 2.0 / 2.7 | 0.4 / 4.0 |
 | shared experts | 1.8 / 2.5 | 0.8 / 1.4 |
 
+The same left out again in one process, passes shuffled with a control, lower quartile, after e57 (a pass of
+17.6 / 28.8 ms): delta-net projections 5.4 / 7.0, the delta-net recurrence 2.7 / 3.1 (no weights read; first
+measured apart), attention 2.1 / 3.8, routed experts 2.1 / 7.6, output layer 1.0 / 2.0, shared experts 0.5 / 0.9,
+routers 0.2 / 0.6 [e58].
+
 The 2026-10-14 column was taken while the machine slowed; the whole pass went from 21 to 24 ms through it, so it
 places the parts and does not time them.
 

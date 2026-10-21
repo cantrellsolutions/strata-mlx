@@ -460,3 +460,4 @@ Colours by kind: component #dbeafe, concept #f3f4f6, constraint #fee2e2, hardwar
 | [e55: where a step's time goes, and the bandwidth measured again](experiments/e55-step-timeline.md) | bandwidth-floor, decode-pass |
 | [e56: what the experts' kernel waits on](experiments/e56-expert-kernel-variants.md) | expert-lookup-kernel |
 | [e57: a pass handed to the GPU in parts, and gate with up in one kernel](experiments/e57-submit-in-parts.md) | decode-pass, expert-lookup-kernel, measurement-noise |
+| [e58: what each part of a pass costs now, left out](experiments/e58-ablation-shuffled.md) | decode-pass |
