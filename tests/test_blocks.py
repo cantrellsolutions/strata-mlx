@@ -229,6 +229,26 @@ def test_the_glu_table_built_in_down_gives_the_bits_of_its_own_kernel(pairs, row
     assert mx.array_equal(got, lookup_matvec(down, idx, lookup_table_glu(gate, up), 1)).item()
 
 
+@pytest.mark.parametrize("tokens", [1, 4, 8])
+@pytest.mark.parametrize("rows, cols", [(64, 2560), (40, 640)])
+def test_gate_and_up_in_one_kernel_give_the_bits_of_two(tokens, rows, cols):
+    from strata_mlx.blocks import lookup_gate_up, lookup_matvec, lookup_table
+
+    rng = np.random.default_rng(tokens + rows)
+
+    def stack():
+        b = rng.integers(0, 256, (EXPERTS * rows * cols // 64, 18), dtype=np.uint8)
+        b[:, :2] = rng.uniform(-0.05, 0.05, (len(b), 1)).astype("<f2").view(np.uint8)
+        return BlockSwitchLinear(mx.array(b.reshape(-1)), "Q2_0", (EXPERTS, rows, cols))
+
+    gate, up, k = stack(), stack(), 2
+    idx = mx.array(rng.integers(0, EXPERTS, tokens * k).astype(np.uint32))
+    table = lookup_table(mx.array(rng.standard_normal((tokens, cols)).astype(np.float16)))
+    g, u = lookup_gate_up(gate, up, idx, table, k)
+    assert mx.array_equal(g, lookup_matvec(gate, idx, table, k)).item()
+    assert mx.array_equal(u, lookup_matvec(up, idx, table, k)).item()
+
+
 @pytest.mark.parametrize("kind", ["IQ3_S", "IQ2_XS", "IQ4_NL"])
 @pytest.mark.parametrize("tokens", [1, 20])
 def test_down_taking_swiglu_itself_and_unsorted_pairs_give_the_same_bits(monkeypatch, kind, tokens):

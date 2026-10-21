@@ -2,6 +2,8 @@
 
 > 中文摘要:知识库的变更记录,最新的在前。每行写日期、jj change ID、改了哪些页、依据什么。
 
+- 2026-10-21 · [qmvxvpnt] · e57 (not measured: the GPU busy with other programs) and two opt-in changes, both off: a pass
+  submitted in parts (submit_every), gate and up in one kernel (same bits, tested); decode-pass, expert-lookup-kernel.
 - 2026-10-21 · [sksmuwnv] · e56: the experts' gate product in variants: not bound by arithmetic or divergent lookups but by
   how its bytes are read; at one token 2.5x the floor whatever reads it; codes as planes reach the floor at 4-8
   tokens, 7-9% faster; expert-lookup-kernel ("bound by arithmetic" superseded).

@@ -61,5 +61,9 @@ head itself 3.8-6.6 ms. The CPU's share is 10-12% of a step.
 
 ## Open questions
 
+- Handing a pass to the GPU in parts while the rest is built (`Engine(submit_every=N)`, off): written, its
+  output the same a token a pass, its time not measured on a quiet machine yet [e57].
+
+
 - What the delta-net projections (the largest dense part) would give to a kernel that reads their weights once
   for a window; MLX's product is not flat from one token to four for the 10,240 x 2,560 shape (50 to 83 us).

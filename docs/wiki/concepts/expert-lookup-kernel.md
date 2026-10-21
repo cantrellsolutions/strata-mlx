@@ -41,6 +41,9 @@ about three operations a weight instead of eight.
   from eight on the M4 Max [e44]; on top of pull request 9, 0.4 ms less a pass at four tokens and 3.0 at eight
   [e45] [zryukqou].
 
+- Gate and up in one kernel (`blocks.lookup_gate_up`, behind `GATE_UP_ONE_KERNEL`, off): the same bits as two
+  (`tests/test_blocks.py`); its time not measured yet [qmvxvpnt].
+
 ## Superseded
 
 - "Bound by arithmetic, not bytes: about eight operations a weight at all the GPU has, whatever the inner loop,

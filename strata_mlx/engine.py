@@ -161,6 +161,11 @@ def fuse_upto_for(generation: int) -> int:
 
 FUSE_UPTO = fuse_upto_for(gpu_generation())
 
+# A window's pass is handed to the GPU in parts of this many layers while the rest is still being built (0: all
+# at once, when it is waited for). MLX builds a graph without running it, so until then the GPU sits idle for the
+# 1.8-2.1 ms the CPU takes to build a pass (e55); the graph and so the bits are the same either way.
+SUBMIT_EVERY = 0
+
 
 class Engine:
     # What a pass leaves behind (caches, recurrent states) is computed without being waited for: the next thing
@@ -170,7 +175,7 @@ class Engine:
     def __init__(self, model: qwen4_exp.Model, mtp: Mtp | None = None, drafts: int = MAX_WINDOW - 1,
                  lookup: bool = False, chunk: int = 2048, checkpoints: int = 8, turn_token: int = TURN_TOKEN,
                  fused: bool = True, fuse_upto: int = FUSE_UPTO, as_sure: bool = True, guess_rows: bool = True,
-                 root: int = ROOT, piece: int = bylayer.PIECE, ahead: bool = True):
+                 root: int = ROOT, piece: int = bylayer.PIECE, ahead: bool = True, submit_every: int | None = None):
         """`drafts`: the most guesses the head makes for a pass. With `as_sure` it makes as many of them as it
         is sure enough of (drafting.py); without, always that many. With `guess_rows` a guess is worked out
         over the rows of the output layer that have been in sight, not over all of them (rows.py). Where
@@ -196,6 +201,7 @@ class Engine:
         self.lookup = Lookup() if lookup else None
         self.paged = getattr(model, "expert_store", None) is not None
         self.fuse_upto = fuse_upto  # windows up to this many tokens use the fused hyper-connection kernels
+        self.submit_every = SUBMIT_EVERY if submit_every is None else submit_every
         self.fused = self._fuse() if fused else None
         self.policy = Policy()
         self.timed_sizes = set()
@@ -342,6 +348,9 @@ class Engine:
                 out = layer.self_attn(x, m.rope, mask, self.attn[i], self.attn[i].indexer)
             before, out, inject = (second(before, out, inject) if compiled
                                    else self._ffn_block(i, before, out, inject))
+            if compiled and self.submit_every and not self.paged and (i + 1) % self.submit_every == 0 \
+                    and i + 1 < len(m.layers):
+                mx.async_eval(before, out, inject)
         x, residual, _ = self._hc("out", T)(before, out, inject)
         logits = self.model.lm_head(x[:, -1:] if last_only else x)
         return logits, _Window(ids, residual, records, ple_conv)

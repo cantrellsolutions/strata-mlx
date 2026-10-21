@@ -1,0 +1,122 @@
+[
+ {
+  "kind": "a token a pass",
+  "setting": "now",
+  "step_ms": 41.53,
+  "tok_s": [
+   27.1,
+   24.1,
+   23.0,
+   34.1
+  ],
+  "same": true
+ },
+ {
+  "kind": "a token a pass",
+  "setting": "control",
+  "step_ms": 34.63,
+  "tok_s": [
+   36.2,
+   34.0,
+   22.7,
+   27.0
+  ],
+  "same": true
+ },
+ {
+  "kind": "a token a pass",
+  "setting": "every 6",
+  "step_ms": 39.93,
+  "tok_s": [
+   25.4,
+   25.3,
+   44.2,
+   20.0
+  ],
+  "same": true
+ },
+ {
+  "kind": "a token a pass",
+  "setting": "every 12",
+  "step_ms": 48.33,
+  "tok_s": [
+   20.7,
+   24.1,
+   16.7,
+   21.7
+  ],
+  "same": true
+ },
+ {
+  "kind": "a token a pass",
+  "setting": "every 16",
+  "step_ms": 32.58,
+  "tok_s": [
+   18.4,
+   22.8,
+   49.8,
+   48.3
+  ],
+  "same": true
+ },
+ {
+  "kind": "draft head",
+  "setting": "now",
+  "step_ms": 80.7,
+  "tok_s": [
+   39.0,
+   39.5,
+   47.3,
+   50.5
+  ],
+  "same": false
+ },
+ {
+  "kind": "draft head",
+  "setting": "control",
+  "step_ms": 82.02,
+  "tok_s": [
+   37.6,
+   42.7,
+   50.7,
+   50.9
+  ],
+  "same": false
+ },
+ {
+  "kind": "draft head",
+  "setting": "every 6",
+  "step_ms": 83.26,
+  "tok_s": [
+   39.6,
+   42.2,
+   52.4,
+   53.0
+  ],
+  "same": false
+ },
+ {
+  "kind": "draft head",
+  "setting": "every 12",
+  "step_ms": 77.21,
+  "tok_s": [
+   38.0,
+   42.9,
+   49.1,
+   51.0
+  ],
+  "same": false
+ },
+ {
+  "kind": "draft head",
+  "setting": "every 16",
+  "step_ms": 78.64,
+  "tok_s": [
+   39.9,
+   43.2,
+   52.4,
+   55.6
+  ],
+  "same": false
+ }
+]

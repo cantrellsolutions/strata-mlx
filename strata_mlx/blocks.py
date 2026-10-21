@@ -695,6 +695,41 @@ def lookup_matvec(lin, idx: mx.array, table: mx.array, share: int) -> mx.array:
     return out
 
 
+# gate and up in one kernel: they read the same table of the same input, and a kernel reading a layer's ten
+# experts' 4.6 MB does not reach the bandwidth (e56: any reader of them takes 2.5 times the bytes' time), so two
+# such kernels cost more than one of twice the rows. Each row is summed as `lookup_matvec` sums it: the same bits.
+GATE_UP_ONE_KERNEL = False
+_LOOKUP_TWO = (_LOOKUP
+               .replace("    uint pair = thread_position_in_grid.y;\n",
+                        "    uint pair = thread_position_in_grid.y;\n    bool second = r >= ROWS;\n"
+                        "    if (second) r -= ROWS;\n", 1)
+               .replace("blocks + (uint(idx[pair])", "(second ? blocks_b : blocks_a) + (uint(idx[pair])", 1)
+               .replace("        out[pair * ROWS + r] = static_cast<OutT>(total);",
+                        "        if (second) out_b[pair * ROWS + r] = static_cast<OutT>(total);\n"
+                        "        else out_a[pair * ROWS + r] = static_cast<OutT>(total);", 1))
+
+
+def lookup_gate_up(gate, up, idx: mx.array, table: mx.array, share: int) -> tuple:
+    """(`lookup_matvec(gate, ...)`, `lookup_matvec(up, ...)`) in one kernel; gate and up of one shape."""
+    pairs = idx.shape[0]
+    per_row = _threads_per_row(gate.input_dims // 32)  # as lookup_matvec chooses it
+    if gate.input_dims >= 2048:
+        per_row = min(per_row, 8 if pairs <= 40 else 2)
+    elif pairs > 20:
+        per_row = min(per_row, 4)
+    key = ("lookup_two", gate.output_dims, gate.input_dims, share, per_row)
+    if key not in _kernels:
+        _kernels[key] = mx.fast.metal_kernel(
+            name="q2_lookup_two", input_names=["blocks_a", "blocks_b", "idx", "table"],
+            output_names=["out_a", "out_b"], source=_LOOKUP_TWO,
+            header=_header("Q2_0", gate.output_dims, gate.input_dims, P=per_row, SHARE=share))
+    shape = (pairs, gate.output_dims)
+    g, u = _kernels[key](inputs=[gate.blocks, up.blocks, idx, table], template=[("OutT", table.dtype)],
+                         grid=(per_row * gate.output_dims * 2, pairs, 1), threadgroup=(32, 1, 1),
+                         output_shapes=[shape, shape], output_dtypes=[table.dtype, table.dtype])
+    return g, u
+
+
 # down with the table of silu(gate) * up built in each threadgroup's memory (a threadgroup is one pair's), not by
 # a kernel of its own: the same table, the same bits, one kernel fewer for the layer to wait on. On an M5 Ultra,
 # a pass of 1 / 4 / 8 / 10 tokens with Q2_0, 0.13 / 0.15 / 0.47 / 0.71 ms less (four runs alternated).
@@ -764,7 +799,10 @@ def _lookup_glu(x: mx.array, indices: mx.array, up, gate, down) -> mx.array:
     k = indices.shape[-1]
     idx = indices.reshape(-1).astype(mx.uint32)
     table = lookup_table(x.reshape(-1, x.shape[-1]))  # one for gate and up: they read the same input
-    g, u = lookup_matvec(gate, idx, table, k), lookup_matvec(up, idx, table, k)
+    if GATE_UP_ONE_KERNEL and (gate.output_dims, gate.input_dims) == (up.output_dims, up.input_dims):
+        g, u = lookup_gate_up(gate, up, idx, table, k)
+    else:
+        g, u = lookup_matvec(gate, idx, table, k), lookup_matvec(up, idx, table, k)
     out = lookup_down_glu(down, idx, g, u) if GLU_IN_DOWN else None
     if out is None:
         out = lookup_matvec(down, idx, lookup_table_glu(g, u), 1)
