@@ -41,8 +41,8 @@ about three operations a weight instead of eight.
   from eight on the M4 Max [e44]; on top of pull request 9, 0.4 ms less a pass at four tokens and 3.0 at eight
   [e45] [zryukqou].
 
-- Gate and up in one kernel (`blocks.lookup_gate_up`, behind `GATE_UP_ONE_KERNEL`, off): the same bits as two
-  (`tests/test_blocks.py`); its time not measured yet [qmvxvpnt].
+- Gate and up in one kernel (`blocks.lookup_gate_up`): the same bits as two (`tests/test_blocks.py`), 0.4-0.7 ms
+  less a pass at one and four tokens; on by default [e57].
 
 ## Superseded
 

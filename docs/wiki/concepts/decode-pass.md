@@ -54,6 +54,9 @@ A step, the engine timed in place [e55]: a token a pass 19-20 ms, of which the G
 2.3-2.6 (building the graph 1.8-2.0, committing 0.4); with the draft head the CPU alone is 3.8-4.3 ms a step, the
 head itself 3.8-6.6 ms. The CPU's share is 10-12% of a step.
 
+Handing the pass to the GPU every 6 layers while the rest is built takes 2.4-3.0 ms off a one-token pass and
+1.8-2.7 off a four-token one, the same bits; on by default (`engine.SUBMIT_EVERY`) [e57].
+
 ## Superseded
 
 - "A pass is not far from its floor; no single large target is left": the bytes were then put at 2 GB a token,
@@ -61,8 +64,6 @@ head itself 3.8-6.6 ms. The CPU's share is 10-12% of a step.
 
 ## Open questions
 
-- Handing a pass to the GPU in parts while the rest is built (`Engine(submit_every=N)`, off): written, its
-  output the same a token a pass, its time not measured on a quiet machine yet [e57].
 
 
 - What the delta-net projections (the largest dense part) would give to a kernel that reads their weights once

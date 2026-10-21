@@ -2,120 +2,144 @@
  {
   "kind": "a token a pass",
   "setting": "now",
-  "step_ms": 41.53,
+  "step_ms": 42.26,
   "tok_s": [
-   27.1,
-   24.1,
-   23.0,
-   34.1
+   22.7,
+   22.2,
+   24.8,
+   36.1
   ],
   "same": true
  },
  {
   "kind": "a token a pass",
   "setting": "control",
-  "step_ms": 34.63,
+  "step_ms": 37.84,
   "tok_s": [
-   36.2,
-   34.0,
-   22.7,
-   27.0
+   34.5,
+   23.5,
+   21.1,
+   30.3
   ],
   "same": true
  },
  {
   "kind": "a token a pass",
   "setting": "every 6",
-  "step_ms": 39.93,
+  "step_ms": 33.55,
   "tok_s": [
-   25.4,
-   25.3,
-   44.2,
-   20.0
+   30.3,
+   30.6,
+   39.3,
+   24.2
   ],
   "same": true
  },
  {
   "kind": "a token a pass",
   "setting": "every 12",
-  "step_ms": 48.33,
+  "step_ms": 35.03,
   "tok_s": [
-   20.7,
    24.1,
-   16.7,
-   21.7
+   24.3,
+   37.4,
+   37.8
   ],
   "same": true
  },
  {
   "kind": "a token a pass",
   "setting": "every 16",
-  "step_ms": 32.58,
+  "step_ms": 38.19,
   "tok_s": [
-   18.4,
-   22.8,
-   49.8,
-   48.3
+   30.3,
+   24.3,
+   24.4,
+   38.2
+  ],
+  "same": true
+ },
+ {
+  "kind": "a token a pass",
+  "setting": "gate+up",
+  "step_ms": 39.39,
+  "tok_s": [
+   25.6,
+   24.9,
+   25.2,
+   28.1
   ],
   "same": true
  },
  {
   "kind": "draft head",
   "setting": "now",
-  "step_ms": 80.7,
+  "step_ms": 98.21,
   "tok_s": [
-   39.0,
-   39.5,
-   47.3,
-   50.5
+   33.3,
+   33.5,
+   42.6,
+   46.6
   ],
   "same": false
  },
  {
   "kind": "draft head",
   "setting": "control",
-  "step_ms": 82.02,
+  "step_ms": 103.38,
   "tok_s": [
-   37.6,
-   42.7,
-   50.7,
-   50.9
+   35.5,
+   35.4,
+   43.7,
+   47.1
   ],
   "same": false
  },
  {
   "kind": "draft head",
   "setting": "every 6",
-  "step_ms": 83.26,
+  "step_ms": 93.57,
   "tok_s": [
-   39.6,
-   42.2,
-   52.4,
-   53.0
+   33.5,
+   37.0,
+   46.4,
+   43.8
   ],
   "same": false
  },
  {
   "kind": "draft head",
   "setting": "every 12",
-  "step_ms": 77.21,
+  "step_ms": 94.12,
   "tok_s": [
-   38.0,
-   42.9,
-   49.1,
-   51.0
+   32.3,
+   36.2,
+   44.9,
+   46.0
   ],
   "same": false
  },
  {
   "kind": "draft head",
   "setting": "every 16",
-  "step_ms": 78.64,
+  "step_ms": 101.77,
   "tok_s": [
-   39.9,
-   43.2,
-   52.4,
-   55.6
+   33.5,
+   33.9,
+   46.1,
+   48.4
+  ],
+  "same": false
+ },
+ {
+  "kind": "draft head",
+  "setting": "gate+up",
+  "step_ms": 100.56,
+  "tok_s": [
+   34.8,
+   35.1,
+   43.9,
+   46.0
   ],
   "same": false
  }

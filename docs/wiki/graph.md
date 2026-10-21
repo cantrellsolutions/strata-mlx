@@ -459,4 +459,4 @@ Colours by kind: component #dbeafe, concept #f3f4f6, constraint #fee2e2, hardwar
 | [e54: the fusion limit on an M5 Pro, against a control engine](experiments/e54-shared-weight-controls.md) | hyper-connections, gpu-generation, measurement-noise |
 | [e55: where a step's time goes, and the bandwidth measured again](experiments/e55-step-timeline.md) | bandwidth-floor, decode-pass |
 | [e56: what the experts' kernel waits on](experiments/e56-expert-kernel-variants.md) | expert-lookup-kernel |
-| [e57: a pass handed to the GPU in parts, not measured](experiments/e57-submit-in-parts.md) | decode-pass |
+| [e57: a pass handed to the GPU in parts, and gate with up in one kernel](experiments/e57-submit-in-parts.md) | decode-pass, expert-lookup-kernel, measurement-noise |

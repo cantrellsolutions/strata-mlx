@@ -39,6 +39,10 @@ A comparison of settings: an engine for each sharing the weights, passes shuffle
   compare less cleanly than passes [#9] [e44]. Nor between two engines of one setting in one process: on the M5 Pro
   they gave other tokens in 3 of 24 answers with Q2_0 and 4 of 24 with IQ3_S, their passes the same bits [e54].
 
+- Whole answers in turn do not measure a difference of 2 ms on this machine: under minutes of load a step went
+  from 19 to 33-42 ms and the same engine twice differed by 4-7 ms. Single passes shuffled across engines, the
+  lower quartile, put the same engine twice within 0.03-0.4 ms [e57].
+
 ## Open questions
 
 - After a large hold is let go the machine takes minutes to be itself again: runs under held memory 30 s apart

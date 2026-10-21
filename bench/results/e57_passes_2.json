@@ -1,0 +1,58 @@
+[
+ {
+  "kind": "a token a pass",
+  "setting": "now",
+  "pass_ms": {
+   "1": 28.98,
+   "4": 58.49
+  }
+ },
+ {
+  "kind": "a token a pass",
+  "setting": "control",
+  "pass_ms": {
+   "1": 29.16,
+   "4": 58.94
+  }
+ },
+ {
+  "kind": "a token a pass",
+  "setting": "every 3",
+  "pass_ms": {
+   "1": 26.02,
+   "4": 55.82
+  }
+ },
+ {
+  "kind": "a token a pass",
+  "setting": "every 4",
+  "pass_ms": {
+   "1": 26.14,
+   "4": 56.44
+  }
+ },
+ {
+  "kind": "a token a pass",
+  "setting": "every 6",
+  "pass_ms": {
+   "1": 26.26,
+   "4": 55.77
+  }
+ },
+ {
+  "kind": "a token a pass",
+  "setting": "every 8",
+  "pass_ms": {
+   "1": 26.53,
+   "4": 56.21
+  }
+ },
+ {
+  "kind": "a token a pass",
+  "setting": "every 6 + gate+up",
+  "pass_ms": {
+   "1": 25.72,
+   "4": 55.4
+  }
+ }
+]

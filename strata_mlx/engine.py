@@ -163,8 +163,11 @@ FUSE_UPTO = fuse_upto_for(gpu_generation())
 
 # A window's pass is handed to the GPU in parts of this many layers while the rest is still being built (0: all
 # at once, when it is waited for). MLX builds a graph without running it, so until then the GPU sits idle for the
-# 1.8-2.1 ms the CPU takes to build a pass (e55); the graph and so the bits are the same either way.
-SUBMIT_EVERY = 0
+# 1.8-2.1 ms the CPU takes to build a pass (e55); the graph and so the bits are the same either way. Every 6
+# layers: a pass of 1 / 4 tokens 2.4-2.9 / 1.8-2.7 ms shorter on the M4 Max (e57: single passes shuffled across
+# engines sharing the weights, lower quartile; every 3, 4, 8 within 0.5 ms of it). Not where experts are read
+# from the SSD: such a pass already stops at every layer.
+SUBMIT_EVERY = 6
 
 
 class Engine:

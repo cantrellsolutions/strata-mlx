@@ -698,7 +698,8 @@ def lookup_matvec(lin, idx: mx.array, table: mx.array, share: int) -> mx.array:
 # gate and up in one kernel: they read the same table of the same input, and a kernel reading a layer's ten
 # experts' 4.6 MB does not reach the bandwidth (e56: any reader of them takes 2.5 times the bytes' time), so two
 # such kernels cost more than one of twice the rows. Each row is summed as `lookup_matvec` sums it: the same bits.
-GATE_UP_ONE_KERNEL = False
+# A pass of 1 / 4 tokens 0.4-0.7 ms shorter on the M4 Max (e57).
+GATE_UP_ONE_KERNEL = True
 _LOOKUP_TWO = (_LOOKUP
                .replace("    uint pair = thread_position_in_grid.y;\n",
                         "    uint pair = thread_position_in_grid.y;\n    bool second = r >= ROWS;\n"
