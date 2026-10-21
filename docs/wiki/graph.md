@@ -95,7 +95,7 @@ flowchart LR
 
 | from | relation | to | evidence |
 | :--- | :--- | :--- | :--- |
-| [A decode pass](concepts/decode-pass.md) | limited-by | [The memory bandwidth floor](concepts/bandwidth-floor.md) | ROADMAP: Faster answers |
+| [A decode pass](concepts/decode-pass.md) | limited-by | [The memory bandwidth floor](concepts/bandwidth-floor.md) | ROADMAP: Faster answers, e55 |
 | [A decode pass](concepts/decode-pass.md) | limited-by | [The fixed cost of a kernel](concepts/kernel-fixed-cost.md) | ROADMAP: Now: what is left, #9 |
 | [A decode pass](concepts/decode-pass.md) | depends-on | [Measurement noise](concepts/measurement-noise.md) | e45 |
 | [The draft window](concepts/draft-window.md) | depends-on | [Guess acceptance](concepts/guess-acceptance.md) | e13 |
@@ -455,3 +455,4 @@ Colours by kind: component #dbeafe, concept #f3f4f6, constraint #fee2e2, hardwar
 | [e52: letting go of arrays takes their compression off](experiments/e52-shed-compressed.md) | expert-store, swapping, available-memory, pressure-following |
 | [e53: the budget following the pressure, off and on](experiments/e53-follow-pressure.md) | pressure-following |
 | [e54: the fusion limit on an M5 Pro, against a control engine](experiments/e54-shared-weight-controls.md) | hyper-connections, gpu-generation, measurement-noise |
+| [e55: where a step's time goes, and the bandwidth measured again](experiments/e55-step-timeline.md) | bandwidth-floor, decode-pass |

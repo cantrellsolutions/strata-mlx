@@ -2,6 +2,8 @@
 
 > 中文摘要:知识库的变更记录,最新的在前。每行写日期、jj change ID、改了哪些页、依据什么。
 
+- 2026-10-20 · [sylqlors] · e55: a step timed in place and the bandwidth measured again: the floor is 10.8 ms (490 GB/s), not
+  13.9; the GPU takes 16.8 ms of a one-token pass, the CPU alone 2.3-4 ms a step; bandwidth-floor, decode-pass.
 - 2026-10-17 · [uvwtszxp] · e54, pull request 11 merged ([uvuuktql]): on a 20-core M5 Pro fused up to six was
   faster than eight at seven and eight tokens, against a control engine, so the GPU's generation does not choose the
   fusion limit alone; `--fusion-limit 6|8` sets it by hand, the engine's choice unchanged. Its script, page and

@@ -7,7 +7,7 @@ status: current
 # The memory bandwidth floor
 
 > 中文摘要:一次前向至少要把它用到的权重从内存读一遍,读的时间就是下限。Q2_0 每个 token 读 5.5 GB,
-> 在 M4 Max 上单纯把这些数组读一遍要 13.9 ms,而一次前向是 20 ms 左右,差的部分是内核开销和等待。
+> 在 M4 Max 上单纯把这些数组读一遍是 10.8 ms(e55 实测约 490 GB/s;以前记的 13.9 ms 偏慢),而一次前向是 20 ms 左右,差的部分是内核开销和等待。
 
 ## What it is
 
@@ -20,14 +20,21 @@ Nothing to point at: it is what every product in a pass adds up to.
 
 ## Relations
 
-(None measured yet: see the open questions.)
+(None of its own: what it limits is in [[decode-pass]].)
 
 ## What we know
 
 - A token of Q2_0 reads 5.5 GB: dense tensors 4.87 (hyper-connections 1.27, delta-net projections 2.1, attention
-  0.6, output layer 0.5) and experts 0.66. Summing those arrays once takes 13.9 ms on the M4 Max [ROADMAP: Faster answers].
+  0.6, output layer 0.5) and experts 0.66 [ROADMAP: Faster answers].
+- Reading 5.5 GB takes 10.8 ms on the M4 Max, 490-496 GB/s, by `mx.sum` and by a kernel that only reads alike,
+  with other programs on the GPU [e55].
 - A window of several tokens reads the dense weights once, so its floor rises only with the experts its tokens
   add; that is why a window is worth its cost ([[draft-window]]).
+
+## Superseded
+
+- "Summing those arrays once takes 13.9 ms" [ROADMAP: Faster answers]: measured again at 10.8 ms by the same
+  `mx.sum` and by a read-only kernel [e55].
 
 ## Open questions
 

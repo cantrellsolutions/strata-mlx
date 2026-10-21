@@ -21,7 +21,7 @@ the time a pass takes.
 
 ## Relations
 
-- limited-by → [[bandwidth-floor]]: a token reads 5.5 GB of weights, 4.87 of them dense tensors and 0.66 experts; summing those arrays once takes 13.9 ms, a one-token pass 20-22 ms [ROADMAP: Faster answers]
+- limited-by → [[bandwidth-floor]]: a token reads 5.5 GB of weights, 4.87 of them dense tensors and 0.66 experts; reading them once takes 10.8 ms, the GPU's part of a one-token pass 16.8 ms [ROADMAP: Faster answers] [e55]
 - limited-by → [[kernel-fixed-cost]]: a pass is about 3,300 kernels, most of them small and each waiting for the one before [ROADMAP: Now: what is left] [#9]
 - depends-on → [[measurement-noise]]: its time moves by half within minutes with other programs on the GPU, so changes are compared in one process [e45]
 
@@ -49,6 +49,10 @@ Whole passes, Q2_0, M4 Max, one process, passes shuffled, lower quartile [e45]:
 | 1 | 22.46 ms | 20.83 |
 | 4 | 35.02 | 31.60 |
 | 8 | 53.28 | about 46-49, not measured as merged |
+
+A step, the engine timed in place [e55]: a token a pass 19-20 ms, of which the GPU 16.8-17.6 and the CPU alone
+2.3-2.6 (building the graph 1.8-2.0, committing 0.4); with the draft head the CPU alone is 3.8-4.3 ms a step, the
+head itself 3.8-6.6 ms. The CPU's share is 10-12% of a step.
 
 ## Superseded
 
