@@ -26,6 +26,10 @@ unpack them, and the experts have the 1.74 GB.
 
 ## What we know
 
+- Q3_K rearranged at load into aligned planes is faster than MLX's 8-bit at 1 to 8 tokens (65-109 against
+  80-116 us a 10,240 x 2,560 tensor); IQ4_XS is faster through e36's kernel at 1-2 tokens and as planes at 4-8.
+  All are bound by decoding, far above the file's bytes (23-28 us) [e61].
+
 - Against llama.cpp's answers after 1,537, 3,161 and 6,945 tokens of the same Q2_0 file, the engine as blocks
   agreed at 378 of 384 top tokens, as 8-bit arrays at 374: the file's blocks cost no agreement [e60].
 

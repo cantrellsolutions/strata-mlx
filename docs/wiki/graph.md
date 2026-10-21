@@ -463,3 +463,4 @@ Colours by kind: component #dbeafe, concept #f3f4f6, constraint #fee2e2, hardwar
 | [e58: what each part of a pass costs now, left out](experiments/e58-ablation-shuffled.md) | decode-pass |
 | [e59: the delta-net recurrence alone](experiments/e59-recurrence-kernels.md) | decode-pass |
 | [e60: the dense tensors as the file's blocks, against llama.cpp](experiments/e60-dense-blocks-agreement.md) | dense-blocks, reference-agreement |
+| [e61: window kernels for the dense tensors at the file's bits](experiments/e61-dense-window-kernels.md) | dense-blocks |
