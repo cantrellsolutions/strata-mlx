@@ -2,6 +2,9 @@
 
 > 中文摘要:知识库的变更记录,最新的在前。每行写日期、jj change ID、改了哪些页、依据什么。
 
+- 2026-10-21 · [sksmuwnv] · e56: the experts' gate product in variants: not bound by arithmetic or divergent lookups but by
+  how its bytes are read; at one token 2.5x the floor whatever reads it; codes as planes reach the floor at 4-8
+  tokens, 7-9% faster; expert-lookup-kernel ("bound by arithmetic" superseded).
 - 2026-10-20 · [sylqlors] · e55: a step timed in place and the bandwidth measured again: the floor is 10.8 ms (490 GB/s), not
   13.9; the GPU takes 16.8 ms of a one-token pass, the CPU alone 2.3-4 ms a step; bandwidth-floor, decode-pass.
 - 2026-10-17 · [uvwtszxp] · e54, pull request 11 merged ([uvuuktql]): on a 20-core M5 Pro fused up to six was

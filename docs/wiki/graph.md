@@ -33,7 +33,7 @@ flowchart LR
 
 ## Writing answers
 
-7 concepts, 24 relations touching them.
+7 concepts, 25 relations touching them.
 
 ```mermaid
 flowchart LR
@@ -66,6 +66,7 @@ flowchart LR
   expert_lookup_kernel -- part-of --> decode_pass
   expert_lookup_kernel -- tuned-by --> gpu_generation
   expert_lookup_kernel -- limited-by --> kernel_fixed_cost
+  expert_lookup_kernel -- limited-by --> bandwidth_floor
   expert_lookup_kernel -- depends-on --> exactness
   expert_store -- costs --> decode_pass
   expert_tiles -- limited-by --> kernel_fixed_cost
@@ -104,6 +105,7 @@ flowchart LR
 | [The Q2_0 experts' table kernel](concepts/expert-lookup-kernel.md) | part-of | [A decode pass](concepts/decode-pass.md) | e06 |
 | [The Q2_0 experts' table kernel](concepts/expert-lookup-kernel.md) | tuned-by | [The GPU's generation](concepts/gpu-generation.md) | e44, e45, #9 |
 | [The Q2_0 experts' table kernel](concepts/expert-lookup-kernel.md) | limited-by | [The fixed cost of a kernel](concepts/kernel-fixed-cost.md) | #9, wlqvqpzr |
+| [The Q2_0 experts' table kernel](concepts/expert-lookup-kernel.md) | limited-by | [The memory bandwidth floor](concepts/bandwidth-floor.md) | e56 |
 | [The Q2_0 experts' table kernel](concepts/expert-lookup-kernel.md) | depends-on | [Exactness](concepts/exactness.md) | e44 |
 | [Hyper-connections](concepts/hyper-connections.md) | part-of | [A decode pass](concepts/decode-pass.md) | e06 |
 | [Hyper-connections](concepts/hyper-connections.md) | limited-by | [The fixed cost of a kernel](concepts/kernel-fixed-cost.md) | e07, e09, #9 |
@@ -456,3 +458,4 @@ Colours by kind: component #dbeafe, concept #f3f4f6, constraint #fee2e2, hardwar
 | [e53: the budget following the pressure, off and on](experiments/e53-follow-pressure.md) | pressure-following |
 | [e54: the fusion limit on an M5 Pro, against a control engine](experiments/e54-shared-weight-controls.md) | hyper-connections, gpu-generation, measurement-noise |
 | [e55: where a step's time goes, and the bandwidth measured again](experiments/e55-step-timeline.md) | bandwidth-floor, decode-pass |
+| [e56: what the experts' kernel waits on](experiments/e56-expert-kernel-variants.md) | expert-lookup-kernel |
