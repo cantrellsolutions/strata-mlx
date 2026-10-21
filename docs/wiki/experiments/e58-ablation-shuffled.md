@@ -48,7 +48,9 @@ glue) about 3.5.
 - **The delta-net projections are 5.4 ms, near the floor of their bytes as held**, but held at 8 bits where the
   file is 3-4: about 2-2.5 ms of bytes that are inflation (e36).
 - Routed experts at one token are 2.1 ms, 1.6 times their floor; at four 7.6 ms. The output layer is at its floor.
-- So the 3 ms looked for are mostly these two: the recurrence's excess and the projections' inflation.
+- So the 3 ms looked for are mostly these two: the recurrence's excess and the projections' inflation. *Corrected
+  by [e59]: alone the recurrence is 1.2 ms; left out, what only fed it was left out too. The projections'
+  inflation stands.*
 
 ## Concepts
 
