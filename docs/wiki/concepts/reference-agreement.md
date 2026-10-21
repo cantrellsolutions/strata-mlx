@@ -25,6 +25,9 @@ saved answers to the same prompt and file, a token at a time and in windows.
 
 ## What we know
 
+- Dense tensors as the file's blocks against as 8-bit arrays, the engine after 1,537 / 3,161 / 6,945 tokens:
+  62-64 of 64 against 62-63, 378 against 374 of 384 in all [e60].
+
 - Use a prompt the model answers. Forced past its own end token, three implementations of the same file disagree
   by half a nat and the comparison says nothing [ROADMAP: Done].
 - Typical agreement: 64 of 64 after 1,537 and 3,161 tokens, 63-64 of 64 after 6,945, a token at a time or four a

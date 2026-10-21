@@ -1,0 +1,30 @@
+=== dense arrays, 1537 tokens
+one pass     : top token equal at 64/64 steps (differs: never); largest log-probability gap among llama.cpp's top 5: 1.0723
+token by token: top token equal at 63/64 steps (differs: first at step 21); largest log-probability gap among llama.cpp's top 5: 0.9927
+engine, 1 a pass: top token equal at 63/64 steps (differs: first at step 21); largest log-probability gap among llama.cpp's top 5: 1.8493
+engine, 4 a pass: top token equal at 63/64 steps (differs: first at step 21); largest log-probability gap among llama.cpp's top 5: 1.5894
+=== dense arrays, 3161 tokens
+one pass     : top token equal at 63/64 steps (differs: first at step 51); largest log-probability gap among llama.cpp's top 5: 0.8529
+token by token: top token equal at 64/64 steps (differs: never); largest log-probability gap among llama.cpp's top 5: 1.1272
+engine, 1 a pass: top token equal at 62/64 steps (differs: first at step 51); largest log-probability gap among llama.cpp's top 5: 1.3782
+engine, 4 a pass: top token equal at 62/64 steps (differs: first at step 5); largest log-probability gap among llama.cpp's top 5: 1.3844
+=== dense arrays, 6945 tokens
+one pass     : top token equal at 63/64 steps (differs: first at step 45); largest log-probability gap among llama.cpp's top 5: 2.0340
+token by token: top token equal at 63/64 steps (differs: first at step 45); largest log-probability gap among llama.cpp's top 5: 1.9793
+engine, 1 a pass: top token equal at 62/64 steps (differs: first at step 4); largest log-probability gap among llama.cpp's top 5: 3.0568
+engine, 4 a pass: top token equal at 62/64 steps (differs: first at step 4); largest log-probability gap among llama.cpp's top 5: 1.7027
+=== dense blocks, 1537 tokens
+one pass     : top token equal at 62/64 steps (differs: first at step 8); largest log-probability gap among llama.cpp's top 5: 1.8919
+token by token: top token equal at 63/64 steps (differs: first at step 8); largest log-probability gap among llama.cpp's top 5: 1.9868
+engine, 1 a pass: top token equal at 62/64 steps (differs: first at step 8); largest log-probability gap among llama.cpp's top 5: 0.8341
+engine, 4 a pass: top token equal at 62/64 steps (differs: first at step 8); largest log-probability gap among llama.cpp's top 5: 0.8089
+=== dense blocks, 3161 tokens
+one pass     : top token equal at 63/64 steps (differs: first at step 5); largest log-probability gap among llama.cpp's top 5: 0.5302
+token by token: top token equal at 63/64 steps (differs: first at step 59); largest log-probability gap among llama.cpp's top 5: 0.5197
+engine, 1 a pass: top token equal at 64/64 steps (differs: never); largest log-probability gap among llama.cpp's top 5: 0.5267
+engine, 4 a pass: top token equal at 64/64 steps (differs: never); largest log-probability gap among llama.cpp's top 5: 0.6152
+=== dense blocks, 6945 tokens
+one pass     : top token equal at 63/64 steps (differs: first at step 5); largest log-probability gap among llama.cpp's top 5: 2.1271
+token by token: top token equal at 64/64 steps (differs: never); largest log-probability gap among llama.cpp's top 5: 2.1981
+engine, 1 a pass: top token equal at 63/64 steps (differs: first at step 4); largest log-probability gap among llama.cpp's top 5: 1.1890
+engine, 4 a pass: top token equal at 63/64 steps (differs: first at step 4); largest log-probability gap among llama.cpp's top 5: 1.3274

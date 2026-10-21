@@ -26,6 +26,9 @@ unpack them, and the experts have the 1.74 GB.
 
 ## What we know
 
+- Against llama.cpp's answers after 1,537, 3,161 and 6,945 tokens of the same Q2_0 file, the engine as blocks
+  agreed at 378 of 384 top tokens, as 8-bit arrays at 374: the file's blocks cost no agreement [e60].
+
 - As a 24 GB machine 6% and 13% faster in two runs, less than a run differs from the next; as a 32 GB machine no
   difference [e36].
 - Held whole, the engine keeps the arrays.
